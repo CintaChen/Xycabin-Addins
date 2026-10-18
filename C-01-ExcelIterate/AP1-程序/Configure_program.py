@@ -498,7 +498,7 @@ API_PLATFORMS = [
     ("阿里云平台", "https://www.aliyun.com/?spm=a2c4g.11174283.0.d_logo.5fb0215fSiDrJz"),
     ("未来计划", ""),
 ]
-INSTALLER_VERSION = "0.9.9.0"
+INSTALLER_VERSION = "0.9.9.1"
 
 # --- 固定签名证书（证书指纹，不含私钥）---
 # 常规重建复用此证书；证书或私钥不可用就停止，不按主题猜选，也不自动创建。
