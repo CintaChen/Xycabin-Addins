@@ -1,0 +1,24 @@
+# 本仓库为纯 Windows 项目，且构建流程含字节级校验（文档 SHA-256、包体清单）。
+# 因此不做激进的换行归一化：交给 core.autocrlf 决定，保持与本地一致。
+* text=auto
+
+# Windows 批处理必须保持 CRLF，否则 cmd 解析异常
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制资源不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.zip binary
+*.dll binary
+*.exe binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.mp4 binary

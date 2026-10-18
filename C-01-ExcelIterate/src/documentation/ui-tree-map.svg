@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+<title>图4 · 树与分区</title><desc>项目例子：自定格式中的 TreeView 与 SplitContainer；下方补充自定排序的树节点子部件。</desc>
+<style>text{font-family:'Microsoft YaHei UI','Microsoft YaHei',sans-serif;fill:#17324d;font-size:22px} .small{font-size:17px;fill:#52667d} .number{font-size:20px;fill:white;font-weight:700;text-anchor:middle;dominant-baseline:central} .title{font-size:30px;font-weight:700}</style>
+<rect width="1400" height="1000" fill="#eef3fa"/>
+<text x="32" y="48" class="title">图4 · 树与分区</text>
+<text x="32" y="86" class="small">项目例子：自定格式中的 TreeView 与 SplitContainer；下方补充自定排序的树节点子部件。</text>
+<rect x="32" y="130" width="1336" height="640" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<circle cx="67" cy="169" r="20" fill="#2563eb" stroke="white"/>
+<text x="67" y="169" class="number">22</text>
+<text x="101" y="177" style="font-size:24px;fill:#17324d;font-weight:600">树形控件／树节点</text>
+<circle cx="730" cy="169" r="20" fill="#2563eb" stroke="white"/>
+<text x="730" y="169" class="number">23</text>
+<text x="764" y="177" style="font-size:24px;fill:#17324d;font-weight:600">分区容器／分隔条</text>
+<rect x="58" y="220" width="1284" height="520" rx="2" fill="#fff" stroke="#9baabd" stroke-width="1.5"/>
+<rect x="59" y="221" width="463" height="518" rx="0" fill="#f5f7fb" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="523" y="221" width="11" height="518" rx="0" fill="#e1e8f2" stroke="#b2bfce" stroke-width="1.5"/>
+<path d="M730 189V198H528V218 M502 425h52 M502 425l8-6m-8 6l8 6 M554 425l-8-6m8 6l-8 6" fill="none" stroke="#2563eb" stroke-width="2"/>
+<text x="562" y="420" style="font-size:20px;fill:#17324d;font-weight:400">左右拖动分隔条</text>
+<text x="562" y="457" style="font-size:20px;fill:#17324d;font-weight:400">调整两个分区宽度</text>
+<rect x="82" y="260" width="22" height="22" rx="1" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<path d="M87 271h12" fill="none" stroke="#52667d" stroke-width="1.5"/>
+<text x="120" y="278" style="font-size:22px;fill:#17324d;font-weight:400">窗口控件</text>
+<path d="M101 277V334H132" fill="none" stroke="#aab8c8" stroke-width="1"/>
+<text x="156" y="343" style="font-size:22px;fill:#17324d;font-weight:400">目标工作簿</text>
+<path d="M101 342V399H132" fill="none" stroke="#aab8c8" stroke-width="1"/>
+<text x="156" y="408" style="font-size:22px;fill:#17324d;font-weight:400">来源网格</text>
+<path d="M101 407V464H132" fill="none" stroke="#aab8c8" stroke-width="1"/>
+<rect x="145" y="448" width="334" height="43" rx="3" fill="#dce9ff" stroke="none" stroke-width="1.5"/>
+<text x="156" y="473" style="font-size:22px;fill:#17324d;font-weight:400">日志文本框</text>
+<text x="86" y="700" style="font-size:18px;fill:#52667d;font-weight:400">左分区：控件树</text>
+<text x="690" y="290" style="font-size:22px;fill:#52667d;font-weight:400">右分区：格式预览区域</text>
+<rect x="685" y="510" width="540" height="150" rx="8" fill="#f5f7fb" stroke="#dfe6f0" stroke-width="1.5"/>
+<text x="714" y="563" style="font-size:21px;fill:#17324d;font-weight:400">选择树节点，再修改对应控件。</text>
+<text x="714" y="611" style="font-size:20px;fill:#17324d;font-weight:400">分隔条不同于13号独立宽度拖柄。</text>
+<rect x="32" y="802" width="1336" height="143" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<text x="59" y="844" style="font-size:20px;fill:#17324d;font-weight:400">22号的子部件：展开／折叠标记、选中节点；自定排序另有六点排序柄。</text>
+<circle cx="80" cy="875" r="2" fill="#52667d" stroke="#52667d"/>
+<circle cx="80" cy="884" r="2" fill="#52667d" stroke="#52667d"/>
+<circle cx="80" cy="893" r="2" fill="#52667d" stroke="#52667d"/>
+<circle cx="90" cy="875" r="2" fill="#52667d" stroke="#52667d"/>
+<circle cx="90" cy="884" r="2" fill="#52667d" stroke="#52667d"/>
+<circle cx="90" cy="893" r="2" fill="#52667d" stroke="#52667d"/>
+<text x="111" y="892" style="font-size:20px;fill:#17324d;font-weight:400">自定排序：拖动节点调整同父命令顺序</text>
+<text x="32" y="975" style="font-size:17px;fill:#52667d;font-weight:400">编号与开发日志术语表对应；图形为构造示意，非实机截图，尺寸和外观已简化。</text>
+</svg>

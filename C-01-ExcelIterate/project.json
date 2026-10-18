@@ -1,0 +1,234 @@
+{
+  "assembly": "Excel_Iterate",
+  "namespace": "Excel_Iterate",
+  "host": "Excel",
+  "display_name": "Excel-Iterate",
+  "friendly_name": "WPS 表格增强追踪",
+  "description": "公式引用与从属追踪、一键公式封装及数值计算、按列控制显示",
+  "addin_key": "Excel_Iterate",
+  "whitelist_host": "ET",
+  "host_display_name": "WPS 表格",
+  "progids": [
+    "KET.Application",
+    "et.Application",
+    "Excel.Application"
+  ],
+  "legacy_name": "",
+  "sources": [
+    "AssemblyInfo.cs",
+    "InteropDefs.cs",
+    "UiKit.cs",
+    "Ribbon.g.cs",
+    "Connect.cs",
+    "ThisAddIn.cs",
+    "FormulaRefParser.cs",
+    "PrecedentTrackerEngine.cs",
+    "DependentTrackerEngine.cs",
+    "TrackerForm.cs",
+    "ErrorSourceEngine.cs",
+    "ErrorSourceForm.cs",
+    "FormulaWrapper.cs",
+    "WorksheetIdentity.cs",
+    "FormulaCommandEngine.cs",
+    "FormulaRequest.cs",
+    "FormulaOptionsForm.cs",
+    "CustomFunctionForm.cs",
+    "FormulaWindowThread.cs",
+    "FormulaInteraction.cs",
+    "ColumnVisibilityEngine.cs",
+    "ColumnFilterForm.cs",
+    "WorkbookFeatures.cs",
+    "XlsxLinkPackage.cs",
+    "LinkAssistant.cs",
+    "LinkOperationLog.cs",
+    "LinkBatch.cs",
+    "LinkBreakActions.cs",
+    "Connect.Agent.cs",
+    "AgentDocumentForm.cs",
+    "AgentLocalFiles.cs",
+    "WorkbookSaving.cs",
+    "FileOperations.cs",
+    "OperationBatch.cs",
+    "RecycleFiles.cs",
+    "FileToolForms.cs",
+    "DialogSizes.cs",
+    "DialogPreviewFactory.cs",
+    "DialogSizeEditor.cs",
+    "AgentCustomization.cs",
+    "DialogFormatting.cs",
+    "Connect.Customization.cs",
+    "CustomizationCallbacks.g.cs",
+    "ApiPlatforms.g.cs",
+    "Connect.FileNames.cs",
+    "FileNamesLayout.cs",
+    "FileOcr.cs",
+    "FileOcrSelection.cs",
+    "FormatSession.cs",
+    "FormatEditorThread.cs",
+    "CloudOcr.cs",
+    "CustomizationSaving.cs",
+    "UiDiagnostics.cs",
+    "HostDialogService.cs",
+    "FormulaRefRewriter.cs",
+    "MergeHeadersEngine.cs",
+    "MergeHeadersHost.cs",
+    "MergeHeadersForm.cs",
+    "Connect.MergeHeaders.cs",
+    "Connect.Elimination.cs",
+    "EliminationEngine.cs",
+    "EliminationMatrix.cs",
+    "EliminationDiff.cs",
+    "EliminationHost.cs",
+    "EliminationForm.cs"
+  ],
+  "tools": [
+    {
+      "name": "TrackerProbe",
+      "source": "src/testharness/TrackerProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "ErrorSourceProbe",
+      "source": "src/testharness/ErrorSourceProbe.cs",
+      "references": [
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "FormulaProbe",
+      "source": "src/testharness/FormulaProbe.cs",
+      "references": [
+        "@addin",
+        "lib/Interop.Microsoft.Office.Core.dll",
+        "System.Windows.Forms.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "WorkbookToolsProbe",
+      "source": "src/testharness/WorkbookToolsProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": true,
+      "additional_sources": [
+        "src/testharness/BreakLinksProbe.cs"
+      ]
+    },
+    {
+      "name": "WpsFeatureLiveProbe",
+      "source": "src/tools/WpsFeatureLiveProbe.cs",
+      "references": [
+        "System.Windows.Forms.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "FileOperationsProbe",
+      "source": "src/testharness/FileOperationsProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "Feature099Probe",
+      "source": "src/testharness/Feature099Probe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": true,
+      "additional_sources": [
+        "src/testharness/MultiplePrefixesProbe.cs",
+        "src/testharness/FileNamesLayoutProbe.cs",
+        "src/testharness/GridHeadersProbe.cs"
+      ]
+    },
+    {
+      "name": "FormulaInteractionProbe",
+      "source": "src/testharness/FormulaInteractionProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "HostDialogProbe",
+      "source": "src/testharness/HostDialogProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "MergeHeadersProbe",
+      "source": "src/testharness/MergeHeadersProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "MergeLiveProbe",
+      "source": "src/tools/MergeLiveProbe.cs",
+      "additional_sources": [
+        "src/tools/LiveProbeSafety.cs"
+      ],
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "EliminationProbe",
+      "source": "src/testharness/EliminationProbe.cs",
+      "references": [
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "DisciplineProbe",
+      "source": "src/testharness/DisciplineProbe.cs",
+      "references": [
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "LayoutProbe",
+      "source": "src/testharness/LayoutProbe.cs",
+      "references": [
+        "@addin"
+      ],
+      "offline": false
+    },
+    {
+      "name": "LiveVerify",
+      "source": "src/testharness/LiveVerify.cs",
+      "references": [
+        "@addin"
+      ],
+      "offline": false
+    }
+  ]
+}

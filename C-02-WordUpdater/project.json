@@ -1,0 +1,158 @@
+{
+  "assembly": "WordUpdater",
+  "namespace": "WordUpdater",
+  "host": "Word",
+  "display_name": "WordUpdater",
+  "friendly_name": "WordUpdater",
+  "description": "Excel 区域一键粘贴为表格链接；选中范围链接一键批量更新",
+  "addin_key": "WordUpdater",
+  "whitelist_host": "WPS",
+  "host_display_name": "WPS 文字",
+  "progids": [
+    "WPS.Application",
+    "KWPS.Application",
+    "Word.Application"
+  ],
+  "legacy_name": "WpsLinkUpdater",
+  "sources": [
+    "AssemblyInfo.cs",
+    "InteropDefs.cs",
+    "UiKit.cs",
+    "Ribbon.g.cs",
+    "Connect.cs",
+    "ThisAddIn.cs",
+    "EtCleanup.cs",
+    "UpdateEngine.cs",
+    "LinkPasteGeometry.cs",
+    "LinkPasteEngine.cs",
+    "EtSelectionReader.cs",
+    "LinkViewEngine.cs",
+    "FlashHighlighter.cs",
+    "LinkViewForm.cs",
+    "TableSelectEngine.cs",
+    "Connect.Agent.cs",
+    "AgentDocumentForm.cs",
+    "AgentLocalFiles.cs",
+    "DialogSizes.cs",
+    "DialogPreviewFactory.cs",
+    "DialogSizeEditor.cs",
+    "AgentCustomization.cs",
+    "DialogFormatting.cs",
+    "Connect.Customization.cs",
+    "CustomizationCallbacks.g.cs",
+    "FormatSession.cs",
+    "FormatEditorThread.cs",
+    "CustomizationSaving.cs",
+    "UiDiagnostics.cs",
+    "HostDialogService.cs"
+  ],
+  "tools": [
+    {
+      "name": "ClipboardBoundaryFixture",
+      "source": "src/testharness/ClipboardBoundaryFixture.cs",
+      "references": [],
+      "offline": true
+    },
+    {
+      "name": "EtSelectionReaderProbe",
+      "source": "src/testharness/EtSelectionReaderProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "EtCleanupProbe",
+      "source": "src/testharness/EtCleanupProbe.cs",
+      "references": [
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "LinkPasteTest",
+      "source": "src/testharness/LinkPasteTest.cs",
+      "additional_sources": [
+        "src/tools/LiveProbeSafety.cs"
+      ],
+      "references": [
+        "System.Windows.Forms.dll",
+        "@addin"
+      ],
+      "offline": false
+    },
+    {
+      "name": "ClipboardAreaProbe",
+      "source": "src/tools/ClipboardAreaProbe.cs",
+      "additional_sources": [
+        "src/tools/LiveProbeSafety.cs"
+      ],
+      "references": [
+        "System.Windows.Forms.dll",
+        "@addin"
+      ],
+      "offline": false
+    },
+    {
+      "name": "LinkViewProbe",
+      "source": "src/tools/LinkViewProbe.cs",
+      "references": [
+        "System.Windows.Forms.dll",
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "LinkMapProbe",
+      "source": "src/tools/LinkMapProbe.cs",
+      "references": [
+        "System.Windows.Forms.dll",
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "UpdateProbe",
+      "source": "src/tools/UpdateProbe.cs",
+      "references": [
+        "System.Windows.Forms.dll",
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "LinkViewFormProbe",
+      "source": "src/tools/LinkViewFormProbe.cs",
+      "references": [
+        "System.Windows.Forms.dll",
+        "@addin"
+      ],
+      "offline": true
+    },
+    {
+      "name": "Feature099Probe",
+      "source": "src/testharness/Feature099Probe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": true,
+      "additional_sources": [
+        "src/testharness/GridHeadersProbe.cs"
+      ]
+    },
+    {
+      "name": "HostDialogProbe",
+      "source": "src/testharness/HostDialogProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": true
+    }
+  ]
+}

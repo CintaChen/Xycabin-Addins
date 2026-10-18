@@ -1,0 +1,85 @@
+// Generated; canonical command identities are never renamed.
+namespace Excel_Iterate
+{
+    public partial class Connect
+    {
+        public string GetLabel_btnTracePrecedents(object control) { return RibbonCustomization.Label("btnTracePrecedents"); }
+        public string GetLabel_btnTraceDependents(object control) { return RibbonCustomization.Label("btnTraceDependents"); }
+        public string GetLabel_menuFilterEnhanced(object control) { return RibbonCustomization.Label("menuFilterEnhanced"); }
+        public string GetContent_menuFilterEnhanced(object control) { return RibbonCustomization.Content("menuFilterEnhanced"); }
+        public string GetLabel_btnFilterColumns(object control) { return RibbonCustomization.Label("btnFilterColumns"); }
+        public string GetLabel_btnQuickAdvancedFilter(object control) { return RibbonCustomization.Label("btnQuickAdvancedFilter"); }
+        public string GetLabel_menuAuditToolbox(object control) { return RibbonCustomization.Label("menuAuditToolbox"); }
+        public string GetContent_menuAuditToolbox(object control) { return RibbonCustomization.Content("menuAuditToolbox"); }
+        public string GetLabel_btnMergeHeaders(object control) { return RibbonCustomization.Label("btnMergeHeaders"); }
+        public string GetLabel_menuElimination(object control) { return RibbonCustomization.Label("menuElimination"); }
+        public string GetLabel_btnEliminationReceivable(object control) { return RibbonCustomization.Label("btnEliminationReceivable"); }
+        public string GetLabel_btnEliminationRevenueCost(object control) { return RibbonCustomization.Label("btnEliminationRevenueCost"); }
+        public string GetLabel_menuOneClickFormula(object control) { return RibbonCustomization.Label("menuOneClickFormula"); }
+        public string GetContent_menuOneClickFormula(object control) { return RibbonCustomization.Content("menuOneClickFormula"); }
+        public string GetLabel_menuWrapFormula(object control) { return RibbonCustomization.Label("menuWrapFormula"); }
+        public string GetLabel_menuIFErrorWrap(object control) { return RibbonCustomization.Label("menuIFErrorWrap"); }
+        public string GetLabel_btnWrapIFError(object control) { return RibbonCustomization.Label("btnWrapIFError"); }
+        public string GetLabel_btnCustomIFError(object control) { return RibbonCustomization.Label("btnCustomIFError"); }
+        public string GetLabel_menuRoundWrap(object control) { return RibbonCustomization.Label("menuRoundWrap"); }
+        public string GetLabel_btnWrapRound(object control) { return RibbonCustomization.Label("btnWrapRound"); }
+        public string GetLabel_btnCustomRound(object control) { return RibbonCustomization.Label("btnCustomRound"); }
+        public string GetLabel_btnWrapAbs(object control) { return RibbonCustomization.Label("btnWrapAbs"); }
+        public string GetLabel_btnCustomFunction(object control) { return RibbonCustomization.Label("btnCustomFunction"); }
+        public string GetLabel_btnUnwrapFormula(object control) { return RibbonCustomization.Label("btnUnwrapFormula"); }
+        public string GetLabel_menuArithmetic(object control) { return RibbonCustomization.Label("menuArithmetic"); }
+        public string GetLabel_menuCalculateAdd(object control) { return RibbonCustomization.Label("menuCalculateAdd"); }
+        public string GetLabel_btnCalculateAdd(object control) { return RibbonCustomization.Label("btnCalculateAdd"); }
+        public string GetLabel_btnCustomCalculateAdd(object control) { return RibbonCustomization.Label("btnCustomCalculateAdd"); }
+        public string GetLabel_menuCalculateSubtract(object control) { return RibbonCustomization.Label("menuCalculateSubtract"); }
+        public string GetLabel_btnCalculateSubtract(object control) { return RibbonCustomization.Label("btnCalculateSubtract"); }
+        public string GetLabel_btnCustomCalculateSubtract(object control) { return RibbonCustomization.Label("btnCustomCalculateSubtract"); }
+        public string GetLabel_menuCalculateMultiply(object control) { return RibbonCustomization.Label("menuCalculateMultiply"); }
+        public string GetLabel_btnCalculateMultiply(object control) { return RibbonCustomization.Label("btnCalculateMultiply"); }
+        public string GetLabel_btnCustomCalculateMultiply(object control) { return RibbonCustomization.Label("btnCustomCalculateMultiply"); }
+        public string GetLabel_menuCalculateDivide(object control) { return RibbonCustomization.Label("menuCalculateDivide"); }
+        public string GetLabel_btnCalculateDivide(object control) { return RibbonCustomization.Label("btnCalculateDivide"); }
+        public string GetLabel_btnCustomCalculateDivide(object control) { return RibbonCustomization.Label("btnCustomCalculateDivide"); }
+        public string GetLabel_menuFileOperations(object control) { return RibbonCustomization.Label("menuFileOperations"); }
+        public string GetContent_menuFileOperations(object control) { return RibbonCustomization.Content("menuFileOperations"); }
+        public string GetLabel_btnOrganizeFiles(object control) { return RibbonCustomization.Label("btnOrganizeFiles"); }
+        public string GetLabel_btnRenameFiles(object control) { return RibbonCustomization.Label("btnRenameFiles"); }
+        public string GetLabel_btnFileNames(object control) { return RibbonCustomization.Label("btnFileNames"); }
+        public string GetLabel_btnLinkAssistant(object control) { return RibbonCustomization.Label("btnLinkAssistant"); }
+        public string GetLabel_btnGenerateDirectory(object control) { return RibbonCustomization.Label("btnGenerateDirectory"); }
+        public string GetLabel_btnFeedback(object control) { return RibbonCustomization.Label("btnFeedback"); }
+        public string GetLabel_btnAgentExtension(object control) { return RibbonCustomization.Label("btnAgentExtension"); }
+        public string GetLabel_menuAgentApi(object control) { return RibbonCustomization.Label("menuAgentApi"); }
+        public string GetContent_menuAgentApi(object control) { return RibbonCustomization.Content("menuAgentApi"); }
+        public string GetLabel_menuAgentCloud(object control) { return RibbonCustomization.Label("menuAgentCloud"); }
+        public string GetLabel_btnAgentBaidu(object control) { return RibbonCustomization.Label("btnAgentBaidu"); }
+        public string GetLabel_btnAgentAliyun(object control) { return RibbonCustomization.Label("btnAgentAliyun"); }
+        public string GetLabel_menuAgentSites(object control) { return RibbonCustomization.Label("menuAgentSites"); }
+        public string GetLabel_menuAgentChina(object control) { return RibbonCustomization.Label("menuAgentChina"); }
+        public string GetLabel_btnAgentWorkBuddy(object control) { return RibbonCustomization.Label("btnAgentWorkBuddy"); }
+        public string GetLabel_btnAgentTrae(object control) { return RibbonCustomization.Label("btnAgentTrae"); }
+        public string GetLabel_btnAgentQoder(object control) { return RibbonCustomization.Label("btnAgentQoder"); }
+        public string GetLabel_btnAgentDeepSeek(object control) { return RibbonCustomization.Label("btnAgentDeepSeek"); }
+        public string GetLabel_btnAgentDoubao(object control) { return RibbonCustomization.Label("btnAgentDoubao"); }
+        public string GetLabel_btnAgentKimi(object control) { return RibbonCustomization.Label("btnAgentKimi"); }
+        public string GetLabel_menuAgentOverseas(object control) { return RibbonCustomization.Label("menuAgentOverseas"); }
+        public string GetLabel_btnAgentChatGPT(object control) { return RibbonCustomization.Label("btnAgentChatGPT"); }
+        public string GetLabel_btnAgentClaude(object control) { return RibbonCustomization.Label("btnAgentClaude"); }
+        public string GetLabel_btnAgentGemini(object control) { return RibbonCustomization.Label("btnAgentGemini"); }
+        public string GetLabel_menuAgentWorkflow(object control) { return RibbonCustomization.Label("menuAgentWorkflow"); }
+        public string GetContent_menuAgentWorkflow(object control) { return RibbonCustomization.Content("menuAgentWorkflow"); }
+        public string GetLabel_btnAgentReadme(object control) { return RibbonCustomization.Label("btnAgentReadme"); }
+        public string GetLabel_btnAgentUserGuide(object control) { return RibbonCustomization.Label("btnAgentUserGuide"); }
+        public string GetLabel_btnAgentHome(object control) { return RibbonCustomization.Label("btnAgentHome"); }
+        public string GetLabel_menuAgentCustomization(object control) { return RibbonCustomization.Label("menuAgentCustomization"); }
+        public string GetContent_menuAgentCustomization(object control) { return RibbonCustomization.Content("menuAgentCustomization"); }
+        public string GetLabel_btnAgentSort(object control) { return RibbonCustomization.Label("btnAgentSort"); }
+        public string GetLabel_btnAgentNames(object control) { return RibbonCustomization.Label("btnAgentNames"); }
+        public string GetLabel_btnAgentFormats(object control) { return RibbonCustomization.Label("btnAgentFormats"); }
+        public string GetLabel_btnAgentDialogSizes(object control) { return RibbonCustomization.Label("btnAgentDialogSizes"); }
+        public string GetLabel_menuAgentExperiments(object control) { return RibbonCustomization.Label("menuAgentExperiments"); }
+        public string GetContent_menuAgentExperiments(object control) { return RibbonCustomization.Content("menuAgentExperiments"); }
+        public string GetLabel_btnAgentOcrPlaceholder(object control) { return RibbonCustomization.Label("btnAgentOcrPlaceholder"); }
+        public string GetLabel_btnAgentRequirements(object control) { return RibbonCustomization.Label("btnAgentRequirements"); }
+    }
+}

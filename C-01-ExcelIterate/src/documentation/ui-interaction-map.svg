@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120">
+  <title>选择、按钮、拖动与滚动：跨工作簿表头匹配合并</title>
+  <desc>以合并窗口源码的位置示意为底图，保持原布局与控件位置。来源网格为空表，10仅标出下拉列范围；8是自定排序的另窗数值输入示例。右侧为DataGridView双向滚动的独立构造示例，不是实机截图；未给日志绘制横向滚动条。</desc>
+  <defs>
+    <style>
+      text { font-family:'Microsoft YaHei UI','Microsoft YaHei',sans-serif; fill:#17324d; font-size:18px }
+      .heading { font-size:28px; font-weight:700 }
+      .sub { font-size:17px; fill:#52667d }
+      .small { font-size:15px; fill:#52667d }
+      .card { fill:#fff; stroke:#dfe6f0; stroke-width:1.5 }
+      .field { fill:#fff; stroke:#a3adba; stroke-width:1 }
+      .head { fill:#f0f4f9 }
+      .button { fill:#fff; stroke:#dfe6f0; stroke-width:1.5 }
+      .guide { fill:none; stroke:#2563eb; stroke-width:1.8; stroke-dasharray:6 5 }
+      .leader { fill:none; stroke:#2563eb; stroke-width:2 }
+      .badge { fill:#2563eb; stroke:white; stroke-width:2 }
+      .num { fill:white; font-size:16px; font-weight:700; text-anchor:middle; dominant-baseline:central }
+      .label { font-size:16px; fill:#1d4ed8 }
+      .panel-title { font-size:20px; font-weight:700 }
+    </style>
+    <g id="horizontal-grip"><path d="M55 0H1059" stroke="#dfe6f0"/><circle cx="553" cy="0" r="1.5" fill="#a4afbd"/><circle cx="559" cy="0" r="1.5" fill="#a4afbd"/><circle cx="565" cy="0" r="1.5" fill="#a4afbd"/></g>
+    <g id="vertical-grip"><path d="M0 0V24 M3 0V24 M6 0V24" stroke="#b2bcc9"/></g>
+    <marker id="arrow" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L8 4L0 8Z" fill="#2563eb"/></marker>
+    <clipPath id="grid-body"><rect x="1149" y="443" width="266" height="223"/></clipPath>
+  </defs>
+  <rect width="1600" height="1120" fill="#eef3fa"/>
+  <text x="32" y="48" class="heading">图2 · 选择、按钮、拖动与滚动</text>
+  <text x="32" y="82" class="sub">按源码绘制，非实机截图；右侧为数据网格的滚动部件构造示例。</text>
+  <rect x="32" y="118" width="1050" height="945" rx="12" fill="#f5f7fb" stroke="#c8d4e3"/>
+  <path d="M32 153H1082" stroke="#dfe6f0"/>
+  <text x="83" y="143">跨工作簿表头匹配合并</text>
+  <text x="992" y="143">—　□　×</text>
+  
+  
+  
+
+  <rect x="55" y="183" width="1004" height="88" rx="12" class="card"/>
+  <text x="70" y="215">目标工作簿</text>
+  <rect x="175" y="196" width="330" height="34" class="field"/>
+  <use href="#vertical-grip" x="516" y="201"/>
+  <rect x="535" y="195" width="108" height="36" rx="8" class="button"/>
+  <text x="543" y="219" font-size="16">选择目标…</text>
+  <text x="661" y="219">工作表</text>
+  <rect x="728" y="196" width="155" height="34" class="field"/>
+  <path d="M864 209l5 5 5-5" fill="none" stroke="#52667d"/>
+  <text x="906" y="219">表头行</text>
+  <rect x="976" y="196" width="62" height="34" class="field"/><text x="986" y="219">1</text>
+  
+  
+  
+  
+  <use href="#horizontal-grip" y="285"/>
+  <text x="59" y="311" font-size="17" font-weight="700">按表头列名匹配，将来源列数据追加至目标同名列已有数据下方。</text>
+
+  <rect x="55" y="324" width="1004" height="120" rx="12" class="card"/>
+  <rect x="67" y="336" width="980" height="27" class="head"/>
+  <text x="80" y="355" font-size="16">来源工作簿</text><text x="369" y="355" font-size="16">工作表</text><text x="601" y="355" font-size="16">表头行</text><text x="770" y="355" font-size="16">状态</text>
+  
+  
+  
+  
+  <rect x="55" y="456" width="117" height="35" rx="8" class="button"/><text x="65" y="480" font-size="16">添加来源…</text>
+  <rect x="193" y="456" width="113" height="35" rx="8" class="button"/><text x="205" y="480" font-size="16">移除选中</text>
+  <use href="#vertical-grip" x="178" y="461"/><use href="#vertical-grip" x="313" y="461"/>
+  <use href="#horizontal-grip" y="503"/>
+
+  <rect x="55" y="518" width="1004" height="200" rx="12" class="card"/>
+  <rect x="67" y="531" width="980" height="27" class="head"/>
+  <text x="80" y="550" font-size="16">来源工作簿　　工作表　　表头列名　　源列　　目标列　　映射　　行数　　写入起始行　　状态</text>
+  
+  <use href="#horizontal-grip" y="732"/>
+  <rect x="55" y="746" width="1004" height="75" rx="12" class="card"/>
+  <rect x="67" y="758" width="980" height="27" class="head"/>
+  <text x="80" y="777" font-size="16">来源　　源单元格　　原公式　　新公式　　备注</text>
+  
+  <use href="#horizontal-grip" y="835"/>
+  
+
+  <rect x="55" y="849" width="1004" height="142" rx="12" class="card"/>
+  
+  
+  <text x="111" y="891" font-size="17">22:41:45 当前工作簿不是 .xlsx … 请点「选择目标…」另选。</text>
+  
+  
+  
+  <use href="#horizontal-grip" y="1006"/>
+  
+  <rect x="55" y="1020" width="149" height="33" rx="8" fill="#2563eb"/><text x="65" y="1043" style="fill:white;font-size:16px">读取表头并预检</text>
+  <rect x="215" y="1020" width="113" height="33" rx="8" fill="#e9eef5"/><text x="235" y="1043" class="small">执行合并</text>
+  <rect x="339" y="1020" width="113" height="33" rx="8" fill="#e9eef5"/><text x="359" y="1043" class="small">取消操作</text>
+  <rect x="463" y="1020" width="113" height="33" rx="8" fill="#e9eef5"/><text x="483" y="1043" class="small">确认操作</text>
+  <rect x="587" y="1020" width="136" height="33" rx="8" class="button"/><text x="597" y="1043" font-size="16">复制日志</text>
+  <rect x="734" y="1020" width="85" height="33" rx="8" class="button"/><text x="760" y="1043" font-size="16">关闭</text>
+
+
+  <!-- Direct callouts use the same object numbers as the structural diagram. -->
+  <rect x="725" y="193" width="161" height="40" rx="3" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <path d="M806 237V230" class="leader"/>
+  <circle cx="806" cy="252" r="15" class="badge"/><text x="806" y="252" class="num">7</text>
+  <text x="830" y="258" class="label">独立下拉框</text>
+
+  <rect x="512" y="198" width="15" height="30" rx="2" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <path d="M520 189V200" class="leader"/>
+  <circle cx="520" cy="174" r="15" class="badge"/><text x="520" y="174" class="num">13</text>
+  <text x="544" y="180" class="label">宽度拖柄 · 左右改宽</text>
+  <path d="M490 246H550" class="leader" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <rect x="354" y="336" width="225" height="96" class="guide"/>
+  <circle cx="374" cy="397" r="15" class="badge"/><text x="374" y="397" class="num">10</text>
+  <text x="398" y="403" class="label">下拉列范围</text>
+
+  <path d="M750 835H1059" class="leader"/>
+  <rect x="830" y="824" width="165" height="22" rx="3" fill="#f5f7fb"/>
+  <text x="837" y="841" class="label">高度拖柄 · 上下改高</text>
+  <circle cx="1017" cy="835" r="15" class="badge"/><text x="1017" y="835" class="num">14</text>
+  <path d="M750 1006H1059" class="leader"/>
+  <rect x="830" y="995" width="165" height="22" rx="3" fill="#f5f7fb"/>
+  <text x="837" y="1012" class="label">高度拖柄 · 上下改高</text>
+  <circle cx="1017" cy="1006" r="15" class="badge"/><text x="1017" y="1006" class="num">14</text>
+
+  <rect x="584" y="1017" width="142" height="39" rx="9" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <path d="M653 1069V1054" class="leader"/>
+  <circle cx="653" cy="1084" r="15" class="badge"/><text x="653" y="1084" class="num">12</text>
+  <text x="677" y="1090" class="label">复制日志按钮</text>
+
+  <!-- The numeric input is from another actual project window. -->
+  <rect x="1104" y="118" width="464" height="945" rx="12" class="card"/>
+  <text x="1125" y="155" class="panel-title">另窗示例：自定排序</text>
+  <rect x="1125" y="177" width="421" height="119" rx="8" fill="#f5f7fb" stroke="#dfe6f0"/>
+  <text x="1141" y="217" style="font-size:16px">同一菜单中的顺序号</text>
+  <rect x="1303" y="192" width="161" height="38" class="field"/><text x="1315" y="218">1</text>
+  <path d="M1445 192V230 M1445 211H1464 M1450 204l4-4 4 4 M1450 219l4 4 4-4" fill="none" stroke="#6f8094"/>
+  <path d="M1391 250V230" class="leader"/>
+  <circle cx="1391" cy="265" r="15" class="badge"/><text x="1391" y="265" class="num">8</text>
+  <text x="1415" y="271" class="label">数值输入框</text>
+
+  <!-- Independent enlarged construction example; these bars belong to a grid. -->
+  <text x="1125" y="334" class="panel-title">数据网格：滚动部件放大</text>
+  <text x="1125" y="364" class="small">构造示例 · 非实机 · 网格已配置 Both</text>
+  <rect x="1148" y="408" width="288" height="282" fill="#fff" stroke="#a3adba"/>
+  <rect x="1149" y="409" width="266" height="34" class="head"/>
+  <text x="1159" y="432" font-size="16">来源</text><text x="1245" y="432" font-size="16">目标列</text><text x="1340" y="432" font-size="16">状态</text>
+  <g clip-path="url(#grid-body)">
+    <path d="M1233 443V700 M1320 443V700 M1149 489H1450 M1149 523H1450 M1149 557H1450 M1149 591H1450 M1149 625H1450 M1149 659H1450" fill="none" stroke="#e8edf4"/>
+    <g font-size="16" fill="#52667d">
+      <text x="1159" y="477">示例1</text><text x="1245" y="477">字段 A</text><text x="1340" y="477">示意</text>
+      <text x="1159" y="511">示例2</text><text x="1245" y="511">字段 B</text><text x="1340" y="511">示意</text>
+      <text x="1159" y="545">示例3</text><text x="1245" y="545">字段 C</text><text x="1340" y="545">示意</text>
+      <text x="1159" y="579">示例4</text><text x="1245" y="579">字段 D</text><text x="1340" y="579">示意</text>
+      <text x="1159" y="613">示例5</text><text x="1245" y="613">字段 E</text><text x="1340" y="613">示意</text>
+      <text x="1159" y="647">示例6</text><text x="1245" y="647">字段 F</text><text x="1340" y="647">示意</text>
+      <text x="1159" y="681">示例7</text><text x="1245" y="681">字段 G</text><text x="1340" y="681">示意</text>
+    </g>
+  </g>
+  <rect x="1415" y="443" width="20" height="223" fill="#e9edf4" stroke="#ccd5e0"/>
+  <rect x="1415" y="443" width="20" height="20" fill="#f6f8fb" stroke="#ccd5e0"/>
+  <path d="M1420 455l5-5 5 5" fill="none" stroke="#64748b" stroke-width="1.5"/>
+  <rect x="1417" y="503" width="16" height="64" rx="5" fill="#2563eb"/>
+  <rect x="1415" y="646" width="20" height="20" fill="#f6f8fb" stroke="#ccd5e0"/>
+  <path d="M1420 653l5 5 5-5" fill="none" stroke="#64748b" stroke-width="1.5"/>
+  <rect x="1149" y="666" width="266" height="23" fill="#e9edf4" stroke="#ccd5e0"/>
+  <rect x="1149" y="666" width="20" height="23" fill="#f6f8fb" stroke="#ccd5e0"/>
+  <path d="M1162 672l-5 5 5 5" fill="none" stroke="#64748b" stroke-width="1.5"/>
+  <rect x="1230" y="668" width="77" height="19" rx="5" fill="#2563eb"/>
+  <rect x="1395" y="666" width="20" height="23" fill="#f6f8fb" stroke="#ccd5e0"/>
+  <path d="M1402 672l5 5-5 5" fill="none" stroke="#64748b" stroke-width="1.5"/>
+  <rect x="1415" y="666" width="20" height="23" fill="#e9edf4" stroke="#ccd5e0"/>
+
+  <path d="M1481 435H1442V459H1435" class="leader"/>
+  <circle cx="1496" cy="435" r="15" class="badge"/><text x="1496" y="435" class="num">15</text>
+  <text x="1450" y="471" class="small">纵向滚动条</text>
+  <path d="M1481 531H1433" class="leader"/>
+  <circle cx="1496" cy="531" r="15" class="badge"/><text x="1496" y="531" class="num">17</text>
+  <text x="1450" y="567" class="small">滚动滑块</text>
+  <path d="M1481 614H1435" class="leader"/>
+  <circle cx="1496" cy="614" r="15" class="badge"/><text x="1496" y="614" class="num">18</text>
+  <text x="1450" y="650" class="small">滚动轨道</text>
+  <path d="M1260 729V689" class="leader"/>
+  <circle cx="1260" cy="744" r="15" class="badge"/><text x="1260" y="744" class="num">16</text>
+  <text x="1284" y="750" class="label">横向滚动条</text>
+  <text x="1125" y="814" class="small">滚动条外观为简化示意。</text>
+  <text x="1125" y="1009" class="small">日志当前：自动换行＋仅纵向滚动</text>
+  <text x="32" y="1092" class="small">编号沿用图1；说明见开发日志。</text>
+</svg>

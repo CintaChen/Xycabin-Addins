@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="660" viewBox="0 0 1480 660">
+<title>程序新生成工作表：表头与完整数据列宽适配</title>
+<desc>OCR提取结果四列构造示例，非真实WPS截图。表头居中、加粗、不换行；列AutoFit测量表头和全部数据，最后一行包含最长内容。极长正文达到宿主列宽上限时仅正文换行并适配行高。</desc>
+<style>text{font-family:'Microsoft YaHei UI','Microsoft YaHei',sans-serif;fill:#17324d;font-size:22px} .title{font-size:32px;font-weight:700} .note{font-size:20px;fill:#52667d} .header{font-size:22px;font-weight:700;text-anchor:middle} .cell{font-size:20px;text-anchor:middle} .row{font-size:18px;fill:#6b7a90;text-anchor:middle}</style>
+<rect width="1480" height="660" fill="#eef3fa"/>
+<text x="32" y="52" class="title">生成工作表格式效果</text>
+<text x="32" y="88" class="note">OCR提取结果 · 4列构造示例，非真实WPS截图；尺寸与外观简化。</text>
+<rect x="32" y="113" width="1416" height="289" rx="10" fill="#ffffff" stroke="#dfe6f0"/>
+<text x="58" y="144" class="note">表头：居中、加粗、不换行</text>
+<rect x="76" y="162" width="1346" height="214" fill="#fff"/>
+<rect x="76" y="162" width="1346" height="52" fill="#e7effc"/>
+<rect x="76" y="322" width="1346" height="54" fill="#fff4db"/>
+<text x="204.0" y="196" class="header">文件提取名称</text>
+<path d="M332 162V376" stroke="#dfe6f0" fill="none"/>
+<text x="399.0" y="196" class="header">文件后缀</text>
+<path d="M466 162V376" stroke="#dfe6f0" fill="none"/>
+<text x="761.0" y="196" class="header">文件路径</text>
+<path d="M1056 162V376" stroke="#dfe6f0" fill="none"/>
+<text x="1239.0" y="196" class="header">文件OCR识别</text>
+<path d="M76 214H1422" stroke="#dfe6f0" fill="none"/>
+<text x="204.0" y="249" class="cell">磅单样例01</text>
+<text x="399.0" y="249" class="cell">png</text>
+<text x="761.0" y="249" class="cell">C:\OCR样例\01.png</text>
+<text x="1239.0" y="249" class="cell">00123-10kg-00987</text>
+<path d="M76 268H1422" stroke="#dfe6f0" fill="none"/>
+<text x="204.0" y="303" class="cell">发货单样例02</text>
+<text x="399.0" y="303" class="cell">pdf</text>
+<text x="761.0" y="303" class="cell">C:\OCR样例\发货单02.pdf</text>
+<text x="1239.0" y="303" class="cell">00124-12kg-00988</text>
+<path d="M76 322H1422" stroke="#dfe6f0" fill="none"/>
+<text x="204.0" y="357" class="cell">月末磅单核对样例003</text>
+<text x="399.0" y="357" class="cell">pdf</text>
+<text x="761.0" y="357" class="cell">C:\OCR样例\月末汇总\磅单核对样例003.pdf</text>
+<text x="1239.0" y="357" class="cell">00012345-108.50kg-00098765</text>
+<text x="54" y="195" class="row">1</text>
+<text x="54" y="248" class="row">2</text>
+<text x="54" y="302" class="row">3</text>
+<text x="54" y="356" class="row">4</text>
+<rect x="76" y="162" width="1346" height="214" fill="none" stroke="#2563eb" stroke-width="2"/>
+
+<text x="32" y="442" style="font-size:23px;font-weight:700;fill:#2563eb">蓝色范围：表头和全部写入数据都参与 Columns.AutoFit</text>
+<text x="32" y="482" class="note">最后一行含最长内容；前导零、单位和完整原文均保留，不采用网格的30字符上限。</text>
+<rect x="32" y="511" width="1416" height="66" rx="10" fill="#fff" stroke="#dfe6f0"/>
+<text x="54" y="552" style="font-size:22px">写入数据／设置最终格式 → WorkbookUi.FitOutput → 按业务需要保存</text>
+<text x="32" y="623" class="note">边界：极长正文达到宿主列宽上限时，仅正文换行并适配行高；表头仍保持单行。</text>
+</svg>

@@ -1,0 +1,119 @@
+# WPS Office 加载项与 XyCabin 站点
+
+本项目包含三个相互关联的子项目：两个面向 WPS Office 的 VSTO 加载项，以及一个用于展示与分发这两款加载项的离线站点生成器。
+
+三者共享同一套文档体系与交付门禁，因此以单仓库（monorepo）形式维护。
+
+## 项目组成
+
+| 目录 | 类型 | 宿主 | 功能概述 |
+|---|---|---|---|
+| `C-01-ExcelIterate` | VSTO 加载项 | WPS 表格 / Excel | 公式引用与从属追踪、一键公式封装与数值计算、按列控制显示、文件批量整理与重命名、OCR 文本提取 |
+| `C-02-WordUpdater` | VSTO 加载项 | WPS 文字 / Word | 将 Excel 区域粘贴为表格链接、对选中范围的链接批量更新 |
+| `C-03-Website·Xycabin` | 站点生成器 | 浏览器 | 生成单文件离线站点，展示两款加载项的介绍、使用指南、版本与下载 |
+
+`verify_shared.py` 是跨项目一致性校验入口：它逐字比对 C-01 与 C-02 的共享文档章节，防止两项目文档在并行修改中产生漂移。
+
+## 技术栈
+
+- **加载项**：C# 5（由 .NET Framework 自带的 `csc.exe` 编译），VSTO vstov4 清单，无 NuGet 依赖，无 Visual Studio 工程文件。
+- **构建与验证**：Python 3，仅使用标准库（无 `requirements.txt`）。
+- **站点**：由 Python 模板渲染为单个 HTML 文件，内嵌 CSS、JavaScript 与图片资源，可离线打开。
+
+## 目录结构
+
+```
+.
+├── C-01-ExcelIterate/
+│   ├── AP1-程序/          配置、打包与签名入口
+│   ├── AP2-美工/          界面截图（供文档引用）
+│   ├── AP3-说明/          AGENTS.md、使用说明.md、开发日志.md
+│   ├── src/               源码
+│   └── lib/               微软版权互操作程序集（未入库）
+├── C-02-WordUpdater/      结构同上
+├── C-03-Website·Xycabin/
+│   ├── AP1-程序/          站点配置与构建入口
+│   └── src/               模板、控制器、资产
+└── verify_shared.py       跨项目文档一致性校验
+```
+
+## 构建
+
+### 环境要求
+
+1. Windows 10 / 11
+2. .NET Framework 4.x（提供 `csc.exe`，系统自带）
+3. Python 3.9 或更高版本
+4. WPS Office —— 仅在运行与验收时需要，编译不需要
+
+### 补回互操作程序集
+
+仓库不包含 `lib/` 下的微软版权程序集（`Microsoft.Office.Tools.*.dll`、`Microsoft.VisualStudio.Tools.Applications.Runtime.dll` 等），因为其再分发受微软许可条款约束。首次构建前，请从本机的 VSTO 运行时或 Visual Studio Tools for Office PIA 目录将这些程序集复制到对应项目的 `lib/` 目录。
+
+缺少任一会导致编译报错，错误信息会指出具体文件名。
+
+### 编译
+
+```bash
+# 仅编译 DLL 与依赖，不签名、不封装安装包
+python C-01-ExcelIterate/build.py
+python C-02-WordUpdater/build.py
+```
+
+### 完整重建
+
+```bash
+python C-01-ExcelIterate/rebuild.py --mode full
+python C-02-WordUpdater/rebuild.py --mode full
+python C-03-Website·Xycabin/rebuild.py
+```
+
+或双击各项目 `AP1-程序/` 下的 `一键重建并打包.bat`。
+
+完整重建依次执行：写入配置 → 编译 → 生成并签名清单 → 封装安装包 → 校验。`--mode incremental` 会复用 `build/incremental-cache/` 中的编译缓存。
+
+### 关于代码签名
+
+完整重建的最后阶段会使用 Authenticode 证书为 DLL、应用清单与部署清单签名。签名身份由 `AP1-程序/Configure_program.py` 中的 `SIGNING_CERT_THUMBPRINT` 决定。
+
+**自行构建时，该指纹指向的证书在你的机器上并不存在，签名步骤会失败。** 有两种处理方式：
+
+1. 在 `Configure_program.py` 中将 `SIGNING_CERT_THUMBPRINT` 改为你自有证书的指纹，并确保证书位于当前用户的个人证书存储区且带私钥；
+2. 跳过完整重建，改用 `build.py` 编译出 DLL，再手动安装 VSTO 加载项用于开发调试。
+
+原项目的发布证书为自签名证书，未加入任何公共信任根。因此安装官方构建的安装包时，Windows 会提示「未知的发行者」，这属于预期行为。
+
+## 未纳入版本管理的内容
+
+| 路径 | 原因 |
+|---|---|
+| `build/`、`stage/` | 构建快照与中间产物，体积可达数百 MB，可由源码重建 |
+| `.workbuddy/` | AI 辅助开发的工作记录，含本机路径与过程性内容 |
+| `**/lib/*.dll` | 微软版权程序集，再分发受许可限制 |
+| `AP1-程序/*_Setup.exe` | 发布产物，通过 Releases 分发 |
+| `C-03-Website·Xycabin/AP1-程序/XyCabin.html` | 由模板渲染生成的产物 |
+| `*.cer`、`*.pfx`、`*.snk` | 证书与私钥材料 |
+
+## 免责声明
+
+本项目为个人开发作品，**与金山办公（WPS Office 的开发方）无隶属或背书关系**，亦非 WPS Office 官方组件。
+
+加载项通过 VSTO 接口与宿主进程交互，会读取并修改当前文档内容。请在测试文档中先行验证，并自行承担使用风险。作者不对因使用本软件导致的数据丢失、文档损坏或业务中断承担责任。
+
+## 许可证
+
+本项目采用 [Mozilla Public License 2.0](LICENSE)（MPL-2.0）授权。
+
+MPL-2.0 是**文件级** copyleft 许可证，其边界与常见许可证不同，使用前请留意：
+
+- 允许商业使用、修改与再分发，也允许收费分发。
+- 你修改过的**源文件**，在分发时必须继续以 MPL-2.0 公开。
+- 但 MPL-2.0 不要求你新增的文件或与之组合的其他代码开源，可以与其他许可证（含专有）代码组合成一个更大的作品。
+- 含明确的专利授权条款；不授予商标使用权。
+- 本项目未声明「Incompatible With Secondary Licenses」，因此按 MPL-2.0 默认规则，可与 GPL-2.0 或更高版本进行二次组合。
+
+源文件的许可声明以仓库根目录的 `LICENSE` 文件为准，未在每个文件头部逐一附加 Exhibit A 通知。若你希望在自己维护的分支中补全文件头，可参考 `LICENSE` 末尾的 Exhibit A 模板。
+
+## 问题反馈
+
+请通过本仓库的 Issues 提交缺陷报告或功能建议。提交时请说明 WPS Office 版本、Windows 版本，以及可复现的操作步骤。

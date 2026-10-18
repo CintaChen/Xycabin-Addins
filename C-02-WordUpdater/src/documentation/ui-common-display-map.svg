@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+<title>图7 · 通用列表与展示参考</title><desc>以下每种控件当前项目均未使用；仅帮助描述未来需求，不表示加载项已经实现。</desc>
+<style>text{font-family:'Microsoft YaHei UI','Microsoft YaHei',sans-serif;fill:#17324d;font-size:22px} .small{font-size:17px;fill:#52667d} .number{font-size:20px;fill:white;font-weight:700;text-anchor:middle;dominant-baseline:central} .title{font-size:30px;font-weight:700}</style>
+<rect width="1400" height="1000" fill="#eef3fa"/>
+<text x="32" y="48" class="title">图7 · 通用列表与展示参考</text>
+<text x="32" y="86" class="small">以下每种控件当前项目均未使用；仅帮助描述未来需求，不表示加载项已经实现。</text>
+<rect x="32" y="130" width="650" height="385" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="718" y="130" width="650" height="385" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="32" y="526" width="650" height="385" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="718" y="526" width="650" height="385" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<circle cx="67" cy="169" r="20" fill="#2563eb" stroke="white"/>
+<text x="67" y="169" class="number">32</text>
+<text x="101" y="177" style="font-size:24px;fill:#17324d;font-weight:600">列表视图</text>
+<text x="59" y="211" style="font-size:17px;fill:#52667d;font-weight:400">通用示意 · 当前项目未使用</text>
+<rect x="65" y="246" width="582" height="220" rx="1" fill="#fff" stroke="#9baabd" stroke-width="1.5"/>
+<rect x="65" y="246" width="582" height="43" rx="0" fill="#f0f4f9" stroke="#dfe6f0" stroke-width="1.5"/>
+<text x="82" y="276" style="font-size:22px;fill:#17324d;font-weight:400">名称</text>
+<text x="348" y="276" style="font-size:22px;fill:#17324d;font-weight:400">类型</text>
+<text x="530" y="276" style="font-size:22px;fill:#17324d;font-weight:400">大小</text>
+<rect x="84" y="313" width="22" height="27" rx="1" fill="#dce9ff" stroke="#7890b2" stroke-width="1.5"/>
+<text x="117" y="335" style="font-size:20px;fill:#17324d;font-weight:400">样例文档</text>
+<text x="348" y="335" style="font-size:20px;fill:#17324d;font-weight:400">DOCX</text>
+<text x="528" y="335" style="font-size:20px;fill:#17324d;font-weight:400">12 KB</text>
+<rect x="84" y="383" width="22" height="27" rx="1" fill="#dce9ff" stroke="#7890b2" stroke-width="1.5"/>
+<text x="117" y="405" style="font-size:20px;fill:#17324d;font-weight:400">样例图片</text>
+<text x="348" y="405" style="font-size:20px;fill:#17324d;font-weight:400">PNG</text>
+<text x="528" y="405" style="font-size:20px;fill:#17324d;font-weight:400">38 KB</text>
+<circle cx="752" cy="169" r="20" fill="#2563eb" stroke="white"/>
+<text x="752" y="169" class="number">34</text>
+<text x="786" y="177" style="font-size:24px;fill:#17324d;font-weight:600">数值滑动条</text>
+<text x="744" y="211" style="font-size:17px;fill:#52667d;font-weight:400">通用示意 · 当前项目未使用</text>
+<path d="M775 322H1304" fill="none" stroke="#aab8c8" stroke-width="6"/>
+<path d="M775 345V355" fill="none" stroke="#7890b2" stroke-width="2"/>
+<path d="M907 345V355" fill="none" stroke="#7890b2" stroke-width="2"/>
+<path d="M1040 345V355" fill="none" stroke="#7890b2" stroke-width="2"/>
+<path d="M1172 345V355" fill="none" stroke="#7890b2" stroke-width="2"/>
+<path d="M1304 345V355" fill="none" stroke="#7890b2" stroke-width="2"/>
+<rect x="1027" y="299" width="25" height="50" rx="4" fill="#2563eb" stroke="#2563eb" stroke-width="1.5"/>
+<text x="770" y="389" style="font-size:19px;fill:#17324d;font-weight:400">0</text>
+<text x="1024" y="389" style="font-size:19px;fill:#17324d;font-weight:400">50</text>
+<text x="1279" y="389" style="font-size:19px;fill:#17324d;font-weight:400">100</text>
+<text x="770" y="461" style="font-size:20px;fill:#17324d;font-weight:400">调整数值，不滚动文档内容。</text>
+<circle cx="67" cy="566" r="20" fill="#2563eb" stroke="white"/>
+<text x="67" y="566" class="number">35</text>
+<text x="101" y="574" style="font-size:24px;fill:#17324d;font-weight:600">图片框</text>
+<text x="59" y="608" style="font-size:17px;fill:#52667d;font-weight:400">通用示意 · 当前项目未使用</text>
+<rect x="65" y="644" width="582" height="205" rx="2" fill="#eaf2fb" stroke="#9baabd" stroke-width="1.5"/>
+<circle cx="539" cy="695" r="24" fill="#f0c968" stroke="#f0c968"/>
+<path d="M66 848L258 670 399 812 489 735 646 848Z" fill="#a5bfd5" stroke="#789dbd" stroke-width="1"/>
+<text x="72" y="884" style="font-size:19px;fill:#52667d;font-weight:400">显示图像、缩放与留白模式</text>
+<circle cx="752" cy="566" r="20" fill="#2563eb" stroke="white"/>
+<text x="752" y="566" class="number">36</text>
+<text x="786" y="574" style="font-size:24px;fill:#17324d;font-weight:600">链接标签</text>
+<text x="744" y="608" style="font-size:17px;fill:#52667d;font-weight:400">通用示意 · 当前项目未使用</text>
+<text x="775" y="718" style="font-size:26px;fill:#2563eb;font-weight:400">查看帮助说明</text>
+<path d="M775 729H939" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+<text x="775" y="798" style="font-size:20px;fill:#17324d;font-weight:400">点击打开链接；与普通Label区别命名。</text>
+<text x="32" y="975" style="font-size:17px;fill:#52667d;font-weight:400">编号与开发日志术语表对应；图形为构造示意，非实机截图，尺寸和外观已简化。</text>
+</svg>

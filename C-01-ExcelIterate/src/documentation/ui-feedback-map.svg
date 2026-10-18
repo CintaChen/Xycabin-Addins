@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+<title>图5 · 反馈与临时菜单</title><desc>项目例子：追踪从属的进度条、追踪网格的上下文菜单、按钮悬浮提示；显示内容为构造样例。</desc>
+<style>text{font-family:'Microsoft YaHei UI','Microsoft YaHei',sans-serif;fill:#17324d;font-size:22px} .small{font-size:17px;fill:#52667d} .number{font-size:20px;fill:white;font-weight:700;text-anchor:middle;dominant-baseline:central} .title{font-size:30px;font-weight:700}</style>
+<rect width="1400" height="1000" fill="#eef3fa"/>
+<text x="32" y="48" class="title">图5 · 反馈与临时菜单</text>
+<text x="32" y="86" class="small">项目例子：追踪从属的进度条、追踪网格的上下文菜单、按钮悬浮提示；显示内容为构造样例。</text>
+<rect x="32" y="130" width="790" height="310" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="32" y="474" width="790" height="432" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="858" y="130" width="510" height="776" rx="10" fill="#fff" stroke="#dfe6f0" stroke-width="1.5"/>
+<circle cx="67" cy="169" r="20" fill="#2563eb" stroke="white"/>
+<text x="67" y="169" class="number">24</text>
+<text x="101" y="177" style="font-size:24px;fill:#17324d;font-weight:600">进度条</text>
+<text x="59" y="220" style="font-size:19px;fill:#52667d;font-weight:400">追踪从属：扫描进度（示意60 / 100）</text>
+<rect x="65" y="274" width="720" height="40" rx="7" fill="#e2e9f3" stroke="#dfe6f0" stroke-width="1.5"/>
+<rect x="65" y="274" width="432" height="40" rx="7" fill="#16876f" stroke="none" stroke-width="1.5"/>
+<text x="67" y="383" style="font-size:20px;fill:#17324d;font-weight:400">表示处理进度，不是滚动条或数值滑动条。</text>
+<circle cx="67" cy="514" r="20" fill="#2563eb" stroke="white"/>
+<text x="67" y="514" class="number">26</text>
+<text x="101" y="522" style="font-size:24px;fill:#17324d;font-weight:600">悬浮提示</text>
+<rect x="70" y="588" width="158" height="48" rx="8" fill="#eff5ff" stroke="#2563eb" stroke-width="1.5"/>
+<text x="113" y="621" style="font-size:21px;fill:#17324d;font-weight:400">复制</text>
+<path d="M151 623l15 34 6-14 15-5Z" fill="#fff" stroke="#52667d" stroke-width="1.5"/>
+<rect x="170" y="679" width="588" height="90" rx="5" fill="#fffce9" stroke="#d7cfa5" stroke-width="1.5"/>
+<text x="193" y="716" style="font-size:21px;fill:#17324d;font-weight:400">复制所选行的工作簿路径</text>
+<text x="193" y="749" style="font-size:18px;fill:#52667d;font-weight:400">Ctrl+Shift+C</text>
+<text x="67" y="852" style="font-size:20px;fill:#17324d;font-weight:400">悬停时出现，不是输入框或独立业务窗口。</text>
+<circle cx="894" cy="169" r="20" fill="#2563eb" stroke="white"/>
+<text x="894" y="169" class="number">25</text>
+<text x="928" y="177" style="font-size:24px;fill:#17324d;font-weight:600">上下文菜单</text>
+<text x="885" y="220" style="font-size:19px;fill:#52667d;font-weight:400">追踪网格：右键复制菜单</text>
+<rect x="894" y="279" width="425" height="276" rx="3" fill="#fff" stroke="#9baabd" stroke-width="1.5"/>
+<rect x="908" y="293" width="396" height="66" rx="2" fill="#dce9ff" stroke="none" stroke-width="1.5"/>
+<text x="938" y="336" style="font-size:22px;fill:#17324d;font-weight:400">复制引用全址</text>
+<text x="938" y="403" style="font-size:22px;fill:#17324d;font-weight:400">复制公式</text>
+<path d="M915 438H1296" fill="none" stroke="#c5cfdd" stroke-width="1"/>
+<text x="938" y="493" style="font-size:22px;fill:#17324d;font-weight:400">复制选中行</text>
+<text x="893" y="614" style="font-size:20px;fill:#17324d;font-weight:400">菜单项：可点击的命令行</text>
+<text x="893" y="658" style="font-size:20px;fill:#17324d;font-weight:400">菜单分隔线：划分命令组</text>
+<text x="893" y="747" style="font-size:20px;fill:#52667d;font-weight:400">菜单项、分隔线属于25号</text>
+<text x="893" y="781" style="font-size:20px;fill:#52667d;font-weight:400">菜单的子部件。</text>
+<text x="32" y="975" style="font-size:17px;fill:#52667d;font-weight:400">编号与开发日志术语表对应；图形为构造示意，非实机截图，尺寸和外观已简化。</text>
+</svg>

@@ -1,0 +1,175 @@
+"""One website source, staged installers, and rollback on delivery failure."""
+from pathlib import Path
+import hashlib
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+import uuid
+import time
+import threading
+import queue
+
+RUN_STAGES = []
+
+sys.dont_write_bytecode = True
+ROOT = Path(__file__).resolve().parents[1]
+PROJECTS = (('C-01-ExcelIterate', 'Excel_Iterate', 'Excel'),
+            ('C-02-WordUpdater', 'WordUpdater', 'Word'))
+
+
+def projects(root=ROOT):
+    result = []
+    for folder, assembly, host in PROJECTS:
+        base = Path(root).parent / folder
+        for item in ('project.json', 'rebuild.py', 'validate.py', 'AP1-程序/Configure_program.py', 'AP3-说明/开发日志.md'):
+            if not (base / item).is_file():
+                raise FileNotFoundError('统一重建需要两个加载项项目，缺少：' + str(base / item))
+        identity = json.loads((base / 'project.json').read_text(encoding='utf-8-sig'))
+        if identity['assembly'] != assembly or identity['host'] != host:
+            raise ValueError('加载项身份不匹配：' + str(base))
+        result.append((base, assembly))
+    return result
+
+
+def version(base):
+    spec = importlib.util.spec_from_file_location('_xy_program', base / 'AP1-程序/Configure_program.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.get_version()
+
+
+def run(command, cwd, log):
+    env = dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1', PYTHONDONTWRITEBYTECODE='1')
+    log = Path(log)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    print('开始：' + log.stem, flush=True)
+    started = time.perf_counter()
+    child = subprocess.Popen(list(map(str, command)), cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    events = queue.Queue()
+    def read():
+        for line in child.stdout:
+            events.put(line)
+        events.put(None)
+    reader = threading.Thread(target=read, daemon=True)
+    reader.start()
+    chunks = []
+    try:
+        with log.open('w', encoding='utf-8') as stream:
+            while True:
+                try:
+                    line = events.get(timeout=15)
+                except queue.Empty:
+                    print('运行中：%s（%.0f秒）' % (log.stem, time.perf_counter()-started), flush=True)
+                    continue
+                if line is None:
+                    break
+                line = line.decode('utf-8', 'replace')
+                chunks.append(line)
+                stream.write(line)
+                stream.flush()
+                value = line.strip()
+                if value.startswith(('TEST:', 'PASS:', 'CACHE:', 'MISS:', 'FAIL:', 'FAILED:', 'Build complete', '[1/', '[2/', '[3/', '[4/')):
+                    print(value, flush=True)
+        code = child.wait()
+    except BaseException:
+        child.kill()
+        child.wait()
+        raise
+    finally:
+        child.stdout.close()
+        reader.join(timeout=2)
+    elapsed = time.perf_counter()-started
+    RUN_STAGES.append({'stage': log.stem, 'seconds': round(elapsed, 3), 'returncode': code})
+    if code:
+        print(''.join(chunks)[-6000:], flush=True)
+        raise RuntimeError('阶段失败，退出码 %s；日志：%s' % (code, log))
+    print('通过：%s（%.2f秒）' % (log.name, elapsed), flush=True)
+
+
+def payload_probe(root=ROOT):
+    root = Path(root)
+    source = root / 'src/tools/PayloadProbe.cs'
+    target = root / 'build/PayloadProbe.exe'
+    compiler = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+    if not compiler.is_file():
+        compiler = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'Microsoft.NET/Framework/v4.0.30319/csc.exe'
+    if not target.is_file() or source.stat().st_mtime_ns > target.stat().st_mtime_ns:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        run([compiler, '/nologo', '/target:exe', '/codepage:65001', '/out:' + str(target), source],
+            root, root / 'build/payload-probe-build.log')
+    return target
+
+
+def verify_payload(base, assembly, installer, site, root=ROOT):
+    from document_assets import collect, manifest_bytes
+    expected = Path(root) / 'build' / (assembly + '-assets-' + uuid.uuid4().hex[:12] + '.xml')
+    expected.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        expected.write_bytes(manifest_bytes(collect(base)))
+        run([payload_probe(root), base, assembly, installer, site, version(base), expected], root,
+            Path(root) / ('build/' + assembly + '-payload.log'))
+    finally:
+        expected.unlink(missing_ok=True)
+
+
+def publish(updates, replace=os.replace):
+    """Prepare sibling files first; roll back every committed target on failure.
+
+    Backups are retained if rollback itself fails, with their paths in the error.
+    All mutations use literal Path objects and remain beside the supplied targets.
+    """
+    prepared, committed = [], []
+    token = uuid.uuid4().hex[:12]
+    try:
+        targets = [Path(target).resolve() for source, target in updates]
+        if len(set(targets)) != len(targets):
+            raise ValueError('重复的交付目标')
+        for (source, target), absolute in zip(updates, targets):
+            absolute.parent.mkdir(parents=True, exist_ok=True)
+            temporary = absolute.with_name('.xycabin-' + token + '-' + absolute.name + '.new')
+            backup = absolute.with_name('.xycabin-' + token + '-' + absolute.name + '.old')
+            prepared.append((absolute, temporary, backup))
+            with temporary.open('wb') as output:
+                output.write(Path(source).read_bytes())
+                output.flush()
+                os.fsync(output.fileno())
+        for target, temporary, backup in prepared:
+            existed = target.exists()
+            if existed:
+                replace(target, backup)
+            committed.append((target, backup, existed))
+            replace(temporary, target)
+    except Exception as failure:
+        recovery_errors = []
+        for target, backup, existed in reversed(committed):
+            try:
+                if existed:
+                    os.replace(backup, target)
+                elif target.exists():
+                    target.unlink()
+            except OSError as error:
+                recovery_errors.append(str(backup) + ': ' + str(error))
+        if recovery_errors:
+            raise RuntimeError('交付失败且回滚未完成；保留恢复文件：' + '; '.join(recovery_errors)) from failure
+        raise
+    else:
+        for target, temporary, backup in prepared:
+            if backup.exists():
+                try:
+                    backup.unlink()
+                except OSError:
+                    print('交付已完成，旧备份暂未清理：' + str(backup), flush=True)
+    finally:
+        for target, temporary, backup in prepared:
+            if temporary.exists():
+                try:
+                    temporary.unlink()
+                except OSError:
+                    print('暂存文件暂未清理：' + str(temporary), flush=True)
+
+
+def fingerprints(paths):
+    return {str(p): {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+            for p in paths}
