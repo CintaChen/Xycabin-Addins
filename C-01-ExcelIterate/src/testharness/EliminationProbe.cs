@@ -611,6 +611,19 @@ namespace Excel_Iterate.TestHarness
             Assert("抵消金额 = MIN = 65,950,000",
                 other != null && Near(other.Offset.Value, 65950000m),
                 other == null ? "无行" : other.Offset.Value.ToString());
+            // 净额计算过程四列：债权方资产/负债余额、债务方资产/负债余额
+            Assert("债权方资产余额 = 65,950,000（五华鸡对其他应收款）",
+                other != null && Near(other.CreditorAsset.Value, 65950000m),
+                other == null ? "无行" : other.CreditorAsset.Value.ToString());
+            Assert("债权方负债余额 = 0（五华鸡对其他应付款）",
+                other != null && Near(other.CreditorLiability.Value, 0m),
+                other == null ? "无行" : other.CreditorLiability.Value.ToString());
+            Assert("债务方资产余额 = 50,000（乡村振兴对其他应收款）",
+                other != null && Near(other.DebtorAsset.Value, 50000m),
+                other == null ? "无行" : other.DebtorAsset.Value.ToString());
+            Assert("债务方负债余额 = 66,000,000（乡村振兴对其他应付款）",
+                other != null && Near(other.DebtorLiability.Value, 66000000m),
+                other == null ? "无行" : other.DebtorLiability.Value.ToString());
             // 动态方向：净额较大方（五华鸡）为债权方、乡村振兴为债务方
             Assert("动态债权方 = 五华鸡、债务方 = 乡村振兴",
                 other != null && other.Creditor == wuhua && other.Debtor == xiangcun,
@@ -623,20 +636,27 @@ namespace Excel_Iterate.TestHarness
                 other != null && other.Note == "以小抵大：双方余额相等，全额抵消",
                 other == null ? "无行" : other.Note);
             // 差异表第 1 行是表头，数据自第 2 行起；三个科目对按顺序排列 →「其他应收款」是第 2 行（第 3 行）
-            Assert("抵消/差额写本行引用 =MIN(G3,H3) / =G3-H3",
+            Assert("抵消/差额写本行引用 =MIN(I3,L3) / =I3-L3",
                 other != null && other.RowNumber == 3
-                && other.Offset.Formula == "=MIN(G3,H3)" && other.Difference.Formula == "=G3-H3",
+                && other.Offset.Formula == "=MIN(I3,L3)" && other.Difference.Formula == "=I3-L3",
                 other == null ? "无行" : other.RowNumber + " " + other.Offset.Formula + " / " + other.Difference.Formula);
-            Assert("资产公式走 SUMPRODUCT 精确匹配（净额法：资产合计−负债合计），区间自动扩展到工作表末尾",
-                other != null && other.Asset.Formula != null
-                && other.Asset.Formula.StartsWith("=SUMPRODUCT((")
-                && other.Asset.Formula.Contains("\"" + wuhua + "\"") && other.Asset.Formula.Contains("\"" + xiangcun + "\"")
-                && other.Asset.Formula.Contains("其他应收款") && other.Asset.Formula.Contains("其他应付款")
-                && other.Asset.Formula.Contains("$U$4:$U$1048576")
-                && other.Asset.Formula.Contains(")-SUMPRODUCT(")
+            Assert("净额列引用本行四列做减法：资产端 =G3-H3、负债端 =K3-J3",
+                other != null && other.Asset.Formula == "=G3-H3" && other.Liability.Formula == "=K3-J3",
+                other == null ? "无行" : (other.Asset.Formula ?? "null") + " / " + (other.Liability.Formula ?? "null"));
+            Assert("债权方资产余额走 SUMPRODUCT 精确匹配（方向合计），区间自动扩展到工作表末尾",
+                other != null && other.CreditorAsset.Formula != null
+                && other.CreditorAsset.Formula.StartsWith("=SUMPRODUCT((")
+                && other.CreditorAsset.Formula.Contains("\"" + wuhua + "\"") && other.CreditorAsset.Formula.Contains("\"" + xiangcun + "\"")
+                && other.CreditorAsset.Formula.Contains("其他应收款")
+                && other.CreditorAsset.Formula.Contains("$U$4:$U$1048576")
                 // 括号必须平衡（曾出现提前闭合导致语法错误）
-                && Balanced(other.Asset.Formula),
-                other == null ? "无行" : other.Asset.Formula ?? "null");
+                && Balanced(other.CreditorAsset.Formula),
+                other == null ? "无行" : other.CreditorAsset.Formula ?? "null");
+            Assert("债权方负债余额方向合计取「其他应付款」",
+                other != null && other.CreditorLiability.Formula != null
+                && other.CreditorLiability.Formula.Contains("其他应付款")
+                && Balanced(other.CreditorLiability.Formula),
+                other == null ? "无行" : other.CreditorLiability.Formula ?? "null");
 
             EliminationDiffRow ar = diff == null ? null : FindDiff(diff, "应收账款");
             Assert("无往来的科目对也列行且填 0",
@@ -687,12 +707,20 @@ namespace Excel_Iterate.TestHarness
             EliminationDiffRow gAr = gapDiff == null ? null : FindDiff(gapDiff, "应收账款");
             EliminationDiffRow gPre = gapDiff == null ? null : FindDiff(gapDiff, "预付账款");
 
-            Assert("表头第 7 列 = 资产端账面净额(审定数)",
-                EliminationDiffTable.Headers[6] == "资产端账面净额(审定数)", EliminationDiffTable.Headers[6]);
-            Assert("表头第 8 列 = 负债端账面净额(审定数)",
-                EliminationDiffTable.Headers[7] == "负债端账面净额(审定数)", EliminationDiffTable.Headers[7]);
-            Assert("表头第 10 列 = 差额(资产-负债)",
-                EliminationDiffTable.Headers[9] == "差额(资产-负债)", EliminationDiffTable.Headers[9]);
+            Assert("表头第 7 列 = 债权方资产余额",
+                EliminationDiffTable.Headers[6] == "债权方资产余额", EliminationDiffTable.Headers[6]);
+            Assert("表头第 8 列 = 债权方负债余额",
+                EliminationDiffTable.Headers[7] == "债权方负债余额", EliminationDiffTable.Headers[7]);
+            Assert("表头第 9 列 = 资产端账面净额(审定数)",
+                EliminationDiffTable.Headers[8] == "资产端账面净额(审定数)", EliminationDiffTable.Headers[8]);
+            Assert("表头第 10 列 = 债务方资产余额",
+                EliminationDiffTable.Headers[9] == "债务方资产余额", EliminationDiffTable.Headers[9]);
+            Assert("表头第 11 列 = 债务方负债余额",
+                EliminationDiffTable.Headers[10] == "债务方负债余额", EliminationDiffTable.Headers[10]);
+            Assert("表头第 12 列 = 负债端账面净额(审定数)",
+                EliminationDiffTable.Headers[11] == "负债端账面净额(审定数)", EliminationDiffTable.Headers[11]);
+            Assert("表头第 14 列 = 差额(资产-负债)",
+                EliminationDiffTable.Headers[13] == "差额(资产-负债)", EliminationDiffTable.Headers[13]);
             Assert("动态方向：应收账款 债权方 = 甲公司、债务方 = 乙公司",
                 gAr != null && gAr.Creditor == m1 && gAr.Debtor == m2,
                 gAr == null ? "无行" : gAr.Creditor + "/" + gAr.Debtor);
@@ -713,9 +741,42 @@ namespace Excel_Iterate.TestHarness
                 gPre != null && gPre.Note ==
                 "负债方大于资产方，差额150,000.00为对方应付超额，建议核查本单位未达账项（单据在途、入账时间差）、暂估未入账及预付账款未重分类",
                 gPre == null ? "无行" : gPre.Note);
-            Assert("差额公式 = 资产 − 负债（=G?-H?）",
-                gAr != null && gAr.Difference.Formula == "=G" + gAr.RowNumber + "-H" + gAr.RowNumber,
+            Assert("差额公式 = 资产端 − 负债端（=I?-L?）",
+                gAr != null && gAr.Difference.Formula == "=I" + gAr.RowNumber + "-L" + gAr.RowNumber,
                 gAr == null ? "无行" : gAr.Difference.Formula ?? "null");
+
+            // ===== 12b2. 双方净负债（净额为负）：净额保留真实符号、不钳制为 0 =====
+            Console.WriteLine("--- 12b2. 双方净负债：净额保留负号、抵消为 0 ---");
+            List<EliminationRow> negRows = new List<EliminationRow>();
+            // 甲应收乙 100、应付乙 300 → 甲净额 −200；乙应收甲 50、应付甲 400 → 乙净额 −350（双方均净负债）
+            negRows.Add(Row(4, EliminationRole.Entity, m1, EliminationRole.Counterparty, m2,
+                EliminationRole.Account, "应收账款", EliminationRole.Deadline, "20260630",
+                EliminationRole.Amount, "100", EliminationRole.Condition, "是"));
+            negRows.Add(Row(5, EliminationRole.Entity, m1, EliminationRole.Counterparty, m2,
+                EliminationRole.Account, "应付账款", EliminationRole.Deadline, "20260630",
+                EliminationRole.Amount, "300", EliminationRole.Condition, "是"));
+            negRows.Add(Row(6, EliminationRole.Entity, m2, EliminationRole.Counterparty, m1,
+                EliminationRole.Account, "应收账款", EliminationRole.Deadline, "20260630",
+                EliminationRole.Amount, "50", EliminationRole.Condition, "是"));
+            negRows.Add(Row(7, EliminationRole.Entity, m2, EliminationRole.Counterparty, m1,
+                EliminationRole.Account, "应付账款", EliminationRole.Deadline, "20260630",
+                EliminationRole.Amount, "400", EliminationRole.Condition, "是"));
+
+            EliminationDiffTable negDiff = null;
+            EliminationMatrix negResult = null;
+            EliminationDiffBuilder.Build(negRows, DiffMap(), DiffOpt(), out negDiff, out negResult);
+            EliminationDiffRow negAr = negDiff == null ? null : FindDiff(negDiff, "应收账款");
+            Assert("净负债：资产端净额保留负号 = −200（不再钳制为 0）",
+                negAr != null && Near(negAr.Asset.Value, -200m), negAr == null ? "无行" : negAr.Asset.Value.ToString());
+            Assert("净负债：负债端净额 = 债务方负债 − 债务方资产 = 350",
+                negAr != null && Near(negAr.Liability.Value, 350m), negAr == null ? "无行" : negAr.Liability.Value.ToString());
+            Assert("净负债：抵消 = MAX(0, MIN(资产端,负债端)) = 0",
+                negAr != null && Near(negAr.Offset.Value, 0m), negAr == null ? "无行" : negAr.Offset.Value.ToString());
+            Assert("净负债：四列映射 债权方资产=100/债权方负债=300/债务方资产=50/债务方负债=400",
+                negAr != null && Near(negAr.CreditorAsset.Value, 100m) && Near(negAr.CreditorLiability.Value, 300m)
+                && Near(negAr.DebtorAsset.Value, 50m) && Near(negAr.DebtorLiability.Value, 400m),
+                negAr == null ? "无行" : negAr.CreditorAsset.Value + "/" + negAr.CreditorLiability.Value
+                    + "/" + negAr.DebtorAsset.Value + "/" + negAr.DebtorLiability.Value);
 
             // ===== 12c. 结果表合并同类行（同标签多年度合并为一行）=====
             Console.WriteLine("--- 12c. 结果表合并同类行 ---");

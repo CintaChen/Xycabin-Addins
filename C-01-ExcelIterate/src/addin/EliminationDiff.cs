@@ -16,6 +16,8 @@ namespace Excel_Iterate
     //      按「净额法」取数：资产端 = 债权方对债务方的资产净额（资产−负债），
     //      负债端 = 债务方对债权方的负债净额（负债−资产），
     //      抵消=MIN(资产端,负债端)，差额=资产端−负债端，并按净额关系写备注。
+    //      净额计算过程以四列显式展示（债权方资产/负债余额、债务方资产/负债余额），
+    //      净额列引用本行四列做减法（资产端 = G−H、负债端 = K−J）。
     //   ② 往来抵消结果：与「收入抵消结果」同构的矩阵式底稿，
     //      每个有金额科目对 2 行（债权方借资产科目 / 债务方贷负债科目），
     //      仅当抵消金额不为 0 时才输出；同一（主体,对方,科目）跨多年度
@@ -24,7 +26,7 @@ namespace Excel_Iterate
     // 取数口径（净额法）：
     //   资产端账面净额 = 债权方互指债务方、科目=资产科目 的审定数 − 科目=负债科目 的审定数
     //   负债端账面净额 = 债务方互指债权方、科目=负债科目 的审定数 − 科目=资产科目 的审定数
-    //   债权方 = 净额(资产−负债)较大的一方（动态判定），两列恒非负。
+    //   债权方 = 净额(资产−负债)较大的一方（动态判定）；净额保留真实符号（允许为负，不再钳制为 0）。
     //
     // 设计取向：与收入成本的矩阵核（EliminationMatrix.cs）并列而非交织——
     // 往来抵消的「组内行数随科目对数量变化」，若塞进固定模板机制会破坏
@@ -63,12 +65,20 @@ namespace Excel_Iterate
         public MatrixAmount Liability;  // 负债端账面净额(审定数)
         public MatrixAmount Offset;     // 抵消金额(以小抵大)
         public MatrixAmount Difference; // 差额(资产-负债)
+        /// <summary>债权方资产余额（G 列）：债权方对债务方的资产科目审定数。</summary>
+        public MatrixAmount CreditorAsset;
+        /// <summary>债权方负债余额（H 列）：债权方对债务方的负债科目审定数。</summary>
+        public MatrixAmount CreditorLiability;
+        /// <summary>债务方资产余额（J 列）：债务方对债权方的资产科目审定数。</summary>
+        public MatrixAmount DebtorAsset;
+        /// <summary>债务方负债余额（K 列）：债务方对债权方的负债科目审定数。</summary>
+        public MatrixAmount DebtorLiability;
         /// <summary>坏账准备抵消额：债权方被抵消的资产科目对应的坏账准备（全额，AM 列）。</summary>
         public decimal BadDebt;
         public string Note = "";
         /// <summary>
-        /// 供「结果表」使用的跨表引用公式：='差异表'!I&lt;本行号&gt;（I 列即差异表的抵消金额列）。
-        /// 结果表不能复用 Offset.Formula——那是差异表内部的 =MIN(G?,H?)，
+        /// 供「结果表」使用的跨表引用公式：='差异表'!M&lt;本行号&gt;（M 列即差异表的抵消金额列）。
+        /// 结果表不能复用 Offset.Formula——那是差异表内部的 =MIN(I?,L?)，
         /// 而结果表的 G/H 是年度金额列、行号也不同，复用会引用错乱（实机验收发现）。
         /// </summary>
         public string OffsetReference;
@@ -83,8 +93,9 @@ namespace Excel_Iterate
         public static readonly string[] Headers = new string[]
         {
             "序号", "年度", "核算主体(债权方)", "对方单位(债务方)", "资产科目", "负债科目",
-            "资产端账面净额(审定数)", "负债端账面净额(审定数)", "抵消金额(以小抵大)",
-            "差额(资产-负债)", "备注"
+            "债权方资产余额", "债权方负债余额", "资产端账面净额(审定数)",
+            "债务方资产余额", "债务方负债余额", "负债端账面净额(审定数)",
+            "抵消金额(以小抵大)", "差额(资产-负债)", "备注"
         };
 
         public List<string> Years = new List<string>();
@@ -158,8 +169,8 @@ namespace Excel_Iterate
                     if (!string.Equals(actual, want, StringComparison.OrdinalIgnoreCase))
                     { diff.FilteredRows++; continue; }
                 }
-                string entity = CanonicalName(Text(row, EliminationRole.Entity));
-                string party = CanonicalName(Text(row, EliminationRole.Counterparty));
+                string entity = Text(row, EliminationRole.Entity);
+                string party = Text(row, EliminationRole.Counterparty);
                 string account = Text(row, EliminationRole.Account).Trim();
                 string year = EliminationMatrixBuilder.ParseYear(Text(row, EliminationRole.Deadline));
                 decimal amount;
@@ -245,23 +256,25 @@ namespace Excel_Iterate
                         decimal netA = aAsset - aLiab;   // 第一公司净额（>0 = 净债权方）
                         decimal netB = bAsset - bLiab;   // 第二公司净额
 
-                        // 动态判定债权方/债务方（两列恒非负）
+                        // 动态判定债权方/债务方；净额 = 债权方资产−负债 / 债务方负债−资产，允许为负（真实展示）
                         string creditor, debtor;
                         decimal assetNet, liabilityNet;
+                        decimal cAsset, cLiab, dAsset, dLiab;
                         if (netA >= netB)
                         {
                             creditor = first; debtor = second;
                             assetNet = netA; liabilityNet = -netB;
+                            cAsset = aAsset; cLiab = aLiab; dAsset = bAsset; dLiab = bLiab;
                         }
                         else
                         {
                             creditor = second; debtor = first;
                             assetNet = netB; liabilityNet = -netA;
+                            cAsset = bAsset; cLiab = bLiab; dAsset = aAsset; dLiab = aLiab;
                         }
-                        if (assetNet < 0m) assetNet = 0m;
-                        if (liabilityNet < 0m) liabilityNet = 0m;
 
-                        decimal offset = Math.Min(assetNet, liabilityNet);
+                        // 抵消金额 = 两侧净额的较小者；任一侧为负（净负债）则无可抵消，记 0。
+                        decimal offset = Math.Max(0m, Math.Min(assetNet, liabilityNet));
                         decimal difference = assetNet - liabilityNet;
 
                         // 坏账准备抵消（联动：仅被抵消的资产科目、债权方坏账准备，全额）
@@ -282,10 +295,18 @@ namespace Excel_Iterate
                         line.RowNumber = rowNumber;
                         line.GroupIndex = groupIndex;
                         line.BadDebt = badDebt;
-                        line.Asset = MakeCell(assetNet,
-                            NetFormula(options, letters, years[y], assetAcc, liabAcc, creditor, debtor, true));
-                        line.Liability = MakeCell(liabilityNet,
-                            NetFormula(options, letters, years[y], assetAcc, liabAcc, creditor, debtor, false));
+                        // 净额计算过程四列：债权方/债务方各自的方向合计
+                        line.CreditorAsset = MakeCell(cAsset,
+                            DirectionalSumFormula(options, letters, years[y], assetAcc, creditor, debtor));
+                        line.CreditorLiability = MakeCell(cLiab,
+                            DirectionalSumFormula(options, letters, years[y], liabAcc, creditor, debtor));
+                        line.DebtorAsset = MakeCell(dAsset,
+                            DirectionalSumFormula(options, letters, years[y], assetAcc, debtor, creditor));
+                        line.DebtorLiability = MakeCell(dLiab,
+                            DirectionalSumFormula(options, letters, years[y], liabAcc, debtor, creditor));
+                        // 净额列引用本行四列做减法：资产端 = 债权方资产 − 债权方负债；负债端 = 债务方负债 − 债务方资产
+                        line.Asset = MakeCell(assetNet, NetSubFormula(rowNumber, "G", "H"));
+                        line.Liability = MakeCell(liabilityNet, NetSubFormula(rowNumber, "K", "J"));
                         line.Offset = MakeCell(offset, OffsetFormula(rowNumber));
                         line.Difference = MakeCell(difference, DifferenceFormula(rowNumber));
                         line.OffsetReference = OffsetRef(SheetNameOf(options), rowNumber);
@@ -415,35 +436,6 @@ namespace Excel_Iterate
 
         // ---------------- 取数 ----------------
 
-        /// <summary>对方单位笔误别名 → 规范名（数据质量兜底，可扩展）。</summary>
-        private static readonly Dictionary<string, string> PartyAliases =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                { "芜湖市繁昌区繁花乡韵酒店管理有限公司", "芜湖市繁花乡韵酒店管理有限公司" },
-                { "芜湖市繁昌区繁花食锦供应链北站分公司", "芜湖市繁昌区繁花食锦供应链管理有限公司北站分公司" },
-                { "芜湖市繁昌区繁花食锦供应链管理有限公司繁昌北站分公司", "芜湖市繁昌区繁花食锦供应链管理有限公司北站分公司" },
-                { "芜湖市繁昌区繁花食锦供应链管理有限公司繁昌慢谷分公司", "芜湖市繁昌区繁花食锦供应链管理有限公司慢谷分公司" },
-            };
-
-        /// <summary>把核算主体/对方单位的笔误别名归一化到规范名。</summary>
-        private static string CanonicalName(string name)
-        {
-            if (name == null) return "";
-            name = name.Trim();
-            string canon;
-            return PartyAliases.TryGetValue(name, out canon) ? canon : name;
-        }
-
-        /// <summary>规范名 → 其全部别名变体（不含规范名自身，用于公式的 OR 匹配）。</summary>
-        private static List<string> AliasVariants(string canonicalName)
-        {
-            List<string> list = null;
-            foreach (KeyValuePair<string, string> kv in PartyAliases)
-                if (kv.Value == canonicalName)
-                { if (list == null) list = new List<string>(); list.Add(kv.Key); }
-            return list;
-        }
-
         /// <summary>单向合计：主体=from、对方=to、指定年度、指定科目的审定数之和（精确匹配）。</summary>
         private static decimal DirectionalSum(Dictionary<string, decimal> sums,
             string from, string to, string year, string account)
@@ -510,9 +502,9 @@ namespace Excel_Iterate
             return amount;
         }
 
-        /// <summary>本行引用：抵消 = MIN(资产,负债)。差异表资产在 G 列、负债在 H 列（1 起：7、8）。</summary>
+        /// <summary>本行引用：抵消 = MIN(资产端,负债端)。差异表资产端在 I 列、负债端在 L 列（1 起：9、12）。</summary>
         private static string OffsetFormula(int rowNumber)
-        { return "=MIN(G" + rowNumber + ",H" + rowNumber + ")"; }
+        { return "=MIN(I" + rowNumber + ",L" + rowNumber + ")"; }
 
         /// <summary>差异表表名（未指定时用默认名）。</summary>
         private static string SheetNameOf(MatrixOptions options)
@@ -522,47 +514,39 @@ namespace Excel_Iterate
         }
 
         /// <summary>
-        /// 结果表金额用的跨表引用：='差异表'!I&lt;行号&gt;。
+        /// 结果表金额用的跨表引用：='差异表'!M&lt;行号&gt;。
         /// 与 Python 参考实现一致（过程表 → 分录金额链接），避免结果表重算 SUMPRODUCT。
         /// 表名含中文/空格故加单引号；表名内的单引号按 Excel 规则双写。
         /// </summary>
         private static string OffsetRef(string sheetName, int rowNumber)
         {
             if (string.IsNullOrEmpty(sheetName)) return null;
-            return "='" + sheetName.Replace("'", "''") + "'!I" + rowNumber;
+            return "='" + sheetName.Replace("'", "''") + "'!M" + rowNumber;
         }
 
-        /// <summary>差额 = 资产端账面净额 − 负债端账面净额（G 列资产、H 列负债）。</summary>
+        /// <summary>差额 = 资产端账面净额 − 负债端账面净额（I 列资产、L 列负债）。</summary>
         private static string DifferenceFormula(int rowNumber)
-        { return "=G" + rowNumber + "-H" + rowNumber; }
+        { return "=I" + rowNumber + "-L" + rowNumber; }
 
         /// <summary>
-        /// 净额公式：= 单向合计(from→to, 科目1) − 单向合计(from→to, 科目2)。
-        /// 资产端：from=债权方、to=债务方、科目1=资产科目、科目2=负债科目；
-        /// 负债端：from=债务方、to=债权方、科目1=负债科目、科目2=资产科目。
-        /// 科目在源表不存在时该侧合计为 0；两侧都不存在返回 null（回退静态值）。
+        /// 单向合计的活公式（带前导 =）：=SUMPRODUCT(...)；科目在源表不存在时返回 null（回退静态值）。
+        /// 用于净额计算过程四列（债权方/债务方的资产/负债方向合计）。
         /// </summary>
-        private static string NetFormula(MatrixOptions options, Letters letters,
-            string year, string assetAcc, string liabAcc, string creditor, string debtor, bool isAsset)
+        private static string DirectionalSumFormula(MatrixOptions options, Letters letters,
+            string year, string account, string fromName, string toName)
         {
-            string from = isAsset ? creditor : debtor;
-            string to = isAsset ? debtor : creditor;
-            string acc1 = isAsset ? assetAcc : liabAcc;
-            string acc2 = isAsset ? liabAcc : assetAcc;
-
-            string t1 = acc1 == null || acc1.Length == 0 ? "0"
-                : DirectionalSumTerm(options, letters, year, acc1, from, to);
-            string t2 = acc2 == null || acc2.Length == 0 ? "0"
-                : DirectionalSumTerm(options, letters, year, acc2, from, to);
-            if (t1 == null || t2 == null) return null;
-            if (t1 == "0" && t2 == "0") return null;   // 无往来的科目对回退静态 0
-            return "=" + t1 + "-" + t2;
+            string term = DirectionalSumTerm(options, letters, year, account, fromName, toName);
+            return term == null ? null : "=" + term;
         }
+
+        /// <summary>净额 = 左列 − 右列（如 =G3-H3）。资产端 = 债权方资产−债权方负债；负债端 = 债务方负债−债务方资产。</summary>
+        private static string NetSubFormula(int rowNumber, string leftCol, string rightCol)
+        { return "=" + leftCol + rowNumber + "-" + rightCol + rowNumber; }
 
         /// <summary>
         /// 单向合计的活公式（不带前导 =）：
-        /// SUMPRODUCT((主体=from)*(对方=to 及其别名)*(科目=account)*(LEFT(截止日,4)=year)*审定数)。
-        /// 对方单位用「规范名 + 别名变体」的 OR 匹配，精确到公司名、不再前缀匹配（避免食锦/食锦北站被误并）。
+        /// SUMPRODUCT((主体=from)*(对方=to)*(科目=account)*(LEFT(截止日,4)=year)*审定数)。
+        /// 对方单位严格按实际名称精确匹配（不做别名归一化，避免食锦/食锦北站被误并）。
         /// 条件数组与金额因子同区间（维度一致），避免 #N/A（实机验收教训）。
         /// </summary>
         private static string DirectionalSumTerm(MatrixOptions options, Letters letters,
@@ -588,17 +572,10 @@ namespace Excel_Iterate
             return sb.ToString();
         }
 
-        /// <summary>对方单位列的匹配子句：规范名 + 别名变体的 OR，形如 ((列="规范名")+(列="别名"))。</summary>
-        private static string PartyMatchClause(string partyCol, string canonicalName)
+        /// <summary>对方单位列的匹配子句：严格按实际名称精确匹配（不做别名归一化）。</summary>
+        private static string PartyMatchClause(string partyCol, string name)
         {
-            List<string> variants = AliasVariants(canonicalName);
-            StringBuilder sb = new StringBuilder("(");
-            sb.Append("(").Append(partyCol).Append("=\"").Append(canonicalName.Replace("\"", "\"\"")).Append("\")");
-            if (variants != null)
-                foreach (string v in variants)
-                    sb.Append("+(").Append(partyCol).Append("=\"").Append(v.Replace("\"", "\"\"")).Append("\")");
-            sb.Append(")");
-            return sb.ToString();
+            return "(" + partyCol + "=\"" + name.Replace("\"", "\"\"") + "\")";
         }
 
         // ---------------- 工具 ----------------

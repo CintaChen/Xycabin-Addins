@@ -535,7 +535,7 @@ namespace Excel_Iterate
                     gateway.PrepareTargetRegion(diffTarget, diffPlan);
                     gateway.Write(diffTarget, diffPlan);
                     gateway.StyleDiffHeader(diffTarget, startRow, startColumn, _eliminationDiff.ColumnCount);
-                    // 差异表：第 1 行表头、第 2 行起数据；金额列 G-J（索引 6-9）；序号 A/年度 B 居中
+                    // 差异表：第 1 行表头、第 2 行起数据；金额列 G-N（索引 6-13）；序号 A/年度 B 居中
                     int diffDataTop = startRow + 1;
                     int diffDataRows = _eliminationDiff.Rows.Count > 0
                         ? (_eliminationDiff.Rows[_eliminationDiff.Rows.Count - 1].RowNumber - diffDataTop + 1) : 0;
@@ -544,7 +544,7 @@ namespace Excel_Iterate
                         ? (_eliminationDiff.GroupCount - 1) * diffGap : 0;
                     gateway.FinishMatrixOutput(diffTarget, startRow, 1, diffDataTop, startColumn,
                         _eliminationDiff.ColumnCount, diffDataRows + diffGaps,
-                        new int[] { 6, 7, 8, 9 }, new int[] { 0, 1 });
+                        new int[] { 6, 7, 8, 9, 10, 11, 12, 13 }, new int[] { 0, 1 });
                     diffCells = diffPlan.TotalCells;
                     form.AppendLog("已写入 " + diffCells + " 格到「" + diffTarget.SheetName + "」（往来抵消差异）");
                 }

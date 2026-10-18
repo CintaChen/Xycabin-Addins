@@ -386,11 +386,15 @@ namespace Excel_Iterate
                 block.Cells[r, 3] = row.Debtor;
                 block.Cells[r, 4] = row.AssetAccount;
                 block.Cells[r, 5] = row.LiabilityAccount;
-                block.Cells[r, 6] = MatrixAmount.Cell(row.Asset, options.StaticValues);
-                block.Cells[r, 7] = MatrixAmount.Cell(row.Liability, options.StaticValues);
-                block.Cells[r, 8] = MatrixAmount.Cell(row.Offset, options.StaticValues);
-                block.Cells[r, 9] = MatrixAmount.Cell(row.Difference, options.StaticValues);
-                block.Cells[r, 10] = row.Note;
+                block.Cells[r, 6] = MatrixAmount.Cell(row.CreditorAsset, options.StaticValues);
+                block.Cells[r, 7] = MatrixAmount.Cell(row.CreditorLiability, options.StaticValues);
+                block.Cells[r, 8] = MatrixAmount.Cell(row.Asset, options.StaticValues);
+                block.Cells[r, 9] = MatrixAmount.Cell(row.DebtorAsset, options.StaticValues);
+                block.Cells[r, 10] = MatrixAmount.Cell(row.DebtorLiability, options.StaticValues);
+                block.Cells[r, 11] = MatrixAmount.Cell(row.Liability, options.StaticValues);
+                block.Cells[r, 12] = MatrixAmount.Cell(row.Offset, options.StaticValues);
+                block.Cells[r, 13] = MatrixAmount.Cell(row.Difference, options.StaticValues);
+                block.Cells[r, 14] = row.Note;
                 r++;
             }
 

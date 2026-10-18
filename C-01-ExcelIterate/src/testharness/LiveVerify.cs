@@ -279,11 +279,15 @@ internal static class LiveVerify
             sheet.Range["E" + r].Value2 = row.AssetAccount;
             sheet.Range["F" + r].Value2 = row.LiabilityAccount;
             // 与插件 BuildDiffPlan 一致：公式为空（科目不存在）时写数值 0
-            Put(sheet, "G" + r, MatrixAmount.Cell(row.Asset, false));
-            Put(sheet, "H" + r, MatrixAmount.Cell(row.Liability, false));
-            sheet.Range["I" + r].Formula = row.Offset.Formula;
-            sheet.Range["J" + r].Formula = row.Difference.Formula;
-            sheet.Range["K" + r].Value2 = row.Note;
+            Put(sheet, "G" + r, MatrixAmount.Cell(row.CreditorAsset, false));
+            Put(sheet, "H" + r, MatrixAmount.Cell(row.CreditorLiability, false));
+            Put(sheet, "I" + r, MatrixAmount.Cell(row.Asset, false));
+            Put(sheet, "J" + r, MatrixAmount.Cell(row.DebtorAsset, false));
+            Put(sheet, "K" + r, MatrixAmount.Cell(row.DebtorLiability, false));
+            Put(sheet, "L" + r, MatrixAmount.Cell(row.Liability, false));
+            Put(sheet, "M" + r, MatrixAmount.Cell(row.Offset, false));
+            Put(sheet, "N" + r, MatrixAmount.Cell(row.Difference, false));
+            sheet.Range["O" + r].Value2 = row.Note;
         }
         app.Calculate();
         System.Threading.Thread.Sleep(500);
@@ -299,17 +303,17 @@ internal static class LiveVerify
         };
 
         // 行序：应收账款(2) / 其他应收款(3) / 预付账款(4)
-        Check("应收账款对：资产端 = 800,000（净额法）", Math.Abs(val("G2") - 800000.0) < 0.01, txt("G2"));
-        Check("应收账款对：负债端 = 300,000", Math.Abs(val("H2") - 300000.0) < 0.01, txt("H2"));
-        Check("应收账款对：抵消 = MIN = 300,000", Math.Abs(val("I2") - 300000.0) < 0.01, txt("I2"));
-        Check("应收账款对：差额 = 500,000", Math.Abs(val("J2") - 500000.0) < 0.01, txt("J2"));
+        Check("应收账款对：资产端 = 800,000（净额法）", Math.Abs(val("I2") - 800000.0) < 0.01, txt("I2"));
+        Check("应收账款对：负债端 = 300,000", Math.Abs(val("L2") - 300000.0) < 0.01, txt("L2"));
+        Check("应收账款对：抵消 = MIN = 300,000", Math.Abs(val("M2") - 300000.0) < 0.01, txt("M2"));
+        Check("应收账款对：差额 = 500,000", Math.Abs(val("N2") - 500000.0) < 0.01, txt("N2"));
         Check("其他应收/应付：资产端 = 65,950,000（关键：净额法）",
-            Math.Abs(val("G3") - 65950000.0) < 0.01, txt("G3"));
-        Check("其他应收/应付：负债端 = 65,950,000", Math.Abs(val("H3") - 65950000.0) < 0.01, txt("H3"));
-        Check("其他应收/应付：抵消 = 65,950,000", Math.Abs(val("I3") - 65950000.0) < 0.01, txt("I3"));
-        Check("其他应收/应付：差额 = 0", Math.Abs(val("J3") - 0.0) < 0.01, txt("J3"));
-        Check("预付/合同负债：无往来 → 0", Math.Abs(val("G4")) < 0.01 && Math.Abs(val("H4")) < 0.01,
-            txt("G4") + "/" + txt("H4"));
+            Math.Abs(val("I3") - 65950000.0) < 0.01, txt("I3"));
+        Check("其他应收/应付：负债端 = 65,950,000", Math.Abs(val("L3") - 65950000.0) < 0.01, txt("L3"));
+        Check("其他应收/应付：抵消 = 65,950,000", Math.Abs(val("M3") - 65950000.0) < 0.01, txt("M3"));
+        Check("其他应收/应付：差额 = 0", Math.Abs(val("N3") - 0.0) < 0.01, txt("N3"));
+        Check("预付/合同负债：无往来 → 0", Math.Abs(val("I4")) < 0.01 && Math.Abs(val("L4")) < 0.01,
+            txt("I4") + "/" + txt("L4"));
 
         // ---- 结果表：跨表引用差异表的抵消金额格 ----
         dynamic resultSheet = FreshSheet(book, "验证-往来结果");
@@ -344,11 +348,11 @@ internal static class LiveVerify
         System.Threading.Thread.Sleep(500);
         // 结果表金额应 = 差异表抵消金额（跨表引用生效，不再错乱）
         // 行序（dataTop=4，平移 -2 → 第 2 行起）：应收账款借 G2 / 贷 H3；其他应收借 G4 / 贷 H5
-        Check("结果表·应收账款对 借 = 300,000（跨表引用差异表 I2）",
+        Check("结果表·应收账款对 借 = 300,000（跨表引用差异表 M2）",
             Math.Abs(val2(resultSheet, "G2") - 300000.0) < 0.01, txt2(resultSheet, "G2"));
         Check("结果表·应收账款对 贷 = 300,000",
             Math.Abs(val2(resultSheet, "H3") - 300000.0) < 0.01, txt2(resultSheet, "H3"));
-        Check("结果表·其他应收对 借 = 65,950,000（跨表引用差异表 I3，关键）",
+        Check("结果表·其他应收对 借 = 65,950,000（跨表引用差异表 M3，关键）",
             Math.Abs(val2(resultSheet, "G4") - 65950000.0) < 0.01, txt2(resultSheet, "G4"));
         Check("结果表·其他应收对 贷 = 65,950,000",
             Math.Abs(val2(resultSheet, "H5") - 65950000.0) < 0.01, txt2(resultSheet, "H5"));
