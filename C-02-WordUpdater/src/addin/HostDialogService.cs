@@ -186,10 +186,12 @@ namespace Excel_Iterate
             }, (string)null);
         }
         internal static string[] OpenFiles(IWin32Window owner)
+        { return OpenFiles(owner, "Excel 工作簿 (*.xlsx)|*.xlsx"); }
+        internal static string[] OpenFiles(IWin32Window owner, string filter)
         {
             return Run(owner, delegate(IWin32Window uiOwner)
             {
-                using (var picker = new OpenFileDialog { Filter = "Excel 工作簿 (*.xlsx)|*.xlsx", Multiselect = true })
+                using (var picker = new OpenFileDialog { Filter = filter, Multiselect = true, CheckFileExists = true })
                     return picker.ShowDialog(uiOwner) == DialogResult.OK ? picker.FileNames : new string[0];
             }, new string[0]);
         }

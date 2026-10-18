@@ -51,7 +51,7 @@ def self_test():
 def main():
  project=json.loads((ROOT/'project.json').read_text(encoding='utf-8-sig'))
  expected={'AgentDocumentForm','DeveloperPasswordForm','UiMessageForm','DialogSizesForm','CommandCustomizationForm','RequirementsForm'}
- expected |= {'LinkViewForm'} if project['host']=='Word' else {'TrackerForm','ErrorSourceForm','ColumnFilterForm','FormulaOptionsForm','CustomFunctionForm','LinkAssistantForm','OrganizeFilesForm','RenameFilesForm','FileNamesForm','OcrPrefixesForm','OcrFieldsForm','MergeHeadersForm','EliminationForm'}
+ expected |= {'LinkViewForm'} if project['host']=='Word' else {'TrackerForm','ErrorSourceForm','ColumnFilterForm','FormulaOptionsForm','CustomFunctionForm','LinkAssistantForm','OrganizeFilesForm','RenameFilesForm','FileNamesForm','OcrPrefixesForm','OcrFieldsForm','MergeHeadersForm','EliminationForm','PdfToolsForm'}
  found=set()
  for name in project['sources']:
   text=(ROOT/'src/addin'/name).read_text(encoding='utf-8-sig')
@@ -60,7 +60,7 @@ def main():
  if found!=expected:raise ValueError('弹窗登记需要复核：'+str(found^expected))
  checks={'AgentDocumentForm.cs':['agent.user','agent.developer','agent.developerpassword'],'UiKit.cs':['message.ok','message.yesno','message.okcancel'], 'DialogSizeEditor.cs':['agent.dialogsizes','agent.developerpassword'], 'AgentCustomization.cs':['agent.notes','agent.'], 'DialogFormatting.cs':['agent.format']}
  if project['host']=='Word':checks['LinkViewForm.cs']=['word.links']
- else:checks.update({'TrackerForm.cs':['trace.precedents','trace.dependents'],'ErrorSourceForm.cs':['trace.errorsources'],'ColumnFilterForm.cs':['columns.filter'],'FormulaOptionsForm.cs':['"formula." + operation.ToString().ToLowerInvariant()'],'CustomFunctionForm.cs':['formula.custom'],'LinkAssistant.cs':['links.assistant'],'FileToolForms.cs':['file.organize','file.rename'],'Connect.FileNames.cs':['file.names'],'MergeHeadersForm.cs':['merge.headers'],'EliminationForm.cs':['elimination.receivable','elimination.revenuecost']})
+ else:checks.update({'TrackerForm.cs':['trace.precedents','trace.dependents'],'ErrorSourceForm.cs':['trace.errorsources'],'ColumnFilterForm.cs':['columns.filter'],'FormulaOptionsForm.cs':['"formula." + operation.ToString().ToLowerInvariant()'],'CustomFunctionForm.cs':['formula.custom'],'LinkAssistant.cs':['links.assistant'],'FileToolForms.cs':['file.organize','file.rename'],'Connect.FileNames.cs':['file.names'],'MergeHeadersForm.cs':['merge.headers'],'EliminationForm.cs':['elimination.receivable','elimination.revenuecost'],'PdfToolsForm.cs':['file.pdf.']})
  for name,tokens in checks.items():
   text=(ROOT/'src/addin'/name).read_text(encoding='utf-8-sig')
   if any(token not in text for token in tokens):raise ValueError('缺少稳定尺寸标识：'+name)

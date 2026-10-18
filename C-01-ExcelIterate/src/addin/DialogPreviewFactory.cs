@@ -67,6 +67,10 @@ namespace Excel_Iterate
                     case "file.names":form=new FileNamesForm(null);break;
                     case "file.ocrprefixes":form=new OcrPrefixesForm(OcrCombined.ExampleRules(),null);break;
                     case "file.ocrfields":form=new OcrFieldsForm(new List<OcrFieldResult>{new OcrFieldResult {Prefix="磅单号：",Chosen="00123",Candidates=new List<string>{"00123","00456"}},new OcrFieldResult {Prefix="毛重：",Chosen="10kg",Candidates=new List<string>{"10kg"}}});break;
+                    case "file.pdf.convert":form=new PdfToolsForm("convert");break;
+                    case "file.pdf.watermark":form=new PdfToolsForm("watermark");break;
+                    case "file.pdf.split":form=new PdfToolsForm("split");break;
+                    case "file.pdf.merge":form=new PdfToolsForm("merge");break;
                     case "file.rename":form=new RenameFilesForm(null);break;
                     case "merge.headers":form=new MergeHeadersForm();break;
                     case "elimination.receivable":form=new EliminationForm(EliminationKind.Receivable);break;
@@ -108,6 +112,7 @@ namespace Excel_Iterate
 #if !WPS_WORD
             var files=form as FileToolForm;if(files!=null)files.FolderPath.Text="示例文件夹（不读取实际目录）";
             var organize=form as OrganizeFilesForm;if(organize!=null)organize.SetPreviewTypes();
+            var pdf=form as PdfToolsForm;if(pdf!=null)pdf.SetPreview();
 #endif
         }
         private static void MakeReadOnly(Form form)

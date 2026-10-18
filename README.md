@@ -8,7 +8,7 @@
 
 | 目录 | 类型 | 宿主 | 功能概述 |
 |---|---|---|---|
-| `C-01-ExcelIterate` | VSTO 加载项 | WPS 表格 / Excel | 公式引用与从属追踪、一键公式封装与数值计算、按列控制显示、文件批量整理与重命名、OCR 文本提取 |
+| `C-01-ExcelIterate` | VSTO 加载项 | WPS 表格 / Excel | 公式引用与从属追踪、一键公式封装与数值计算、按列控制显示、文件批量整理与重命名、OCR 文本提取、文档／图片转 PDF、PDF 文字水印与拆分合并 |
 | `C-02-WordUpdater` | VSTO 加载项 | WPS 文字 / Word | 将 Excel 区域粘贴为表格链接、对选中范围的链接批量更新 |
 | `C-03-Website·Xycabin` | 站点生成器 | 浏览器 | 生成单文件离线站点，展示两款加载项的介绍、使用指南、版本与下载 |
 
@@ -16,7 +16,7 @@
 
 ## 技术栈
 
-- **加载项**：C# 5（由 .NET Framework 自带的 `csc.exe` 编译），VSTO vstov4 清单，无 NuGet 依赖，无 Visual Studio 工程文件。
+- **加载项**：C# 5（由 .NET Framework 自带的 `csc.exe` 编译），VSTO vstov4 清单，无 Visual Studio 工程文件；PDF 工具的固定 NuGet 依赖由构建脚本校验下载并内嵌。
 - **构建与验证**：Python 3，仅使用标准库（无 `requirements.txt`）。
 - **站点**：由 Python 模板渲染为单个 HTML 文件，内嵌 CSS、JavaScript 与图片资源，可离线打开。
 
@@ -45,6 +45,10 @@
 2. .NET Framework 4.x（提供 `csc.exe`，系统自带）
 3. Python 3.9 或更高版本
 4. WPS Office —— 仅在运行与验收时需要，编译不需要
+
+### PDF 工具构建依赖
+
+Excel 加载项的 PDF 功能使用 PDFsharp-GDI 6.2.4（MIT）。首次构建从 NuGet 下载 `C-01-ExcelIterate/src/pdf/packages.lock.json` 指定的包并核对 SHA-256，之后复用 `build/pdf-packages/` 缓存；不需要 NuGet 命令行。PDF 工具及许可内嵌加载项，用户无需安装额外 PDF 工具或 Python。文档转换需要本机 WPS／Office；中文水印使用 Windows 黑体字体。
 
 ### 补回互操作程序集
 

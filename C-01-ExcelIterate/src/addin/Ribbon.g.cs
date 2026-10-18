@@ -107,10 +107,14 @@ namespace Excel_Iterate
               </menu>
             </menu>
           </menu>
-          <menu id=""menuFileOperations"" label=""文件操作"" size=""large"" getImage=""GetImage_menuFileOperations"" screentip=""整理文件或通过工作表清单批量重命名"" supertip=""文件批量整理先预览再确认；重命名整批预检，支持交换名称。"" itemSize=""normal"">
+          <menu id=""menuFileOperations"" label=""文件操作"" size=""large"" getImage=""GetImage_menuFileOperations"" screentip=""整理文件、批量重命名及 PDF 转换、水印、拆分与合并"" supertip=""文件批量整理先预览再确认；重命名整批预检，支持交换名称。"" itemSize=""normal"">
             <button id=""btnOrganizeFiles"" label=""文件批量整理"" getImage=""GetImage_btnOrganizeFiles"" supertip=""把子目录文件移到第一层；可分类、处理同名或按类型送入回收站。"" onAction=""OnOrganizeFiles"" />
             <button id=""btnRenameFiles"" label=""文件批量命名"" getImage=""GetImage_btnRenameFiles"" supertip=""扫描文件夹第一层文件，填写清单第三列后执行替换。"" onAction=""OnRenameFiles"" />
             <button id=""btnFileNames"" label=""文件提取名称"" getImage=""GetImage_btnFileNames"" supertip=""扫描并预览文件清单；OCR可设置多个前缀，逐项核对后按顺序用短横线组合结果。"" onAction=""OnFileNames"" />
+            <button id=""btnConvertPdf"" label=""文件转 PDF"" getImage=""GetImage_btnConvertPdf"" supertip=""将 Word、Excel 和图片批量转换为 PDF。"" onAction=""OnConvertPdf"" />
+            <button id=""btnWatermarkPdf"" label=""PDF 添加水印"" getImage=""GetImage_btnWatermarkPdf"" supertip=""为每一页添加文字水印，可调整不透明度、字号和角度。"" onAction=""OnWatermarkPdf"" />
+            <button id=""btnSplitPdf"" label=""PDF 拆分"" getImage=""GetImage_btnSplitPdf"" supertip=""按页或指定页码范围拆分 PDF。"" onAction=""OnSplitPdf"" />
+            <button id=""btnMergePdf"" label=""PDF 合并"" getImage=""GetImage_btnMergePdf"" supertip=""按可调整的列表顺序合并多个 PDF。"" onAction=""OnMergePdf"" />
           </menu>
           <button id=""btnLinkAssistant"" label=""链接助手"" size=""large"" getImage=""GetImage_btnLinkAssistant"" screentip=""扫描 xlsx 外部引用，C列填新路径或「请断开该链接」后执行；断链可从整簿备份恢复"" onAction=""OnLinkAssistant"" />
           <button id=""btnGenerateDirectory"" label=""生成目录"" size=""large"" getImage=""GetImage_btnGenerateDirectory"" screentip=""链接全部工作表，隐藏表点击后显示并跳转"" onAction=""OnGenerateDirectory"" />
@@ -293,6 +297,10 @@ namespace Excel_Iterate
             d["btnOrganizeFiles"] = 16;
             d["btnRenameFiles"] = 16;
             d["btnFileNames"] = 16;
+            d["btnConvertPdf"] = 16;
+            d["btnWatermarkPdf"] = 16;
+            d["btnSplitPdf"] = 16;
+            d["btnMergePdf"] = 16;
             d["btnLinkAssistant"] = 32;
             d["btnGenerateDirectory"] = 32;
             d["btnFeedback"] = 32;
@@ -369,6 +377,10 @@ namespace Excel_Iterate
             d["btnOrganizeFiles"] = BuiltinDocument;
             d["btnRenameFiles"] = BuiltinDocument;
             d["btnFileNames"] = BuiltinDocument;
+            d["btnConvertPdf"] = BuiltinDocument;
+            d["btnWatermarkPdf"] = BuiltinDocument;
+            d["btnSplitPdf"] = BuiltinDocument;
+            d["btnMergePdf"] = BuiltinDocument;
             d["btnLinkAssistant"] = BuiltinLink;
             d["btnGenerateDirectory"] = BuiltinDirectory;
             d["btnFeedback"] = BuiltinMail;

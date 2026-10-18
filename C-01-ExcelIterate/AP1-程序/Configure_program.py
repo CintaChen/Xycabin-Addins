@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Configure_program.py —— 「Excel-iterate」按钮集中配置生成器
 
@@ -350,11 +350,16 @@ BUTTONS = [
         ],
     },
     {"type": "menu", "id": "menuFileOperations", "group": ("grpAction", "操作"),
-     "label": "文件操作", "size": "large", "builtin_icon": "document", "screentip": "整理文件或通过工作表清单批量重命名",
+     "label": "文件操作", "size": "large", "builtin_icon": "document", "screentip": "整理文件、批量重命名及 PDF 转换、水印、拆分与合并",
      "supertip": "文件批量整理先预览再确认；重命名整批预检，支持交换名称。", "children": [
         {"id": "btnOrganizeFiles", "label": "文件批量整理", "builtin_icon": "document", "action": "feature", "callback": "OnOrganizeFiles", "supertip": "把子目录文件移到第一层；可分类、处理同名或按类型送入回收站。"},
         {"id": "btnRenameFiles", "label": "文件批量命名", "builtin_icon": "document", "action": "feature", "callback": "OnRenameFiles", "supertip": "扫描文件夹第一层文件，填写清单第三列后执行替换。"},
-        {"id":"btnFileNames","label":"文件提取名称","builtin_icon":"document","action":"feature","callback":"OnFileNames","supertip":"扫描并预览文件清单；OCR可设置多个前缀，逐项核对后按顺序用短横线组合结果。"}]},
+        {"id":"btnFileNames","label":"文件提取名称","builtin_icon":"document","action":"feature","callback":"OnFileNames","supertip":"扫描并预览文件清单；OCR可设置多个前缀，逐项核对后按顺序用短横线组合结果。"},
+        {'id': 'btnConvertPdf', 'label': '文件转 PDF', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnConvertPdf', 'supertip': '将 Word、Excel 和图片批量转换为 PDF。'},
+        {'id': 'btnWatermarkPdf', 'label': 'PDF 添加水印', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnWatermarkPdf', 'supertip': '为每一页添加文字水印，可调整不透明度、字号和角度。'},
+        {'id': 'btnSplitPdf', 'label': 'PDF 拆分', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnSplitPdf', 'supertip': '按页或指定页码范围拆分 PDF。'},
+        {'id': 'btnMergePdf', 'label': 'PDF 合并', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnMergePdf', 'supertip': '按可调整的列表顺序合并多个 PDF。'},
+]},
     {"id": "btnLinkAssistant", "group": ("grpAction", "操作"), "label": "链接助手", "size": "large", "builtin_icon": "link", "action": "feature", "callback": "OnLinkAssistant", "screentip": "扫描 xlsx 外部引用，C列填新路径或「请断开该链接」后执行；断链可从整簿备份恢复"},
     {"id": "btnGenerateDirectory", "group": ("grpAction", "操作"), "label": "生成目录", "size": "large", "builtin_icon": "directory", "action": "feature", "callback": "OnGenerateDirectory", "screentip": "链接全部工作表，隐藏表点击后显示并跳转"},
     {
