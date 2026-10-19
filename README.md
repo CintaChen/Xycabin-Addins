@@ -8,15 +8,15 @@
 
 | 目录 | 类型 | 宿主 | 功能概述 |
 |---|---|---|---|
-| `C-01-ExcelIterate` | VSTO 加载项 | WPS 表格 / Excel | 公式引用与从属追踪、一键公式封装与数值计算、按列控制显示、文件批量整理与重命名、OCR 文本提取 |
-| `C-02-WordUpdater` | VSTO 加载项 | WPS 文字 / Word | 将 Excel 区域粘贴为表格链接、对选中范围的链接批量更新 |
+| `C-01-ExcelIterate` | VSTO 加载项 | WPS 表格 / Excel | 公式引用与从属追踪、一键公式封装与数值计算、按列控制显示、文件批量整理与重命名、OCR 文本提取、文档／图片转 PDF、PDF 文字水印与拆分合并 |
+| `C-02-WordUpdater` | VSTO 加载项 | WPS 文字 / Word | 将 Excel 区域粘贴为表格链接、对选中范围的链接批量更新、当前文档及批量转 PDF、水印与拆分合并 |
 | `C-03-Website·Xycabin` | 站点生成器 | 浏览器 | 生成单文件离线站点，展示两款加载项的介绍、使用指南、版本与下载 |
 
 `verify_shared.py` 是跨项目一致性校验入口：它逐字比对 C-01 与 C-02 的共享文档章节，防止两项目文档在并行修改中产生漂移。
 
 ## 技术栈
 
-- **加载项**：C# 5（由 .NET Framework 自带的 `csc.exe` 编译），VSTO vstov4 清单，无 NuGet 依赖，无 Visual Studio 工程文件。
+- **加载项**：C# 5（由 .NET Framework 自带的 `csc.exe` 编译），VSTO vstov4 清单，无 Visual Studio 工程文件；PDF 工具的固定 NuGet 依赖由构建脚本校验下载并内嵌。
 - **构建与验证**：Python 3，仅使用标准库（无 `requirements.txt`）。
 - **站点**：由 Python 模板渲染为单个 HTML 文件，内嵌 CSS、JavaScript 与图片资源，可离线打开。
 
@@ -45,6 +45,12 @@
 2. .NET Framework 4.x（提供 `csc.exe`，系统自带）
 3. Python 3.9 或更高版本
 4. WPS Office —— 仅在运行与验收时需要，编译不需要
+
+### PDF 工具构建依赖
+
+两个加载项的 PDF 功能使用 PDFsharp-GDI 6.2.4（MIT）。首次构建从 NuGet 下载 `C-01-ExcelIterate/src/pdf/packages.lock.json` 指定的包并核对 SHA-256，之后复用 `build/pdf-packages/` 缓存；不需要 NuGet 命令行。PDF 工具及许可内嵌加载项，用户无需安装额外 PDF 工具或 Python。文档转换需要本机 WPS／Office；中文水印使用 Windows 黑体字体。
+
+独立诊断验证包可运行各项目 `python src/pdf/build_trial.py --output <输出目录>` 生成。此路径排除 VSTO 入口、使用编译接口夹具，只用于测试 PDF 窗口和当前文档业务；它不是正式加载项或安装器。完整构建仍需要下面的真实 Microsoft 程序集和原发布签名环境。
 
 ### 补回互操作程序集
 
@@ -113,6 +119,8 @@ MPL-2.0 是**文件级** copyleft 许可证，其边界与常见许可证不同�
 - 本项目未声明「Incompatible With Secondary Licenses」，因此按 MPL-2.0 默认规则，可与 GPL-2.0 或更高版本进行二次组合。
 
 源文件的许可声明以仓库根目录的 `LICENSE` 文件为准，未在每个文件头部逐一附加 Exhibit A 通知。若你希望在自己维护的分支中补全文件头，可参考 `LICENSE` 末尾的 Exhibit A 模板。
+
+PDF 工具已知问题：`PDF-001`（大范围 XLSX 导出的分页、换行及内容完整性，待复现、未修复），详见两个加载项的使用说明。独立工具测试与宿主加载验收分别记录，不能互相替代。
 
 ## 问题反馈
 

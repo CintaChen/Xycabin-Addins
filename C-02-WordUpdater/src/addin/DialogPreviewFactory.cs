@@ -72,6 +72,11 @@ namespace Excel_Iterate
                     case "elimination.receivable":form=new EliminationForm(EliminationKind.Receivable);break;
                     case "elimination.revenuecost":form=new EliminationForm(EliminationKind.RevenueCost);break;
 #endif
+                    case "file.pdf.current":form=new PdfToolsForm("current");break;
+                    case "file.pdf.convert":form=new PdfToolsForm("convert");break;
+                    case "file.pdf.watermark":form=new PdfToolsForm("watermark");break;
+                    case "file.pdf.split":form=new PdfToolsForm("split");break;
+                    case "file.pdf.merge":form=new PdfToolsForm("merge");break;
                     case "agent.developer":form=new AgentDocumentForm(false);break;
                     case "agent.developerpassword":form=new DeveloperPasswordForm();break;
                     case "agent.user":form=new AgentDocumentForm(true);break;
@@ -109,6 +114,7 @@ namespace Excel_Iterate
             var files=form as FileToolForm;if(files!=null)files.FolderPath.Text="示例文件夹（不读取实际目录）";
             var organize=form as OrganizeFilesForm;if(organize!=null)organize.SetPreviewTypes();
 #endif
+            var pdf=form as PdfToolsForm;if(pdf!=null)pdf.SetPreview();
         }
         private static void MakeReadOnly(Form form)
         {

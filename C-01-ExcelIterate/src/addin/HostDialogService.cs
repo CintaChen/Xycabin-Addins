@@ -186,12 +186,22 @@ namespace Excel_Iterate
             }, (string)null);
         }
         internal static string[] OpenFiles(IWin32Window owner)
+        { return OpenFiles(owner, "Excel 工作簿 (*.xlsx)|*.xlsx"); }
+        internal static string[] OpenFiles(IWin32Window owner, string filter)
         {
             return Run(owner, delegate(IWin32Window uiOwner)
             {
-                using (var picker = new OpenFileDialog { Filter = "Excel 工作簿 (*.xlsx)|*.xlsx", Multiselect = true })
+                using (var picker = new OpenFileDialog { Filter = filter, Multiselect = true, CheckFileExists = true })
                     return picker.ShowDialog(uiOwner) == DialogResult.OK ? picker.FileNames : new string[0];
             }, new string[0]);
+        }
+        internal static int? PdfColor(IWin32Window owner, int color)
+        {
+            return Run<int?>(owner, delegate(IWin32Window uiOwner)
+            {
+                using (var picker = new ColorDialog { Color = System.Drawing.Color.FromArgb(255, (color >> 16) & 255, (color >> 8) & 255, color & 255), FullOpen = true })
+                    return picker.ShowDialog(uiOwner) == DialogResult.OK ? (int?)(picker.Color.ToArgb() & 0xFFFFFF) : null;
+            }, null);
         }
         internal static string SaveWorkbook(string filename)
         {

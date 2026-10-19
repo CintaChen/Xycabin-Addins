@@ -79,7 +79,10 @@
     "EliminationMatrix.cs",
     "EliminationDiff.cs",
     "EliminationHost.cs",
-    "EliminationForm.cs"
+    "EliminationForm.cs",
+    "Connect.Pdf.cs",
+    "PdfToolsForm.cs",
+    "PdfCurrentDocument.cs"
   ],
   "tools": [
     {
@@ -229,6 +232,29 @@
         "@addin"
       ],
       "offline": false
+    },
+    {
+      "name": "PdfToolsProbe",
+      "source": "src/testharness/PdfToolsProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "Microsoft.CSharp.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "PdfCurrentDocumentProbe",
+      "source": "src/testharness/PdfCurrentDocumentProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "Microsoft.CSharp.dll"
+      ],
+      "offline": false
     }
-  ]
+  ],
+  "pdf_worker": true
 }

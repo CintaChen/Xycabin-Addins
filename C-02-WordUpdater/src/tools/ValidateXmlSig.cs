@@ -174,11 +174,28 @@ internal static class ValidateXmlSig
         Assembly assembly = Assembly.Load("System.Deployment, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
         Type manifestType = assembly.GetType("System.Deployment.Internal.CodeSigning.SignedCmiManifest2", true);
         Type flagsType = assembly.GetType("System.Deployment.Internal.CodeSigning.CmiManifestVerifyFlags", true);
-        Type algorithmType = assembly.GetType("System.Deployment.Internal.CodeSigning.SupportedHashAlgorithm", true);
         object manifest = Activator.CreateInstance(manifestType, ALLI, null, new object[] { doc, true }, null);
         manifestType.GetMethod("Verify", ALLI).Invoke(manifest, new object[] { Enum.Parse(flagsType, "StrongNameOnly") });
-        object sha256 = Enum.Parse(algorithmType, "SHA256");
+        // Framework servicing versions expose either a namespace-only method or
+        // an overload with a hash enum. Select its actual signature, preserving
+        // both identity and license-hash checks on either implementation.
         foreach (string method in new string[] { "VerifyAssemblyIdentity", "VerifyHash" })
-            manifestType.GetMethod(method, ALLI).Invoke(manifest, new object[] { ns, sha256 });
+        {
+            MethodInfo verify = manifestType.GetMethod(method, ALLI, null,
+                new Type[] { typeof(XmlNamespaceManager) }, null);
+            if (verify != null) { verify.Invoke(manifest, new object[] { ns }); continue; }
+            MethodInfo candidate = null;
+            foreach (MethodInfo item in manifestType.GetMethods(ALLI))
+            {
+                ParameterInfo[] parameters = item.GetParameters();
+                if (item.Name == method && parameters.Length == 2
+                    && parameters[0].ParameterType == typeof(XmlNamespaceManager)
+                    && parameters[1].ParameterType.IsEnum)
+                { candidate = item; break; }
+            }
+            if (candidate == null) throw new MissingMethodException(manifestType.FullName, method);
+            object sha256 = Enum.Parse(candidate.GetParameters()[1].ParameterType, "SHA256");
+            candidate.Invoke(manifest, new object[] { ns, sha256 });
+        }
     }
 }
