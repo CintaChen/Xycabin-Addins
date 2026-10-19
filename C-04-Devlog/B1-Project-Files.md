@@ -98,25 +98,14 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月14日本批沿用0.9.9.0及原固定证书，重排C01／C02第四章“5. 格式维护规范”：两类对象各含格式说明、表头及列宽／正文规则和代码复现方法；三个C#片段原样迁移，新增两张格式效果图及工作表示意SVG。现有程序功能保留。下表与[同批交付记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
+10月19日完成文档与门禁重构：入口改为 B0-Entry，文档结构由一级章节标题驱动，B3 规则编号 R-01–R-23。本轮功能代码与版本号未变，随联合交付重新打包。
 
-| 正式产物                                                                                |         字节 | SHA-256                                                          |
-| ----------------------------------------------------------------------------------- | ---------: | ---------------------------------------------------------------- |
-| [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe) |  3,789,312 | 0140bcd0cee69ade21198bcabeaafb21524d1f26edeab0e9d82161ef40c42f92 |
-| [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)       |  3,312,128 | 439049743202508e17c4cdf306f08c73dfa66fee2b10986c96d152e1aeb31a6b |
-| [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)                      | 10,689,158 | 8c6ae132f17684a61fd6f6022f4dedc436353382dac2bc5d4d1338248b0fe453 |
-
-| 本批检查    | 结果与证据                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 文档与代码复现 | 两份共享正文逐字一致、五级编号及新旧锚点检查通过；三个C#片段与旧节相同，重新抽取并编译通过。原表头、正文列宽、手动列宽、隐藏状态、失败恢复、保存与摘要顺序分别归入对应对象。[重排证明](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/document-reorg-proof.json)、[文档门禁及编译](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/prebuild-verification.json)。                                                                                                                                                                        |
-| 配图与离线全文 | 网格图为既有离线生产控件渲染，工作表为可编辑构造示意，最后行包含最长文本，正文居中与OCR实现一致；两项目三份资源相同。各DLL17项PNG/SVG与当前源码一致；在系统TEMP的隔离副本运行真实导出代码，两产品各121项通过，不依赖原源码目录。[资产QA](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/format-asset-qa.json)、[脱离源码导出](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/offline-export-verification.json)。                                                                                                                                    |
-| 原功能后台回归 | 完整联合重建及独立后台验证通过；Excel／Word Feature099各7169／2366项，WorkbookTools292项，尺寸核心89／57项通过。[Excel独立验证](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/Excel_Iterate-background-validation.log)、[Word独立验证](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/WordUpdater-background-validation.log)。                                                                                                                                                |
-| 同批联合交付  | 两安装器五载荷、固定证书与双清单签名、内嵌日志／使用说明／17项图像资源及共同网站快照通过；网页下载包与正式EXE逐字节一致。[重建](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/rebuild.log)、[独立验证](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-background-validation.log)、[Excel载荷](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/Excel_Iterate-payload.log)、[Word载荷](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/WordUpdater-payload.log)。 |
-| 已有改动保留  | 既有业务源码、依赖、证书、原配图及两宿主专属章节保留；生成源码仅刷新时间注释。审计回填不改变已内嵌正文。[修改范围](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/change-preservation.json)、[冻结输入](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/frozen-input-check.json)、[正文保留](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/audit-body-preservation.json)。                                                                                                          |
-| 真实验收边界  | 未使用computer-use、未自动安装或启动／退出WPS、未调用真实云端OCR。后台导出已通过；外部MD查看器可见显图、真实WPS表头与拖动、工作表AutoFit与隐藏行／超限正文、系统缩放及跨屏DPI仍单独待验收。                                                                                                                                                                                                                                                                                                                                                               |
-
-前一批审计保留于[旧审计归档](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/before-audits.json)；最终包已纳入独立复核的正文居中和恢复措辞修正。完整结果见[最终验证记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/final-delivery-summary.json)。
-
+| 检查 | 结果 |
+| --- | --- |
+| 安装器 | [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,940,864 字节，版本 0.9.9.1 |
+| 构建与验证 | [Excel_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log) |
+| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json) |
+| 文档门禁 | verify_devlog 五份 PASS；verify_shared 61 文件 PASS；layout 14 项 PASS；document_assets 50 项 PASS |
 # 三. WordUpdater 项目档案
 
 ## 1. 定位与输出
@@ -179,18 +168,14 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
 ### (2). 本轮交付证据
 
-10月17日本批沿用0.9.9.0及原固定证书。C-02侧本轮仅同步C-01的共享文件与共享块（src/addin/UiKit.cs、MergeHeadersHost.cs、EliminationHost.cs 及开发日志共享经验/纪律块），未重新打包WordUpdater安装器；产物沿用上轮正式包，字节与SHA-256如下表，与[同批交付记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
+10月19日完成文档与门禁重构：入口改为 B0-Entry，文档结构由一级章节标题驱动，B3 规则编号 R-01–R-23。本轮功能代码与版本号未变，随联合交付重新打包。
 
-| 正式产物                                                                          |        字节 | SHA-256                                                          |
-| ----------------------------------------------------------------------------- | --------: | ---------------------------------------------------------------- |
-| [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe) | 3,322,880 | e9fa8d5c62df00aae425aaa2b47e642daafbf1bf3a86b19c7d7e762592760ec1 |
-
-| 本批检查   | 结果与证据                                                                                                                                                                                                                                 |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共享一致性  | 两份开发日志共享经验/纪律块逐字一致、62个共享源码文件一致；verify_shared 与两项目 devlog_probe 均通过。共享块按C-01同步：删「3. 验证、缓存与证据边界」的(1)(2)(4)三节并重编号(3)→(1)、(5)→(2)；(2). 程序所新生成工作表的格式规范按「格式维护」样张重写（首行SUBTOTAL、#4874CB表头、Times New Roman 11、会计格式含千分位、medium+slantDashDot边框）。 |
-| 纪律守卫   | 新增 DisciplineProbe（C-01）：源码扫描断言「写入后必套样式」「交互弹窗禁 TopMost/工具窗样式」；两项目 EliminationProbe/Feature099 等离线回归通过。                                                                                                                                |
-| 真实验收边界 | 未使用computer-use、未自动安装或启动/退出WPS、未调用真实云端OCR；共享块文字变化不影响Word侧既有功能，真实WPS交互仍单独待验收。                                                                                                                                                          |
-
+| 检查 | 结果 |
+| --- | --- |
+| 安装器 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，3,292,160 字节，版本 0.9.9.1 |
+| 构建与验证 | [WordUpdater-validation.log](../C-03-Website·Xycabin/build/WordUpdater-validation.log)、[payload](../C-03-Website·Xycabin/build/WordUpdater-payload.log) |
+| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json) |
+| 文档门禁 | AgentDocumentCoreProbe 123 PASS；AgentExtensionProbe 128 PASS；规则注册表双向校验 PASS |
 # 四. XyCabin 项目档案
 
 ## 1. 定位、关系与源码地图
@@ -226,21 +211,10 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月14日本批沿用0.9.9.0及原固定证书，重排C01／C02第四章“5. 格式维护规范”：两类对象各含格式说明、表头及列宽／正文规则和代码复现方法；三个C#片段原样迁移，新增两张格式效果图及工作表示意SVG。现有程序功能保留。下表与[同批交付记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
+10月19日完成文档与门禁重构：入口改为 B0-Entry，文档结构由一级章节标题驱动，B3 规则编号 R-01–R-23。网站配置与模板未改，随联合交付重新生成。
 
-| 正式产物 | 字节 | SHA-256 |
-| --- | ---: | --- |
-| [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe) | 3,789,312 | 0140bcd0cee69ade21198bcabeaafb21524d1f26edeab0e9d82161ef40c42f92 |
-| [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe) | 3,312,128 | 439049743202508e17c4cdf306f08c73dfa66fee2b10986c96d152e1aeb31a6b |
-| [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html) | 10,689,158 | 8c6ae132f17684a61fd6f6022f4dedc436353382dac2bc5d4d1338248b0fe453 |
-
-| 本批检查 | 结果与证据 |
+| 检查 | 结果 |
 | --- | --- |
-| 文档与代码复现 | 两份共享正文逐字一致、五级编号及新旧锚点检查通过；三个C#片段与旧节相同，重新抽取并编译通过。原表头、正文列宽、手动列宽、隐藏状态、失败恢复、保存与摘要顺序分别归入对应对象。[重排证明](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/document-reorg-proof.json)、[文档门禁及编译](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/prebuild-verification.json)。 |
-| 配图与离线全文 | 网格图为既有离线生产控件渲染，工作表为可编辑构造示意，最后行包含最长文本，正文居中与OCR实现一致；两项目三份资源相同。各DLL17项PNG/SVG与当前源码一致；在系统TEMP的隔离副本运行真实导出代码，两产品各121项通过，不依赖原源码目录。[资产QA](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/format-asset-qa.json)、[脱离源码导出](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/offline-export-verification.json)。 |
-| 原功能后台回归 | 完整联合重建及独立后台验证通过；Excel／Word Feature099各7169／2366项，WorkbookTools292项，尺寸核心89／57项通过。[Excel独立验证](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/Excel_Iterate-background-validation.log)、[Word独立验证](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/WordUpdater-background-validation.log)。 |
-| 同批联合交付 | 两安装器五载荷、固定证书与双清单签名、内嵌日志／使用说明／17项图像资源及共同网站快照通过；网页下载包与正式EXE逐字节一致。[重建](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/rebuild.log)、[独立验证](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-background-validation.log)、[Excel载荷](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/Excel_Iterate-payload.log)、[Word载荷](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/WordUpdater-payload.log)。 |
-| 已有改动保留 | 既有业务源码、依赖、证书、原配图及两宿主专属章节保留；生成源码仅刷新时间注释。审计回填不改变已内嵌正文。[修改范围](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/change-preservation.json)、[冻结输入](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/frozen-input-check.json)、[正文保留](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/audit-body-preservation.json)。 |
-| 真实验收边界 | 未使用computer-use、未自动安装或启动／退出WPS、未调用真实云端OCR。后台导出已通过；外部MD查看器可见显图、真实WPS表头与拖动、工作表AutoFit与隐藏行／超限正文、系统缩放及跨屏DPI仍单独待验收。 |
-
-前一批审计保留于[旧审计归档](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/before-audits.json)；最终包已纳入独立复核的正文居中和恢复措辞修正。完整结果见[最终验证记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/final-delivery-summary.json)。
+| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，10,866,400 字节 |
+| 站点验证 | [site-validation.log](../C-03-Website·Xycabin/build/site-validation.log)、[site-downloads-validation.log](../C-03-Website·Xycabin/build/site-downloads-validation.log) |
+| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json) |
