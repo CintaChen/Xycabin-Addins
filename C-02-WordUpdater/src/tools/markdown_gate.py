@@ -21,6 +21,7 @@ def roman(n):
     return text
 
 
+# rule=R-02
 def hierarchy(text, label):
     errors, titles, counts, active = [], [], [0] * 6, [False] * 6
     fence = None

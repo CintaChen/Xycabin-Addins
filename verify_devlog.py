@@ -21,6 +21,33 @@ EXPECTED_SCOPES = {
     'B2-DevExperience.md': ['shared', 'excel', 'word', 'site'],
     'B3-Uphold-Discipline.md': ['shared', 'site'],
 }
+RULE_LINE = re.compile(r'(?m)^\*\*(R-\d{2})\*\*')
+RULE_MARK = re.compile(r'rule=(R-\d{2})')
+RULES = {
+    'R-01': ('L1', 'verify_shared.py', 'check_documents'),
+    'R-02': ('L1', 'C-01-ExcelIterate/src/tools/markdown_gate.py', 'hierarchy'),
+    'R-03': ('L1', 'verify_devlog.py', 'check_dates'),
+    'R-04': ('L1', 'verify_devlog.py', 'version_rows'),
+    'R-05': ('L1', 'verify_devlog.py', 'verify_file/guide'),
+    'R-06': ('L1', 'verify_devlog.py', 'verify_file/chapters'),
+    'R-07': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'chapter_scope'),
+    'R-08': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'document_overview'),
+    'R-09': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'strip_delivery_audit'),
+    'R-10': ('L1', 'verify_devlog.py', 'check_no_comments'),
+    'R-11': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/links'),
+    'R-12': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', '_regular_asset'),
+    'R-13': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'collect'),
+    'R-14': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/layout'),
+    'R-15': ('L1', 'C-03-Website·Xycabin/src/tools/workflow_probe.py', 'main'),
+    'R-16': ('L2', 'verify_shared.py', 'main/shared'),
+    'R-17': ('L2', 'C-01-ExcelIterate/src/configuration/configure_core.py', 'get_version'),
+    'R-18': ('L2', 'C-01-ExcelIterate/rebuild.py', 'main'),
+    'R-19': ('L2', 'C-01-ExcelIterate/build_installer.py', 'main'),
+    'R-20': ('L2', 'C-01-ExcelIterate/resign.py', 'main'),
+    'R-21': ('L2', 'C-03-Website·Xycabin/src/tools/PayloadProbe.cs', 'Main'),
+    'R-22': ('L2', 'C-03-Website·Xycabin/src/tools/site_probe.py', 'main'),
+    'R-23': ('L2', 'C-03-Website·Xycabin/src/tools/cleanup.py', 'main'),
+}
 
 
 def markdown_gate():
@@ -43,10 +70,44 @@ def document_rules():
     raise FileNotFoundError('找不到 document_assets.py')
 
 
+# rule=R-10
 def check_no_comments(text, label):
     return [label + ': 文档不得包含 HTML 注释'] if '<!--' in text else []
 
 
+def check_rules(text):
+    """Every rule ID appears once in B3, has an implementation, and no orphan marks."""
+    errors = []
+    defined = RULE_LINE.findall(text)
+    if len(defined) != len(set(defined)):
+        errors.append('B3: 规则编号重复')
+    if set(defined) != set(RULES):
+        missing = sorted(set(RULES) - set(defined))
+        extra = sorted(set(defined) - set(RULES))
+        if missing:
+            errors.append('B3: 缺少规则编号 ' + ', '.join(missing))
+        if extra:
+            errors.append('B3: 未登记规则编号 ' + ', '.join(extra))
+    for rule, (layer, relative, check) in sorted(RULES.items()):
+        path = ROOT / relative
+        if not path.is_file():
+            errors.append(rule + ': 实现文件不存在 ' + relative)
+            continue
+        if ('rule=' + rule) not in path.read_text(encoding='utf-8-sig'):
+            errors.append(rule + ': ' + relative + ' 缺少 rule=' + rule + ' 标记')
+    for folder in ('C-01-ExcelIterate', 'C-02-WordUpdater', 'C-03-Website·Xycabin'):
+        for path in (ROOT / folder).rglob('*'):
+            if not path.is_file() or path.suffix.lower() not in ('.py', '.cs'):
+                continue
+            if 'build' in path.parts or '__pycache__' in path.parts:
+                continue
+            for rule in RULE_MARK.findall(path.read_text(encoding='utf-8-sig')):
+                if rule not in RULES:
+                    errors.append(str(path) + ': 未登记的实现标记 rule=' + rule)
+    return errors
+
+
+# rule=R-03
 def check_dates(text, label, required):
     cleaned = re.sub(r'(?ms)^```.*?^```[ \t]*$', '', text)
     cleaned = re.sub(r'https?://[^\s)]+|`[^`\n]+`', '', cleaned)
@@ -61,6 +122,7 @@ def check_dates(text, label, required):
     return []
 
 
+# rule=R-04
 def version_rows(block, label):
     errors, seen, previous = [], set(), None
     section = re.search(r'^## \d+\. 版本摘要\s*\n(.*?)(?=^## |\Z)', block, re.M | re.S)
@@ -93,6 +155,8 @@ def chapter_overview(lines):
     return index < len(lines) and bool(lines[index].strip())
 
 
+# rule=R-05
+# rule=R-06
 def verify_file(path):
     gate = markdown_gate()
     rules = document_rules()
@@ -172,9 +236,12 @@ def verify(files=None):
             errors.append('缺少文档：' + str(path))
             continue
         errors += verify_file(path)
+    b3 = DOCS / 'B3-Uphold-Discipline.md'
+    if b3.is_file():
+        errors += check_rules(b3.read_text(encoding='utf-8-sig'))
     if errors:
         raise ValueError('\n'.join(errors))
-    print('PASS: C-04 五份文档的章节范围、概览、交付证据、版本表与日期；' + str(len(paths)) + ' 份')
+    print('PASS: C-04 五份文档的章节范围、概览、交付证据、版本表、日期与规则注册表；' + str(len(paths)) + ' 份')
 
 
 def self_test():
@@ -186,6 +253,8 @@ def self_test():
     assert version_rows('## 2. 版本摘要\n| 0.9.2.0 | 甲 |\n| 0.9.1.0 | 乙 |\n', 'bad')
     assert version_rows('## 2. 版本摘要\n| 0.9.1.0 | ' + '中' * 201 + ' |\n', 'long')
     assert check_no_comments('<!-- x -->', 'bad')
+    assert RULE_LINE.findall('**R-01** 甲\n**R-02** 乙\n') == ['R-01', 'R-02']
+    assert set(RULES) == {'R-%02d' % index for index in range(1, 24)}
     assert rules.chapter_scope('一. Agent及开发者接手概览', 'B1-Project-Files.md') == 'shared'
     assert rules.chapter_scope('二. Excel-Iterate 项目档案', 'B1-Project-Files.md') == 'excel'
     try:
@@ -204,7 +273,7 @@ def self_test():
         path = Path(temporary) / 'B2-DevExperience.md'
         path.write_text('# 一. Word与Excel共享开发经验\n## 1. 乙\n# 二. Excel-Iterate 专属\n# 三. WordUpdater 专属\n# 四. XyCabin 专属\n', encoding='utf-8')
         assert verify_file(path) == []
-    print('VerifyDevlog self-test: 10 PASS, 0 FAIL', flush=True)
+    print('VerifyDevlog self-test: 11 PASS, 0 FAIL', flush=True)
 
 
 def main():

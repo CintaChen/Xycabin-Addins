@@ -15,6 +15,7 @@ from site_core import load, render, attach_installers, embedded_snapshot, instal
 import json
 
 
+# rule=R-15
 def main():
     passed = 0
     def check(condition, name):

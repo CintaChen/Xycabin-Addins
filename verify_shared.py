@@ -35,6 +35,7 @@ DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
 SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享维护纪律')
 
 
+# rule=R-01
 def check_documents():
     """Documents live once in C-04-Devlog; projects keep no copies."""
     agents = ROOT / 'AGENTS.md'
@@ -65,6 +66,7 @@ def check_documents():
                 raise ValueError('项目内不得保留文档副本：' + str(leftovers[0]))
 
 
+# rule=R-16
 def main():
     left, right = ROOT / 'C-01-ExcelIterate', ROOT / 'C-02-WordUpdater'
     for project in (left, right):

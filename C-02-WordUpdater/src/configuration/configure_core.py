@@ -613,6 +613,7 @@ def _line_eol(line):
     return ""
 
 
+# rule=R-17
 def get_version():
     """返回四段式版本号，如 "0.9.5.0"（VSTO 清单与程序集都用这个）。
 

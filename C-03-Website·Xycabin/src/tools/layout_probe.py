@@ -36,6 +36,8 @@ def audit_spans(text):
     return spans
 
 
+# rule=R-11
+# rule=R-14
 def verify(parent=ROOT.parent, source_only=False, folders=None, strict_evidence=False):
     count = 0
     pending_outputs = {(Path(parent) / folder / PROGRAM /

@@ -88,6 +88,7 @@ internal static class PayloadProbe
                 throw new Exception("Orphan embedded document asset: " + name);
         Console.WriteLine("PASS: two document hashes and " + assets.Count + " exact PNG/SVG resources against current source and helper manifest");
     }
+    // rule=R-21
     public static int Main(string[] args)
     {
         Console.OutputEncoding = new UTF8Encoding(false);

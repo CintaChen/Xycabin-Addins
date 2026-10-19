@@ -30,6 +30,7 @@ class Structure(HTMLParser):
         self.stack.pop()
 
 
+# rule=R-22
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--html', type=Path, default=ROOT / 'AA-Program/XyCabin.html')
