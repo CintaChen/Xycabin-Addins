@@ -66,7 +66,7 @@ def check_documents():
                 raise ValueError('项目内不得保留文档副本：' + str(leftovers[0]))
 
 
-# rule=R-16
+# rule=R-15
 def main():
     left, right = ROOT / 'C-01-ExcelIterate', ROOT / 'C-02-WordUpdater'
     for project in (left, right):

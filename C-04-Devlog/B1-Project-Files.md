@@ -1,6 +1,6 @@
 **三项目档案与版本**
 
-最后更新：2026-10-18 ｜ 当前版本：**0.9.9.1** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-20 ｜ 当前版本：**0.9.9.1** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
@@ -8,21 +8,21 @@
 
 ## 1. 目录与阅读顺序
 
-| 文档 | 内容 |
-| --- | --- |
-| [B0-Entry.md](B0-Entry.md) | 入口与阅读顺序、项目关系、交付边界 |
-| [A-UserGuide.md](A-UserGuide.md) | 三产品使用说明 |
-| B1-Project-Files.md | 本章与三个项目档案：定位、版本摘要、命令按钮、源码地图、当前状态 |
-| [B2-DevExperience.md](B2-DevExperience.md) | 共享开发经验与三个专属经验 |
-| [B3-Uphold-Discipline.md](B3-Uphold-Discipline.md) | 共享维护纪律与网站维护纪律 |
+| 文档                                                 | 内容                               |
+| -------------------------------------------------- | -------------------------------- |
+| [B0-Entry.md](B0-Entry.md)                         | 入口与阅读顺序、项目关系、交付边界                |
+| [A-UserGuide.md](A-UserGuide.md)                   | 三产品使用说明                          |
+| B1-Project-Files.md                                | 本章与三个项目档案：定位、版本摘要、命令按钮、源码地图、当前状态 |
+| [B2-DevExperience.md](B2-DevExperience.md)         | 共享开发经验与三个专属经验                    |
+| [B3-Uphold-Discipline.md](B3-Uphold-Discipline.md) | 共享维护纪律与网站维护纪律                    |
 
 ## 2. 项目与交付物
 
-| 项目 | 程序集 | 交付物 |
-| --- | --- | --- |
+| 项目            | 程序集           | 交付物                     |
+| ------------- | ------------- | ----------------------- |
 | Excel-Iterate | Excel_Iterate | Excel_Iterate_Setup.exe |
-| WordUpdater | WordUpdater | WordUpdater_Setup.exe |
-| XyCabin | — | XyCabin.html |
+| WordUpdater   | WordUpdater   | WordUpdater_Setup.exe   |
+| XyCabin       | —             | XyCabin.html            |
 
 ## 3. 源码与资源目录
 
@@ -47,7 +47,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.7.0 | 1. 新增公式封装与计算、筛选增强、链接助手和工作表目录；2. 改善选区兼容与目录显示；3. 新增Agent-Evo选项卡、离线文档预览及网站入口。                                                                                                                           |
 | 0.9.8.0 | 1. 新增文件整理与清单改名、链接清单保存替换，支持取消还原与确认清理；2. 改善筛选与反馈；3. Agent-Evo提供离线文档及树形尺寸设置；4. XyCabin提供离线下载、音乐和独立音量。                                                                                                   |
 | 0.9.9.0 | 1. 文件整理、清单命名及多前缀OCR，按行断链、整簿恢复与编辑保护；2. 六列预览、布局回缩，即时配置及控件缩放，表头单行居中；3. 追踪引用新增显示错误来源：沿引用链定位错误源头格，可跳转标黄；4. 审计工具箱新增合并抵消：往来按单位对冲、坏账按比例冲回，收入成本逐行算未实现利润，列映射+分录预览+备份还原；5. 修复追踪弹窗锁死宿主：去除工具窗样式并对齐链接助手，根治抢焦点/失激活。 |
-| 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。 |
+| 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。                                      |
+
 
 ## 3. 当前命令按钮概览
 
@@ -74,7 +75,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 | 子系统        | 当前入口（未加目录者均在src/addin）                                                                                                                                |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 身份/生成      | project.json、project_support.py、AA-Program/C1-Exceliterate_Configure.py、src/configuration/configure_core.py                                                       |
+| 身份/生成      | project.json、project_support.py、AA-Program/C1-Exceliterate_Configure.py、src/configuration/configure_core.py                                           |
 | 加载/界面      | ThisAddIn、Connect及分部、Ribbon.g、InteropDefs、UiKit、HostDialogService                                                                                     |
 | Agent/自定配置 | Connect.Agent/Customization、AgentDocumentForm/LocalFiles、AgentCustomization、DialogFormatting、FormatEditorThread/Session、CustomizationSaving           |
 | 尺寸/预览      | DialogSizes、DialogSizeEditor、DialogPreviewFactory；src/tools/dialog_catalog_probe与DialogSizesProbe                                                     |
@@ -98,14 +99,15 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月19日完成文档与门禁重构：入口改为 B0-Entry，文档结构由一级章节标题驱动，B3 规则编号 R-01–R-23。本轮功能代码与版本号未变，随联合交付重新打包。
+10月20日完成门禁次序对齐与收尾加固：B3 按执行次序记载 23 项统一门禁清单（G-01–G-23）并新增 R-20 门禁一致性纪律；rebuild.py 增加构建前/发布前文档指纹双检与逐门禁运行摘要，三个入口 bat 补收尾 validate.py --background，workflow_probe 锁步重建/收尾/均成功三维失败矩阵。本轮功能代码与版本号未变，随联合交付重新打包。
 
-| 检查 | 结果 |
-| --- | --- |
-| 安装器 | [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,940,864 字节，版本 0.9.9.1 |
-| 构建与验证 | [Excel_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log) |
-| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json) |
-| 文档门禁 | verify_devlog 五份 PASS；verify_shared 61 文件 PASS；layout 14 项 PASS；document_assets 50 项 PASS |
+| 检查    | 结果                                                                                                                                                             |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,944,960 字节，版本 0.9.9.1                                                   |
+| 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log) |
+| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                   |
+| 文档门禁  | verify_devlog 五份 PASS 且 23 门禁摘要齐全；verify_shared 61 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；document_assets 50 项 PASS                                                                      |
+
 # 三. WordUpdater 项目档案
 
 ## 1. 定位与输出
@@ -125,7 +127,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.7.0 | 1. 按操作流程整理链接菜单，区分操作与反馈入口；2. 新增Agent-Evo选项卡；3. 支持离线阅读开发、使用文档及访问网站。                                                              |
 | 0.9.8.0 | 1. 完善链接建立、更新和查看；2. Agent-Evo提供离线开发/用户预览、全文应用选择和树形尺寸设置；3. XyCabin统一指南、离线下载、音乐和独立音量；4. 规范交付、文档与清理流程。                             |
 | 0.9.9.0 | 1. Agent-Evo同步排序、改名及控件缩放；2. 名称排序即时、格式尺寸下次开窗生效；3. 独立STA预览、窗口快照和需求记录；4. 通用确认隔离并完善Owner校验；5. 开发全文口令验证及离线配图缓存；6. 网格表头完整单行、居中且默认加粗。 |
-| 0.9.9.1 | 1. 随联合交付重新打包，同步版本号与内嵌文档；2. WordUpdater 自身功能无变更。 |
+| 0.9.9.1 | 1. 随联合交付重新打包，同步版本号与内嵌文档；2. WordUpdater 自身功能无变更。                                                                                |
 
 ## 3. 当前命令按钮概览
 
@@ -148,7 +150,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 | 子系统        | 当前入口（未加目录者均在src/addin）                                                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 身份/生成      | project.json、project_support.py、AA-Program/C2-Wordupdater_Configure.py、src/configuration/configure_core.py                                             |
+| 身份/生成      | project.json、project_support.py、AA-Program/C2-Wordupdater_Configure.py、src/configuration/configure_core.py                                  |
 | 加载/界面      | ThisAddIn、Connect及分部、Ribbon.g、InteropDefs、UiKit、HostDialogService                                                                           |
 | Agent/自定配置 | Connect.Agent/Customization、AgentDocumentForm/LocalFiles、AgentCustomization、DialogFormatting、FormatEditorThread/Session、CustomizationSaving |
 | 尺寸/预览      | DialogSizes、DialogSizeEditor、DialogPreviewFactory；src/tools/dialog_catalog_probe与DialogSizesProbe                                           |
@@ -166,30 +168,32 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 本次将文档整理为五部分，共享方法与维护纪律分开，删重复流水和外部历史范例依赖；保留宿主独有算法/恢复边界，修正控件与四种拖动术语、窗口过度因果和内嵌网页一致性表述。已审阅Excel专属合并、OCR与文件批次，只同步界面/维护方法，不移植工作表业务。
 
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
+
 ### (2). 本轮交付证据
 
-10月19日完成文档与门禁重构：入口改为 B0-Entry，文档结构由一级章节标题驱动，B3 规则编号 R-01–R-23。本轮功能代码与版本号未变，随联合交付重新打包。
+10月20日完成门禁次序对齐与收尾加固：B3 按执行次序记载 23 项统一门禁清单（G-01–G-23）并新增 R-20 门禁一致性纪律；rebuild.py 增加构建前/发布前文档指纹双检与逐门禁运行摘要，三个入口 bat 补收尾 validate.py --background，workflow_probe 锁步重建/收尾/均成功三维失败矩阵。本轮功能代码与版本号未变，随联合交付重新打包。
 
-| 检查 | 结果 |
-| --- | --- |
-| 安装器 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，3,292,160 字节，版本 0.9.9.1 |
+| 检查    | 结果                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，3,295,744 字节，版本 0.9.9.1                                                  |
 | 构建与验证 | [WordUpdater-validation.log](../C-03-Website·Xycabin/build/WordUpdater-validation.log)、[payload](../C-03-Website·Xycabin/build/WordUpdater-payload.log) |
-| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json) |
-| 文档门禁 | AgentDocumentCoreProbe 123 PASS；AgentExtensionProbe 128 PASS；规则注册表双向校验 PASS |
+| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                            |
+| 文档门禁  | AgentDocumentCoreProbe 123 PASS；规则注册表双向校验 PASS；23 门禁运行摘要齐全                                                                             |
+
 # 四. XyCabin 项目档案
 
 ## 1. 定位、关系与源码地图
 
 网站介绍两个加载项，提供指南/版本/下载、开发流程、反馈与音乐；邮件/网盘需要网络。HTML内嵌CSS、JS、SVG、MP3和下载指引PNG，无CDN、外部字体、fetch邻近文件依赖。AA-Program/XyCabin.html独立网页含两EXE；两DLL资源是同一无EXE快照。Website不是第三个WPS加载项，不产第三份EXE。
 
-| 当前源码 | 职责 |
-| --- | --- |
-| AA-Program/C3-XycabinSite_Configure.py | 唯一品牌、文案、指南、版本、颜色、声音和下载配置 |
-| src/site_core.py、site_template.html | 校验/转义/序列化、单页布局及通用交互 |
-| src/site_audio.js、site_downloads.js | 音频状态机、下载解码/菜单/弹窗 |
+| 当前源码                                         | 职责                            |
+| -------------------------------------------- | ----------------------------- |
+| AA-Program/C3-XycabinSite_Configure.py       | 唯一品牌、文案、指南、版本、颜色、声音和下载配置      |
+| src/site_core.py、site_template.html          | 校验/转义/序列化、单页布局及通用交互           |
+| src/site_audio.js、site_downloads.js          | 音频状态机、下载解码/菜单/弹窗              |
 | src/assets/tranquility.mp3、unblock-guide.png | 必需项目内音乐片段与下载提示图，普通重建不依赖开发机原文件 |
-| rebuild.py、src/delivery.py、build_cache.py | 固定快照、两包暂存、联合验证/事务发布/回滚、内容缓存 |
-| validate.py、src/tools | 前端、目录/文档、资源、事务、无旧build集成与清理探针 |
+| rebuild.py、src/delivery.py、build_cache.py    | 固定快照、两包暂存、联合验证/事务发布/回滚、内容缓存   |
+| validate.py、src/tools                        | 前端、目录/文档、资源、事务、无旧build集成与清理探针 |
 
 三个输出区统一AA-Program（唯一HTML、配置与批处理）、AB-Graphic（当前PNG与图标）；文档统一在C-04-Devlog维护；build留工具、收据与证据。两加载项不保留网站模板副本；相关输入路径按脚本位置计算。
 
@@ -211,10 +215,10 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月19日完成文档与门禁重构：入口改为 B0-Entry，文档结构由一级章节标题驱动，B3 规则编号 R-01–R-23。网站配置与模板未改，随联合交付重新生成。
+10月20日完成门禁次序对齐与收尾加固：B3 按执行次序记载 23 项统一门禁清单（G-01–G-23）并新增 R-20 门禁一致性纪律；rebuild.py 增加构建前/发布前文档指纹双检与逐门禁运行摘要，三个入口 bat 补收尾 validate.py --background，workflow_probe 锁步重建/收尾/均成功三维失败矩阵。网站配置与模板未改，随联合交付重新生成。
 
-| 检查 | 结果 |
-| --- | --- |
-| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，10,866,400 字节 |
+| 检查   | 结果                                                                                                                                                                    |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，10,876,640 字节                                                                                         |
 | 站点验证 | [site-validation.log](../C-03-Website·Xycabin/build/site-validation.log)、[site-downloads-validation.log](../C-03-Website·Xycabin/build/site-downloads-validation.log) |
-| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json) |
+| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                          |

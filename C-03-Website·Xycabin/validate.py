@@ -5,8 +5,16 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'src'))
-from delivery import projects, run, verify_payload
+from delivery import projects, run, verify_payload, RUN_STAGES
 from site_core import verify_installers
+from build_cache import atomic_json
+
+MODE = 'full'
+
+
+def write_summary(status):
+    atomic_json(ROOT / 'build/validate-run-summary.json',
+                {'mode': MODE, 'status': status, 'stages': RUN_STAGES})
 
 
 def main():
@@ -15,7 +23,9 @@ def main():
     parser.add_argument('--site-only', action='store_true')
     parser.add_argument('--skip-ui', action='store_true')
     parser.add_argument('--background', action='store_true', help='不运行会显示或激活窗口的探针，前台项目列为待验收')
+    global MODE
     args = parser.parse_args()
+    MODE = args.mode
     run([sys.executable, ROOT / 'src/tools/cleanup_probe.py'], ROOT, ROOT / 'build/cleanup-validation.log')
     run([sys.executable, ROOT / 'src/tools/cache_probe.py'], ROOT, ROOT / 'build/cache-validation.log')
     run([sys.executable, ROOT / 'src/tools/cleanup_review_probe.py'], ROOT, ROOT / 'build/cleanup-review-validation.log')
@@ -47,11 +57,16 @@ def main():
         run(command, base, ROOT / ('build/' + assembly + '-validation.log'))
         verify_payload(base, assembly, installer, site, ROOT)
     print('PASS: 独立网页中的两包与正式 EXE 一致；移除安装包数据后与两 DLL 网页一致', flush=True)
+    write_summary('success')
 
 
 if __name__ == '__main__':
     try:
         main()
     except (OSError, ValueError, RuntimeError) as error:
+        try:
+            write_summary('failed')
+        except OSError:
+            pass
         print('FAIL: ' + str(error), flush=True)
         sys.exit(1)

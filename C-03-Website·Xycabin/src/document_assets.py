@@ -51,7 +51,7 @@ def split_chapters(text):
     return preamble, chapters
 
 
-# rule=R-07
+# rule=R-08
 def chapter_scope(title, document):
     """Map a level-one chapter title to a product scope or a registered shared title."""
     name = CHAPTER_NUMBER.sub('', title).strip()
@@ -76,7 +76,7 @@ def select_chapters(text, allowed, document):
     return '\n'.join(out)
 
 
-# rule=R-09
+# rule=R-10
 def strip_delivery_audit(text):
     """Remove every '本轮交付证据' subsection before embedding or hashing."""
     if '<!--' in text:
@@ -112,7 +112,7 @@ def strip_delivery_audit(text):
     return '\n'.join(out)
 
 
-# rule=R-08
+# rule=R-09
 def document_overview(text):
     """First paragraph after the title/date preamble, or after the first chapter."""
     lines = text.split('\n')
@@ -282,7 +282,7 @@ def markdown_targets(text):
         i = j
 
 
-# rule=R-12
+# rule=R-13
 def _regular_asset(root, docs, target):
     parts = urlsplit(target)
     suffix = Path(unquote(parts.path)).suffix.lower()
@@ -382,7 +382,7 @@ def validate_svg(content):
             if re.search(r'@import', style, re.I) or any(not target.strip().strip('\"\x27').startswith('#') for target in re.findall(r'url\(([^)]*)\)', style, re.I)): raise ValueError('SVG不允许外部样式引用')
 
 
-# rule=R-13
+# rule=R-14
 def collect(base):
     base = Path(base).resolve(); root = base.parent
     docs = root / DEVLOG_DIR

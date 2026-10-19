@@ -45,7 +45,7 @@ def ensure_certificate():
     return thumb
 
 
-# rule=R-20
+# rule=R-19
 def main():
     missing = [name for name, path in TOOLS.items() if not os.path.isfile(path)]
     if missing:

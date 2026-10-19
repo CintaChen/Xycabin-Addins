@@ -5,6 +5,8 @@ are used. Scopes, overview and delivery-evidence sections are computed by the
 same helpers that compose the embedded documents, so gate and build agree.
 """
 from pathlib import Path
+import ast
+import json
 import re
 import sys
 
@@ -25,28 +27,29 @@ RULE_LINE = re.compile(r'(?m)^\*\*(R-\d{2})\*\*')
 RULE_MARK = re.compile(r'rule=(R-\d{2})')
 RULES = {
     'R-01': ('L1', 'verify_shared.py', 'check_documents'),
-    'R-02': ('L1', 'C-01-ExcelIterate/src/tools/markdown_gate.py', 'hierarchy'),
-    'R-03': ('L1', 'verify_devlog.py', 'check_dates'),
-    'R-04': ('L1', 'verify_devlog.py', 'version_rows'),
-    'R-05': ('L1', 'verify_devlog.py', 'verify_file/guide'),
-    'R-06': ('L1', 'verify_devlog.py', 'verify_file/chapters'),
-    'R-07': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'chapter_scope'),
-    'R-08': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'document_overview'),
-    'R-09': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'strip_delivery_audit'),
-    'R-10': ('L1', 'verify_devlog.py', 'check_no_comments'),
-    'R-11': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/links'),
-    'R-12': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', '_regular_asset'),
-    'R-13': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'collect'),
-    'R-14': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/layout'),
-    'R-15': ('L1', 'C-03-Website·Xycabin/src/tools/workflow_probe.py', 'main'),
-    'R-16': ('L2', 'verify_shared.py', 'main/shared'),
-    'R-17': ('L2', 'C-01-ExcelIterate/src/configuration/configure_core.py', 'get_version'),
-    'R-18': ('L2', 'C-01-ExcelIterate/rebuild.py', 'main'),
-    'R-19': ('L2', 'C-01-ExcelIterate/build_installer.py', 'main'),
-    'R-20': ('L2', 'C-01-ExcelIterate/resign.py', 'main'),
-    'R-21': ('L2', 'C-03-Website·Xycabin/src/tools/PayloadProbe.cs', 'Main'),
+    'R-02': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/layout'),
+    'R-03': ('L1', 'C-01-ExcelIterate/src/tools/markdown_gate.py', 'hierarchy'),
+    'R-04': ('L1', 'verify_devlog.py', 'check_dates'),
+    'R-05': ('L1', 'verify_devlog.py', 'version_rows'),
+    'R-06': ('L1', 'verify_devlog.py', 'verify_file/guide'),
+    'R-07': ('L1', 'verify_devlog.py', 'verify_file/chapters'),
+    'R-08': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'chapter_scope'),
+    'R-09': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'document_overview'),
+    'R-10': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'strip_delivery_audit'),
+    'R-11': ('L1', 'verify_devlog.py', 'check_no_comments'),
+    'R-12': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/links'),
+    'R-13': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', '_regular_asset'),
+    'R-14': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'collect'),
+    'R-15': ('L2', 'verify_shared.py', 'main/shared'),
+    'R-16': ('L2', 'C-01-ExcelIterate/src/configuration/configure_core.py', 'get_version'),
+    'R-17': ('L2', 'C-01-ExcelIterate/rebuild.py', 'main'),
+    'R-18': ('L2', 'C-01-ExcelIterate/build_installer.py', 'main'),
+    'R-19': ('L2', 'C-01-ExcelIterate/resign.py', 'main'),
+    'R-20': ('L2', 'verify_devlog.py', 'check_gate_inventory'),
+    'R-21': ('L2', 'C-03-Website·Xycabin/src/tools/cleanup.py', 'main'),
     'R-22': ('L2', 'C-03-Website·Xycabin/src/tools/site_probe.py', 'main'),
-    'R-23': ('L2', 'C-03-Website·Xycabin/src/tools/cleanup.py', 'main'),
+    'R-23': ('L2', 'C-03-Website·Xycabin/src/tools/workflow_probe.py', 'main'),
+    'R-24': ('L2', 'C-03-Website·Xycabin/src/tools/PayloadProbe.cs', 'Main'),
 }
 
 
@@ -70,7 +73,7 @@ def document_rules():
     raise FileNotFoundError('找不到 document_assets.py')
 
 
-# rule=R-10
+# rule=R-11
 def check_no_comments(text, label):
     return [label + ': 文档不得包含 HTML 注释'] if '<!--' in text else []
 
@@ -95,6 +98,9 @@ def check_rules(text):
             continue
         if ('rule=' + rule) not in path.read_text(encoding='utf-8-sig'):
             errors.append(rule + ': ' + relative + ' 缺少 rule=' + rule + ' 标记')
+        marker = check.split('/')[0]
+        if not function_exists(path, marker):
+            errors.append(rule + ': ' + relative + ' 缺少检查点 ' + marker)
     for folder in ('C-01-ExcelIterate', 'C-02-WordUpdater', 'C-03-Website·Xycabin'):
         for path in (ROOT / folder).rglob('*'):
             if not path.is_file() or path.suffix.lower() not in ('.py', '.cs'):
@@ -107,7 +113,162 @@ def check_rules(text):
     return errors
 
 
-# rule=R-03
+GATE_TABLE = re.compile(r'^###\s+\(1\)\.\s*统一重建门禁次序\s*$', re.M)
+GATE_ROW = re.compile(r'^\|\s*(G-\d{2})\s*\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|\s*$', re.M)
+GATE_REGISTRY = {
+    'G-01': ('五份文档与规则注册表', 'R-01–R-16,R-20'),
+    'G-02': ('C-01/C-02 共享一致性', 'R-15'),
+    'G-03': ('三个 CMD 入口契约', 'R-23'),
+    'G-04': ('加载项身份预检', 'R-17'),
+    'G-05': ('冗余清理盘点', 'R-21'),
+    'G-06': ('缓存收据核对', ''),
+    'G-07': ('清理审阅', 'R-21'),
+    'G-08': ('构建前文档指纹', 'R-20'),
+    'G-09': ('网站快照构建', 'R-14'),
+    'G-10': ('快照网页门禁', 'R-22'),
+    'G-11': ('Excel 重建链', 'R-16–R-19'),
+    'G-12': ('Excel 后台验证', 'R-17'),
+    'G-13': ('Excel 五载荷与内嵌资产', 'R-18,R-24'),
+    'G-14': ('Word 重建链', 'R-16–R-19'),
+    'G-15': ('Word 后台验证', 'R-17'),
+    'G-16': ('Word 五载荷与内嵌资产', 'R-18,R-24'),
+    'G-17': ('下载页组装与两包核对', 'R-24'),
+    'G-18': ('下载页网页门禁', 'R-22'),
+    'G-19': ('发布前文档指纹', 'R-20'),
+    'G-20': ('事务发布', ''),
+    'G-21': ('发布后布局门禁', 'R-02'),
+    'G-22': ('缓存提交与运行摘要', 'R-20'),
+    'G-23': ('收尾独立验证', 'R-01–R-24'),
+}
+
+
+def clause_rules(cell):
+    """Expand every R-nn and R-nn–R-mm reference inside a clause cell."""
+    rules = set()
+    for match in re.finditer(r'R-(\d{2})(?:\s*[–-]\s*R-(\d{2}))?', cell):
+        low = int(match.group(1))
+        high = int(match.group(2) or match.group(1))
+        rules.update('R-%02d' % index for index in range(low, high + 1))
+    return rules
+
+
+# rule=R-20
+def check_gate_inventory(text):
+    """The B3 gate inventory and its registry describe the same gates and clauses."""
+    errors = []
+    if GATE_TABLE.search(text) is None:
+        return ['B3: 缺少 ### (1). 统一重建门禁次序 门禁清单']
+    rows = GATE_ROW.findall(text)
+    if len(rows) != len(GATE_REGISTRY):
+        errors.append('B3: 门禁清单 %d 行，注册表 %d 项' % (len(rows), len(GATE_REGISTRY)))
+    for index, row in enumerate(rows, 1):
+        gate, _, _, clause, _ = row
+        if gate != 'G-%02d' % index:
+            errors.append('B3: 门禁清单第 %d 行应为 G-%02d，实际 %s' % (index, index, gate))
+        registered = GATE_REGISTRY.get(gate)
+        if registered is None:
+            errors.append('B3: 未登记门禁 ' + gate)
+            continue
+        rules = clause_rules(clause)
+        unknown = sorted(rules - set(RULES))
+        if unknown:
+            errors.append(gate + ': 对应条款引用未登记规则 ' + ', '.join(unknown))
+        if rules != clause_rules(registered[1]):
+            errors.append(gate + ': 对应条款与注册表不一致：' + clause.strip())
+    for gate in sorted(set(GATE_REGISTRY) - {row[0] for row in rows}):
+        errors.append('B3: 门禁清单缺少 ' + gate)
+    errors += gate_consistency()
+    return errors
+
+
+STEM_GATES = {
+    'devlog-validation': ('G-01',),
+    'shared-source': ('G-02',),
+    'workflow-validation': ('G-03',),
+    'cleanup-validation': ('G-05',),
+    'cache-validation': ('G-06',),
+    'cleanup-review-validation': ('G-07',),
+    'site-validation': ('G-10',),
+    'site-downloads-validation': ('G-18',),
+    'Excel_Iterate-rebuild': ('G-11',),
+    'Excel_Iterate-validation': ('G-12',),
+    'Excel_Iterate-payload': ('G-13',),
+    'WordUpdater-rebuild': ('G-14',),
+    'WordUpdater-validation': ('G-15',),
+    'WordUpdater-payload': ('G-16',),
+    'Excel_Iterate-certificate': ('G-11',),
+    'WordUpdater-certificate': ('G-14',),
+    'payload-probe-build': ('G-13', 'G-16'),
+}
+
+
+def read_summary(path):
+    try:
+        data = json.loads(Path(path).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and 'status' in data else None
+
+
+def gate_consistency():
+    """The previous run summaries must account for every registered gate."""
+    root = ROOT / 'C-03-Website·Xycabin/build'
+    errors, notes, accounted, unknown = [], [], set(), []
+    last = read_summary(root / 'last-run-summary.json')
+    closing = read_summary(root / 'validate-run-summary.json')
+    if last is None:
+        notes.append('无上一轮统一重建摘要，跳过门禁执行核对')
+    else:
+        for data, label in ((last, 'last-run-summary.json'), (closing, 'validate-run-summary.json')):
+            if data is None:
+                notes.append('缺少运行摘要：' + label)
+                continue
+            for stage in data.get('stages', []):
+                gates = STEM_GATES.get(stage.get('stage'))
+                if gates is None:
+                    unknown.append(str(stage.get('stage')))
+                elif stage.get('returncode'):
+                    notes.append('阶段失败：' + str(stage.get('stage')))
+                else:
+                    accounted.update(gates)
+            for item in data.get('inprocess_gates', []):
+                if item.get('status') == 'pass':
+                    accounted.add(item.get('gate'))
+        if closing is None:
+            notes.append('收尾独立验证尚未执行（G-23）')
+        elif closing.get('status') == 'success':
+            accounted.add('G-23')
+        else:
+            errors.append('收尾独立验证未成功：G-23')
+        for assembly in last.get('reused_builds', []):
+            notes.append('缓存复用，保留原检查时间：' + str(assembly))
+        if last.get('status') == 'success':
+            missing = sorted(set(GATE_REGISTRY) - accounted - ({'G-23'} if closing is None else set()))
+            if missing:
+                errors.append('上一轮重建未执行门禁：' + ', '.join(missing))
+        else:
+            notes.append('上一轮重建未成功，仅核对已执行门禁无异常')
+    for stage in unknown:
+        errors.append('运行摘要出现未登记门禁阶段：' + stage)
+    for note in notes:
+        print('INFO: ' + note, flush=True)
+    return errors
+
+
+def function_exists(path, name):
+    """A registered check point must exist as a real definition in its file."""
+    text = path.read_text(encoding='utf-8-sig')
+    if path.suffix.lower() == '.py':
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            return False
+        return any(isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+                   for node in ast.walk(tree))
+    return bool(re.search(r'\b' + re.escape(name) + r'\s*\(', text))
+
+
+# rule=R-04
 def check_dates(text, label, required):
     cleaned = re.sub(r'(?ms)^```.*?^```[ \t]*$', '', text)
     cleaned = re.sub(r'https?://[^\s)]+|`[^`\n]+`', '', cleaned)
@@ -122,7 +283,7 @@ def check_dates(text, label, required):
     return []
 
 
-# rule=R-04
+# rule=R-05
 def version_rows(block, label):
     errors, seen, previous = [], set(), None
     section = re.search(r'^## \d+\. 版本摘要\s*\n(.*?)(?=^## |\Z)', block, re.M | re.S)
@@ -155,8 +316,8 @@ def chapter_overview(lines):
     return index < len(lines) and bool(lines[index].strip())
 
 
-# rule=R-05
 # rule=R-06
+# rule=R-07
 def verify_file(path):
     gate = markdown_gate()
     rules = document_rules()
@@ -238,7 +399,9 @@ def verify(files=None):
         errors += verify_file(path)
     b3 = DOCS / 'B3-Uphold-Discipline.md'
     if b3.is_file():
-        errors += check_rules(b3.read_text(encoding='utf-8-sig'))
+        text = b3.read_text(encoding='utf-8-sig')
+        errors += check_rules(text)
+        errors += check_gate_inventory(text)
     if errors:
         raise ValueError('\n'.join(errors))
     print('PASS: C-04 五份文档的章节范围、概览、交付证据、版本表、日期与规则注册表；' + str(len(paths)) + ' 份')
@@ -254,7 +417,13 @@ def self_test():
     assert version_rows('## 2. 版本摘要\n| 0.9.1.0 | ' + '中' * 201 + ' |\n', 'long')
     assert check_no_comments('<!-- x -->', 'bad')
     assert RULE_LINE.findall('**R-01** 甲\n**R-02** 乙\n') == ['R-01', 'R-02']
-    assert set(RULES) == {'R-%02d' % index for index in range(1, 24)}
+    assert check_gate_inventory('无清单正文') == ['B3: 缺少 ### (1). 统一重建门禁次序 门禁清单']
+    sample = '### (1). 统一重建门禁次序\n\n| 编号 | 门禁 | 执行入口 | 对应条款 | 失败语义 |\n| --- | --- | --- | --- | --- |\n'
+    for gate, (_, clause) in sorted(GATE_REGISTRY.items()):
+        sample += '| %s | 门禁 | 入口 | %s | 硬错 |\n' % (gate, clause or '二.2 正文')
+    assert check_gate_inventory(sample) == []
+    assert any('G-23' in item for item in check_gate_inventory(sample.replace('| G-23 |', '| 无关 |', 1)))
+    assert set(RULES) == {'R-%02d' % index for index in range(1, 25)}
     assert rules.chapter_scope('一. Agent及开发者接手概览', 'B1-Project-Files.md') == 'shared'
     assert rules.chapter_scope('二. Excel-Iterate 项目档案', 'B1-Project-Files.md') == 'excel'
     try:
@@ -273,7 +442,7 @@ def self_test():
         path = Path(temporary) / 'B2-DevExperience.md'
         path.write_text('# 一. Word与Excel共享开发经验\n## 1. 乙\n# 二. Excel-Iterate 专属\n# 三. WordUpdater 专属\n# 四. XyCabin 专属\n', encoding='utf-8')
         assert verify_file(path) == []
-    print('VerifyDevlog self-test: 11 PASS, 0 FAIL', flush=True)
+    print('VerifyDevlog self-test: 14 PASS, 0 FAIL', flush=True)
 
 
 def main():

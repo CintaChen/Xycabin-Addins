@@ -7,7 +7,7 @@ sys.dont_write_bytecode = True
 from project_support import ROOT, OUT, PROJECT, CONFIGURE_NAME, load_site, verify_layout
 
 
-# rule=R-18
+# rule=R-17
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('incremental', 'full'), default='full')

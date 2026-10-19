@@ -184,7 +184,7 @@ def main():
         finally:
             custom_path.unlink()
     else:
-        print("SKIP: AudioProbe需要Node.js；配置与单文件检查已执行，音频逻辑另行验收")
+        print("SKIP: 缺少 Node.js；audio_probe/download_probe 未执行，音频与下载逻辑另行验收（记入门禁摘要）")
     print("SiteProbe: central source, project histories, sound/feedback/HTTPS customization, default theme, escaping, version sources and current preview PASS")
 
 

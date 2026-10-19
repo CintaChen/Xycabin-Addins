@@ -90,6 +90,20 @@ def inputs(base, snapshot):
     return key({'schema': 1, 'inputs': values, 'site': hashlib.sha256(page.encode('utf-8')).hexdigest(), 'environment': environment()})
 
 
+def input_fingerprint(root, addin_roots):
+    """Raw-byte fingerprint of the embedded document surface; detects mid-build edits."""
+    root = Path(root).resolve()
+    paths = set((root.parent / 'C-04-Devlog').glob('*.md'))
+    paths.add(root.parent / 'verify_shared.py')
+    for base in addin_roots:
+        base = Path(base).resolve()
+        for item in referenced_paths(base):
+            path = Path(item)
+            paths.update([path if path.is_absolute() else base / path])
+    values = [(str(path.relative_to(root.parent)), digest(path)) for path in sorted(paths)]
+    return key({'schema': 1, 'fingerprint': values})
+
+
 def atomic_json(path, data):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

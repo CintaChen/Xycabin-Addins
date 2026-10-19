@@ -24,6 +24,10 @@ set "PYTHONUTF8=1"
 
 if errorlevel 1 goto fail
 
+"%WPS_TASK_PYTHON%" validate.py --background
+
+if errorlevel 1 goto validatefail
+
 echo.
 
 echo 安装包已经生成。安装前请自行保存文档并完全退出 WPS。
@@ -43,6 +47,16 @@ exit /b 0
 echo.
 
 echo 构建失败，请检查上方错误信息。
+
+pause
+
+exit /b 1
+
+:validatefail
+
+echo.
+
+echo 收尾验证失败，请检查上方错误信息。
 
 pause
 

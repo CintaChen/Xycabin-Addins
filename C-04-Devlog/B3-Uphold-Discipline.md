@@ -6,35 +6,35 @@
 
 **R-01** C-04-Devlog 恰好五份：B0-Entry、A-UserGuide、B1-Project-Files、B2-DevExperience、B3-Uphold-Discipline；三个项目内不得保留文档副本。仓库根 AGENTS.md 只放指向 B0 的指针，B0 只放阅读顺序与按角色分流。
 
-**R-14** 三个项目只保留 AA-Program（配置器、启动器、正式产物）、AB-Graphic（PNG、SVG、README.txt、.gitkeep）、src 与 build；AP1-程序、AP2-美工、AP3-说明、icons、src/documentation 出现即失败。
+**R-02** 三个项目只保留 AA-Program（配置器、启动器、正式产物）、AB-Graphic（PNG、SVG、README.txt、.gitkeep）、src 与 build；AP1-程序、AP2-美工、AP3-说明、icons、src/documentation 出现即失败。
 
-**R-02** 标题最多五级，同级连续编号、新父级重置，编号后一个半角空格；代码围栏内不参与编号。层级为 `# 一.` → `## 1.` → `### (1).` → `#### a.` → `##### i.`，不跳级、不为凑层级拆短句。
+**R-03** 标题最多五级，同级连续编号、新父级重置，编号后一个半角空格；代码围栏内不参与编号。层级为 `# 一.` → `## 1.` → `### (1).` → `#### a.` → `##### i.`，不跳级、不为凑层级拆短句。
 
-**R-03** 顶部只允许一处“最后更新”日期，正文不得出现其他 ISO 日期；B1 必填。
+**R-04** 顶部只允许一处“最后更新”日期，正文不得出现其他 ISO 日期；B1 必填。
 
-**R-04** B1 四个一级章节；Excel-Iterate 与 WordUpdater 两章各含“版本摘要”，版本四段升序、同章不重复、每行 trim 后不超过 200 字。
+**R-05** B1 四个一级章节；Excel-Iterate 与 WordUpdater 两章各含“版本摘要”，版本四段升序、同章不重复、每行 trim 后不超过 200 字。
 
-**R-05** A-UserGuide 恰好三章，依次为 Excel-Iterate、WordUpdater、XyCabin。
+**R-06** A-UserGuide 恰好三章，依次为 Excel-Iterate、WordUpdater、XyCabin。
 
-**R-06** B2 四个一级章节；B3 两个一级章节。
+**R-07** B2 四个一级章节；B3 两个一级章节。
 
-**R-07** 一级章节标题决定范围：含 Excel-Iterate→excel、WordUpdater→word、XyCabin→site；其余必须是登记过的共享标题（B1“Agent及开发者接手概览”、B2“Word与Excel共享开发经验”、B3“Word与Excel共享维护纪律”）。未知标题或同时命中多个产品即失败。
+**R-08** 一级章节标题决定范围：含 Excel-Iterate→excel、WordUpdater→word、XyCabin→site；其余必须是登记过的共享标题（B1“Agent及开发者接手概览”、B2“Word与Excel共享开发经验”、B3“Word与Excel共享维护纪律”）。未知标题或同时命中多个产品即失败。
 
-**R-08** 概览取文档标题与日期之后的首段；A-UserGuide 取一级标题前的导言段，B1 取首章后的首段；为空即构建失败。
+**R-09** 概览取文档标题与日期之后的首段；A-UserGuide 取一级标题前的导言段，B1 取首章后的首段；为空即构建失败。
 
-**R-09** 每个项目档案恰好一处“### (n). 本轮交付证据”；合成内嵌文档前整节剔除，B1 共三处。
+**R-10** 每个项目档案恰好一处“### (n). 本轮交付证据”；合成内嵌文档前整节剔除，B1 共三处。
 
-**R-10** 文档不得出现 HTML 注释，也不再使用 scope、agent-overview、delivery-audit 标记。
+**R-11** 文档不得出现 HTML 注释，也不再使用 scope、agent-overview、delivery-audit 标记。
 
-**R-11** 文档内本地链接与标题锚点必须可达；审计证据在源码携带时可缺，正式 strict-evidence 要求齐全。
+**R-12** 文档内本地链接与标题锚点必须可达；审计证据在源码携带时可缺，正式 strict-evidence 要求齐全。
 
-**R-12** 文档图片只允许三个项目 AB-Graphic 下的 PNG、SVG；禁远程地址、绝对路径、越界路径与重解析点。
+**R-13** 文档图片只允许三个项目 AB-Graphic 下的 PNG、SVG；禁远程地址、绝对路径、越界路径与重解析点。
 
-**R-13** 内嵌资源清单、文档与图片摘要必须与实际字节一致；两份内嵌文档各一份，图片按摘要去重。
+**R-14** 内嵌资源清单、文档与图片摘要必须与实际字节一致；两份内嵌文档各一份，图片按摘要去重。
 
-**R-16** C-01 与 C-02 的公共源码、构建脚本与启动器逐字节一致；共享经验在 B2、B3 各只保留一份，不再成对维护。
+**R-15** C-01 与 C-02 的公共源码、构建脚本与启动器逐字节一致；共享经验在 B2、B3 各只保留一份，不再成对维护。
 
-**R-17** 版本唯一来源是各项目配置器的 INSTALLER_VERSION，四段 0～65534，仅用户指定才修改；安装器、加载项与清单同源；新第三段主版本把前一主版本子版本并入末段 0。
+**R-16** 版本唯一来源是各项目配置器的 INSTALLER_VERSION，四段 0～65534，仅用户指定才修改；安装器、加载项与清单同源；新第三段主版本把前一主版本子版本并入末段 0。
 
 **（人工）** 维护顺序：对照最终源码→提炼做法、边界、入口、证据→判断归属→更新正文与入口→跑门禁→固定正文重建→回填证据。无新增可迁移经验如实说明，不编造根因。
 
@@ -42,11 +42,45 @@
 
 现有单项目入口只重建自己，无 `--background` 参数：`python rebuild.py --mode full` 后 `python validate.py --background`。两产品与网页共同交付在 Website 运行 `python rebuild.py --background --mode full`（或其 AA-Program 批处理选 2），再 `python validate.py --background`；增量选 1/`--mode incremental`，默认 full。构建不安装、不结束 WPS；`--open-installer-only` 只打开既有安装器，不重建。
 
-**R-18** 链路为配置器（C1-Exceliterate_Configure.py、C2-Wordupdater_Configure.py）→build.py→resign.py→build_installer.py；每次编译后必须重签，csc 的新 MVID 会改变 DLL 摘要。
+**R-17** 链路为配置器（C1-Exceliterate_Configure.py、C2-Wordupdater_Configure.py）→build.py→resign.py→build_installer.py；每次编译后必须重签，csc 的新 MVID 会改变 DLL 摘要。
 
-**R-19** 安装器内嵌主 DLL、Utilities、Office.Core、应用清单、部署清单共五载荷，版本与 DLL、清单一致。
+**R-18** 安装器内嵌主 DLL、Utilities、Office.Core、应用清单、部署清单共五载荷，版本与 DLL、清单一致。
 
-**R-20** 清单保留 customHostSpecified、GAC 依赖与 vstav3/vstov4 结构；ThisAddIn 作为 vstav3 入口，FullTrust 由 VSTO 运行时授予，不在应用清单中声明。未强签依赖不带 token；签后读顶层 identity 重建 vsto 引用，记录 manifest 精确大小与 SHA-256 Base64 摘要；UTF-8 BOM、CRLF。SignCmi 采用 SHA-256，两清单分别有 StrongName 与 Authenticode 签名；ValidateManifest 解析并转储清单结构，ValidateXmlSig 校验整清单及 license 绑定。
+**R-19** 清单保留 customHostSpecified、GAC 依赖与 vstav3/vstov4 结构；ThisAddIn 作为 vstav3 入口，FullTrust 由 VSTO 运行时授予，不在应用清单中声明。未强签依赖不带 token；签后读顶层 identity 重建 vsto 引用，记录 manifest 精确大小与 SHA-256 Base64 摘要；UTF-8 BOM、CRLF。SignCmi 采用 SHA-256，两清单分别有 StrongName 与 Authenticode 签名；ValidateManifest 解析并转储清单结构，ValidateXmlSig 校验整清单及 license 绑定。
+
+### (1). 统一重建门禁次序
+
+统一重建与收尾验证按下列次序执行；实际执行必须与本表一致。缓存命中保留原检查时间，不声称本轮重测；--skip-ui 与缺少 node 等既定跳过须在运行摘要中记录理由。
+
+| 编号 | 门禁 | 执行入口 | 对应条款 | 失败语义 |
+| --- | --- | --- | --- | --- |
+| G-01 | 五份文档与规则注册表 | devlog_probe→verify_devlog.py | R-01–R-16、R-20 | 硬错 |
+| G-02 | C-01/C-02 共享一致性 | verify_shared.py | R-15 | 硬错 |
+| G-03 | 三个 CMD 入口契约 | workflow_probe.py | R-23 | 硬错 |
+| G-04 | 加载项身份预检 | delivery.projects() | R-17 | 硬错 |
+| G-05 | 冗余清理盘点 | cleanup_probe | R-21 | 硬错 |
+| G-06 | 缓存收据核对 | cache_probe | 二.2 正文 | 硬错 |
+| G-07 | 清理审阅 | cleanup_review_probe | R-21 | 硬错 |
+| G-08 | 构建前文档指纹 | input_fingerprint | R-20 | 硬错 |
+| G-09 | 网站快照构建 | site_core.build | R-14 | 硬错 |
+| G-10 | 快照网页门禁 | site_probe --html 快照 | R-22 | 硬错；无 node 音频/下载记 SKIP |
+| G-11 | Excel 重建链 | C-01/rebuild.py | R-16–R-19 | 硬错；缓存 HIT 保留原检查时间 |
+| G-12 | Excel 后台验证 | C-01/validate.py --background | R-17 | 硬错 |
+| G-13 | Excel 五载荷与内嵌资产 | verify_payload→PayloadProbe.exe | R-18、R-24 | 硬错 |
+| G-14 | Word 重建链 | C-02/rebuild.py | R-16–R-19 | 硬错；缓存 HIT 保留原检查时间 |
+| G-15 | Word 后台验证 | C-02/validate.py --background | R-17 | 硬错 |
+| G-16 | Word 五载荷与内嵌资产 | verify_payload→PayloadProbe.exe | R-18、R-24 | 硬错 |
+| G-17 | 下载页组装与两包核对 | attach_installers+embedded_snapshot+verify_installers | R-24 | 硬错 |
+| G-18 | 下载页网页门禁 | site_probe --html 完整页 | R-22 | 硬错；无 node 音频/下载记 SKIP |
+| G-19 | 发布前文档指纹 | input_fingerprint | R-20 | 硬错 |
+| G-20 | 事务发布 | delivery.publish | 一.2 正文 | 硬错；失败回滚并保留恢复文件 |
+| G-21 | 发布后布局门禁 | layout_probe.verify（全流程仅一次） | R-02 | 硬错 |
+| G-22 | 缓存提交与运行摘要 | build_cache.commit+两份 summary | R-20、二.2 正文 | 硬错 |
+| G-23 | 收尾独立验证 | bat 末尾 validate.py --background | R-01–R-24 | 硬错 |
+
+**R-20** 实际重建执行的门禁集合、次序与失败语义必须与本节 (1) 表逐项一致：表内门禁缺失且无记录的跳过条件、执行表外门禁或次序不符，均按失败处理。verify_devlog.py 在每次重建预检时核对上一轮 last-run-summary.json 与 validate-run-summary.json；缓存复用保留原检查时间，不声称本轮重测；--skip-ui、缺少 node 等既定跳过条件须在摘要中记录理由。
+
+**（人工）** 重建运行期间不得编辑 C-04-Devlog 文档、共享源码与内嵌图片；确需修改，等待本次构建完整结束后再改并重跑。input_fingerprint 在构建前与发布前各取一次，发现构建期间变更即中止发布、保留上轮正式产物，不带着不一致资产交付。
 
 统一入口固定空 installer-assets 快照→两包暂存与后台验证→独立 HTML 附本轮包→核对正文、资源、包字节→事务替换两 EXE、HTML 和 current-delivery.json。失败保留上轮正式产物，回滚未完保留恢复文件并报路径；只生成配置预览不表示完成联合发布。
 
@@ -100,7 +134,7 @@ COM 可验证真实宿主中的业务读写、字段或公式、保存与还原�
 
 **（人工）** 分五类盘点：必要输入、当前产物、有效证据、可删历史、未确认。按实际字节从大到小核对用途与摘要；公共副本职责不同不能因同 SHA 删除；移动项目内不算释放。私钥、`.cer` 证书、必要依赖与未完成恢复资料始终保护，公共 CA 的 `.pem` 不按扩展名误作私钥。
 
-**R-23** 执行顺序：记录范围、版本、用途、数量、字节、摘要→归并经验修引用→隔离排除候选完成重建、签名、载荷、资源验证→Website `src/tools/cleanup.py --dry-run` 生成 schema 3 五类清单→逐项审阅→`--apply` 读同一清单复查→复核正式产物与链接并报告实际删除、失败、保留及字节差。清单后的输入或目标变化须重新盘点。
+**R-21** 执行顺序：记录范围、版本、用途、数量、字节、摘要→归并经验修引用→隔离排除候选完成重建、签名、载荷、资源验证→Website `src/tools/cleanup.py --dry-run` 生成 schema 3 五类清单→逐项审阅→`--apply` 读同一清单复查→复核正式产物与链接并报告实际删除、失败、保留及字节差。清单后的输入或目标变化须重新盘点。
 
 **（人工）** fixture-state 必须真实结束；cleanup-review 绑定源码指纹、逐文件摘要、用途与经验结论、隔离成功证据及原日志摘要，禁止伪造状态。删除前核绝对路径在指定项目内，不删项目根、不跟随联接、不碰项目外文件；不完整恢复保留。已授权确认项按范围执行。探针成功仅释放自建临时文件，失败保留诊断与恢复资料。
 
@@ -128,11 +162,12 @@ COM 可验证真实宿主中的业务读写、字段或公式、保存与还原�
 
 源码链接在完整项目目录中使用；加载项离线全文保留下列片段，不携带业务源码。完整实现以链接中的函数为准；在同一加载项源码程序集内复用现有内部类型，修改公共网格代码后同步两个项目，不另维护一份格式实现。
 
-| 用途            | 可复用的现有实现                                                                                                                                                                                     | 调用位置与边界                                                                                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 网格默认样式及完整表头测量 | [UiKit.cs](../C-01-ExcelIterate/src/addin/UiKit.cs)：Ui.StyleGrid、Ui.AutoFitColumns、Ui.EnsureGridHeaders                                                                                                        | 创建列后适配；StyleGrid 在 HandleCreated 复核 DPI；EnsureGridHeaders 按逐列表头字体、Padding、排序图标计算下限与高度，不强制覆盖显式的非粗体字体                                                                                    |
-| 自定格式应用后的收敛    | [DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)：DialogFormatting.Apply                                                                                                               | finally 阶段完成布局后重新测宽；普通网格调用 Ui.AutoFitColumns，尺寸配置调用专属 FitColumns，不再开启表头换行                                                                                                            |
+| 用途            | 可复用的现有实现                                                                                                                                                                                                    | 调用位置与边界                                                                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 网格默认样式及完整表头测量 | [UiKit.cs](../C-01-ExcelIterate/src/addin/UiKit.cs)：Ui.StyleGrid、Ui.AutoFitColumns、Ui.EnsureGridHeaders                                                                                                     | 创建列后适配；StyleGrid 在 HandleCreated 复核 DPI；EnsureGridHeaders 按逐列表头字体、Padding、排序图标计算下限与高度，不强制覆盖显式的非粗体字体                                                                                            |
+| 自定格式应用后的收敛    | [DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)：DialogFormatting.Apply                                                                                                            | finally 阶段完成布局后重新测宽；普通网格调用 Ui.AutoFitColumns，尺寸配置调用专属 FitColumns，不再开启表头换行                                                                                                                      |
 | 保留局部列宽策略      | [FileNamesLayout.cs](../C-01-ExcelIterate/src/addin/FileNamesLayout.cs)：FileNamesForm.FitResultColumns；[DialogSizeEditor.cs](../C-01-ExcelIterate/src/addin/DialogSizeEditor.cs)：DialogSizesForm.FitColumns | 文件提取先在 fittingColumns 保护内调用 EnsureGridHeaders，再处理正文 30 个 0 上限和手动列宽；尺寸目录保留树缩进及自绘按钮测量。文件提取通过 ResultGrid/IGridColumnFit 接线，局部回调不反调 Ui.AutoFitColumns；尺寸目录由 DialogFormatting.Apply 直接调用 FitColumns |
+
 
 **最小调用示例。** 在已经登记并使用 DialogSizing.Prepare 的业务窗中，先创建全部列，将 grid 加入业务窗的既有布局容器，再调用共享入口：
 
@@ -209,12 +244,12 @@ column.MinimumWidth = Math.Max(Ui.Px(grid, 50),
 
 共享的是维护规范，具体工作表操作由 Excel 实现。源码链接在完整项目目录中使用；下列片段在同一加载项源码程序集内复用，依赖现有内部类型。OutputFormatSnapshot 和 UpdateReport 为私有实现，阅读其逻辑并从原业务入口接入，不作为外部直接调用接口。
 
-| 用途           | 可复用的现有实现                                                                                                                                                                                                 | 调用位置与边界                                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 完整报告范围及隐藏行测量 | [WorkbookFeatures.cs](../C-01-ExcelIterate/src/addin/WorkbookFeatures.cs)：WorkbookUi.StyleHeader、FitOutput、ReadRowHeight、OutputFormatSnapshot                                                         | StyleHeader 规范表头；FitOutput 在最终数据、字体、数字格式后测完整输出范围、适配表头行高；超限正文换行。失败时按快照还原列宽、换行、行高，finally 恢复原 Hidden；隐藏行的 0 或 null 行高先安全读取潜在高度 |
-| OCR写入与失败还原   | [Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)：FileNameWorksheet.Write                                                                                                   | 写入前保留值、公式、格式、尺寸、隐藏状态，已有筛选保留，新增筛选后再 FitOutput；失败逐项还原并报告未恢复项                                                            |
-| 状态回写与保存      | [LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)：Scan、UpdateReport；[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)：RenameWorkbookSession.Create、WriteResult | 内容及状态回写完成→FitOutput→保存；断链清单保存后才登记 checkpoint.LastHash                                                                 |
-| 目录及高筛结果      | [WorkbookFeatures.cs](../C-01-ExcelIterate/src/addin/WorkbookFeatures.cs)：DirectoryNavigation.Generate、QuickAdvancedFilter.Run                                                                        | 目录在 Hyperlinks.Add 和全表字体、对齐设置后适配；高筛在原列数字格式恢复和最终字体设置后适配，业务临时条件表不套报告格式                                                   |
+| 用途           | 可复用的现有实现                                                                                                                                                                                           | 调用位置与边界                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 完整报告范围及隐藏行测量 | [WorkbookFeatures.cs](../C-01-ExcelIterate/src/addin/WorkbookFeatures.cs)：WorkbookUi.StyleHeader、FitOutput、ReadRowHeight、OutputFormatSnapshot                                                      | StyleHeader 规范表头；FitOutput 在最终数据、字体、数字格式后测完整输出范围、适配表头行高；超限正文换行。失败时按快照还原列宽、换行、行高，finally 恢复原 Hidden；隐藏行的 0 或 null 行高先安全读取潜在高度 |
+| OCR写入与失败还原   | [Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)：FileNameWorksheet.Write                                                                                                | 写入前保留值、公式、格式、尺寸、隐藏状态，已有筛选保留，新增筛选后再 FitOutput；失败逐项还原并报告未恢复项                                                                   |
+| 状态回写与保存      | [LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)：Scan、UpdateReport；[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)：RenameWorkbookSession.Create、WriteResult | 内容及状态回写完成→FitOutput→保存；断链清单保存后才登记 checkpoint.LastHash                                                                        |
+| 目录及高筛结果      | [WorkbookFeatures.cs](../C-01-ExcelIterate/src/addin/WorkbookFeatures.cs)：DirectoryNavigation.Generate、QuickAdvancedFilter.Run                                                                     | 目录在 Hyperlinks.Add 和全表字体、对齐设置后适配；高筛在原列数字格式恢复和最终字体设置后适配，业务临时条件表不套报告格式                                                         |
 
 **最小调用示例。** 以下完整接线片段演示新报告的格式调用，不代替现有写入、保存、恢复事务。rows 包含表头，startColumn 可不是 A 列，最后一个地址须包含最后一条数据；sheet 由业务入口提供：
 
@@ -249,7 +284,7 @@ using (var bag = new ComBag()) {
 
 **（人工）** 网站只维护前端经验（打开、指南、下载、音乐、帮助），不复制宿主公式或字段事务；改指南时核两个宿主是否适用；无新增经验如实说明，不新增维护副本。
 
-文档结构、编号、日期、概览、交付证据、链接与图片规则直接适用第一章 R-01–R-14，不另立一套。
+文档结构、编号、日期、概览、交付证据、链接与图片规则直接适用第一章 R-01–R-16，不另立一套。
 
 **R-22** PRODUCTS 版本新到旧，摘要与 B1 对应章节逐字一致，每版 trim 后不超过 200 字，每个功能按 1.、2. 连续编号。
 
@@ -257,26 +292,27 @@ using (var bag = new ComBag()) {
 
 日常 rebuild/validate 显式 `--background`，只跑已核对不显示或激活窗口的路径；两加载项 DialogSizesProbe `--core` 仍必需，完整预览与拖动单列。`--skip-ui` 只跳截图不保证后台，透明窗不等后台，不抢焦点、不切用户页面、不自动打开截图。
 
-| 工具 | 验证内容与边界 |
-| --- | --- |
-| devlog/markdown/layout 门禁 | 五份文档的章节范围、概览、交付证据、版本表、规则注册表，三输出及维护唯一；源码携带只允许审计历史 build 证据缺失，正式 strict-evidence 要求链接齐全 |
-| site_probe | 配置非法输入、HTML 结构、资源、脚本语法、版本源、快照关系 |
-| audio_probe/download_probe | 隔离 DOM 与 AudioContext、状态、字节、交互，不真实发声或保存文件 |
-| workflow_probe/integration_probe | 真实 CMD 入口参数、提示、退出码、事务失败保护、无旧 build 及中文、空格、中点、其他 cwd 路径 |
-| file_inventory/cleanup 探针 | 必要输入含父 verify_shared.py、候选引用、指纹与审阅清单，不能伪造隔离成功记录 |
+| 工具                               | 验证内容与边界                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------- |
+| devlog/markdown/layout 门禁        | 五份文档的章节范围、概览、交付证据、版本表、规则注册表，三输出及维护唯一；源码携带只允许审计历史 build 证据缺失，正式 strict-evidence 要求链接齐全 |
+| site_probe                       | 配置非法输入、HTML 结构、资源、脚本语法、版本源、快照关系                                                       |
+| audio_probe/download_probe       | 隔离 DOM 与 AudioContext、状态、字节、交互，不真实发声或保存文件                                             |
+| workflow_probe                   | 真实 CMD 入口参数、提示、退出码、事务失败保护、无旧 build 及中文、空格、中点、其他 cwd 路径                                |
+| integration_probe（人工专用）      | 隔离副本内完整 rebuild/validate 联跑；重量级，仅人工排障时执行，不随自动重建运行                                          |
+| file_inventory/cleanup 探针        | 必要输入含父 verify_shared.py、候选引用、指纹与审阅清单，不能伪造隔离成功记录                                       |
 
-**R-15** 三批处理 UTF-8 无 BOM、CRLF、chcp65001，Python 输出 UTF-8；Windows PowerShell 5 入口避免中文无 BOM 误读。网站末尾中文由 Python 的 ASCII 转义命令输出，子任务后重设 65001；编译诊断按实际编码，不把 GBK 推广至所有入口。
+**R-23** 三批处理 UTF-8 无 BOM、CRLF、chcp65001，Python 输出 UTF-8；Windows PowerShell 5 入口避免中文无 BOM 误读。网站末尾中文由 Python 的 ASCII 转义命令输出，子任务后重设 65001；编译诊断按实际编码，不把 GBK 推广至所有入口。
 
-增量 `--mode incremental`、默认 full；build_cache 按源码、配置、依赖、规范快照、环境及产物证据摘要判断，缺失或变化重执行，首次无缓存完整。完整不复用；签名、载荷与网页包字节见第一章 R-19、R-20 与本章 R-21。锁内 stage 收据仅成功事务后提交，last-run-summary 及 validation-timings 记录耗时，复用保留原检查时间，不声称本轮重测。**（人工）** 固定图片样例不读取桌面原图。
+增量 `--mode incremental`、默认 full；build_cache 按源码、配置、依赖、规范快照、环境及产物证据摘要判断，缺失或变化重执行，首次无缓存完整。完整不复用；签名、载荷与网页包字节见第一章 R-18、R-19 与本章 R-24。锁内 stage 收据仅成功事务后提交，last-run-summary 及 validation-timings 记录耗时，复用保留原检查时间，不声称本轮重测。**（人工）** 固定图片样例不读取桌面原图。
 
 ## 3. 统一交付与失败恢复
 
 固定无 EXE 快照→以 `--site-html`、`--installer-output` 重建两暂存包→业务、文档、原证书双签名、五载荷验证→attach_installers 附本轮 EXE→verify_installers 对实际包逐字节及版本、名称、长度、SHA-256 核对→delivery.publish 事务替换两 EXE、HTML 和 current-delivery.json→正式资源复核。
 
-**R-21** 两 DLL 内嵌 WpsShared.Agent.Home.html 必须逐字节相同，移除独立页 installer-assets 后比较网页正文；两个 DLL 含不同宿主业务，不要求 DLL 字节相同。编译只接受空包数据区，防安装包包含自身；网站产品按独立身份映射，不将 Excel 宿主等同 Excel-Iterate 产品。
+**R-24** 两 DLL 内嵌 WpsShared.Agent.Home.html 必须逐字节相同，移除独立页 installer-assets 后比较网页正文；两个 DLL 含不同宿主业务，不要求 DLL 字节相同。编译只接受空包数据区，防安装包包含自身；网站产品按独立身份映射，不将 Excel 宿主等同 Excel-Iterate 产品。
 
 **（人工）** 缺源码、资产或原私钥停止，不回退旧 HTML 或换发布者；发布失败恢复上轮正式文件，回滚未完保留恢复文件并报路径。最终审计集中本日志，宿主详细结果链接对应日志；内部 current-delivery.json 是机器交付记录，不是另建维护文档。用户保存并退出 WPS 后分别安装才更新加载项内网页；缓存与浏览器接线归加载项共享经验。
 
 ## 4. 冗余文件清理
 
-网站与两个加载项共用第一章第 4 节的清理纪律（R-23 与人工条款），默认范围为三个项目；网站入口为 `src/tools/cleanup.py --dry-run` 与 `--apply`，清单、fixture-state、绝对路径边界与保护集合同第一章执行。
+网站与两个加载项共用第一章第 4 节的清理纪律（R-21 与人工条款），默认范围为三个项目；网站入口为 `src/tools/cleanup.py --dry-run` 与 `--apply`，清单、fixture-state、绝对路径边界与保护集合同第一章执行。

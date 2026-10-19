@@ -12,7 +12,7 @@
 
 | 输入                                                                                                               | 最小职责                               |
 | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| project.json、AA-Program/C1-Exceliterate_Configure.py                                                                         | 宿主/身份/sources/tools与唯一界面、版本、固定证书配置 |
+| project.json、AA-Program/C1-Exceliterate_Configure.py                                                             | 宿主/身份/sources/tools与唯一界面、版本、固定证书配置 |
 | src/addin/ThisAddIn.cs、Connect.cs、InteropDefs.cs、AssemblyInfo.cs                                                 | VSTO入口、专属回调、COM声明、程序集GUID          |
 | src/addin/UiKit.cs、HostDialogService.cs及所依赖公共源码                                                                  | 界面、宿主确认隔离；依赖以实际sources和工具清单为准      |
 | src/configuration、project_support.py、build/rebuild/resign/gen_manifest/build_installer/verify_package/validate脚本 | 生成、编译、签名、打包与验证；文件名中的斜线表示各独立脚本      |
@@ -82,6 +82,7 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 ## 3. 弹窗美工、控件与网格
 
+
 ### (1). 先确定容器，再确定数据控件
 
 本节是常见对象的实用参考，不穷举全部控件。编号1—27以项目实际窗口和源码为依据，28—36为“当前项目未使用”的通用示意；图3—5的局部来自不同窗口。按窗口名称、区域用途、对象及修改范围描述需求，图中轮廓仅用于定位。
@@ -122,29 +123,29 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 ![图3：选项与网格操作](../C-01-ExcelIterate/AB-Graphic/界面对象-选项与网格操作.png)
 
-| 准确称呼（对应图号）      | 实例或使用状态                               | 实现、修改范围及源码入口                                                                                                                                                                         |
-| --------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 准确称呼（对应图号）      | 实例或使用状态                               | 实现、修改范围及源码入口                                                                                                                                                                                        |
+| --------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)、[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)                              |
-| 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](../C-01-ExcelIterate/src/addin/ColumnFilterForm.cs)                                                           |
-| 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)                                                                               |
+| 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](../C-01-ExcelIterate/src/addin/ColumnFilterForm.cs)                                                                             |
+| 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)                                                                                                 |
 | 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)、[DialogSizeEditor.cs](../C-01-ExcelIterate/src/addin/DialogSizeEditor.cs) |
 
 **图4：树与分区。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-tree-map.svg)。
 
 ![图4：树与分区](../C-01-ExcelIterate/AB-Graphic/界面对象-树与分区.png)
 
-| 准确称呼（对应图号）   | 实例或使用状态                        | 实现、修改范围及源码入口                                                                                                                                                           |
-| ------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 准确称呼（对应图号）   | 实例或使用状态                        | 实现、修改范围及源码入口                                                                                                                                                                                               |
+| ------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 树形控件／树节点（22） | “自定格式”的控件树、“自定名称／自定排序”的命令树     | TreeView／TreeNode；层级、展开折叠、选中、节点身份和同父排序；六点排序柄是节点子部件；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)、[AgentCustomization.cs](../C-01-ExcelIterate/src/addin/AgentCustomization.cs) |
-| 分区容器／分隔条（23） | “自定格式”中formatSplit的左侧控件区和右侧预览区 | SplitContainer及其分隔条；SplitterDistance、分区最小宽度、拖动后布局；与13号独立宽度拖柄分别命名；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)                                               |
+| 分区容器／分隔条（23） | “自定格式”中formatSplit的左侧控件区和右侧预览区 | SplitContainer及其分隔条；SplitterDistance、分区最小宽度、拖动后布局；与13号独立宽度拖柄分别命名；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)                                                                 |
 
 **图5：反馈与临时菜单。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-feedback-map.svg)。
 
 ![图5：反馈与临时菜单](../C-01-ExcelIterate/AB-Graphic/界面对象-反馈与临时菜单.png)
 
-| 准确称呼（对应图号）        | 实例或使用状态                      | 实现、修改范围及源码入口                                                                                                                                                                                                                 |
-| ----------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 进度条（24）           | Excel“追踪从属”的扫描进度；“追踪引用”未创建此条 | UiProgressBar／ProgressBar；进度范围、当前值、连续或不确定状态，不用于滚动内容；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)                                                                                                       |
+| 准确称呼（对应图号）        | 实例或使用状态                      | 实现、修改范围及源码入口                                                                                                                                                                                                           |
+| ----------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 进度条（24）           | Excel“追踪从属”的扫描进度；“追踪引用”未创建此条 | UiProgressBar／ProgressBar；进度范围、当前值、连续或不确定状态，不用于滚动内容；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)                                                                                                    |
 | 上下文菜单／菜单项／分隔线（25） | 追踪网格的右键复制菜单，及OCR候选单元格打开的菜单   | ContextMenuStrip／ToolStripMenuItem／ToolStripSeparator；出现位置、命令、启用状态、分组与关闭释放；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)、[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs) |
 | 悬浮提示（26）          | 合并窗按钮的说明；Word“查看链接”的摘要全文提示   | ToolTip或网格单元格提示；提示文案、关联控件、显示时机及释放；[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)、[LinkViewForm.cs](../C-02-WordUpdater/src/addin/LinkViewForm.cs)                                           |
 
@@ -520,14 +521,14 @@ LinkMap/Update/LinkView/LinkViewForm等隔离探针保留映射、更新、列�
 
 从最小“模板+配置→校验/转义→单文件HTML→浏览器交互→行为探针”开始，再接下载/音频/联合交付。site_core.render生成公共正文，template负责结构，控制器处理状态，不手改生成页；普通构建只依项目内资产，无外部CDN/fetch邻近文件。新配置先定义用户可见行为/空态与失败，再生成器校验、模板DOM接线、隔离探针、指南和正式重建。
 
-| 配置 | 接线与边界 |
-| --- | --- |
+| 配置                 | 接线与边界                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | SITE/TEXT/PRODUCTS | 品牌/文案/指南/版本；TEXT按页序拆NAV/AUDIO/HERO/PROJECTS/GUIDE/VERSIONS/DOWNLOAD_GUIDE/WORKFLOW/FUTURE/FEEDBACK/FOOTER小字典末尾合并，键对应data-text或T.xxx，改名同步DOM |
-| THEME | 校验#RRGGBB后CSS变量，action/copy/version/selected/text控制对应局部区域，default_mode仅首次默认 |
-| WORKFLOW/FUTURE | 已实现流程与讨论规划分开 |
-| DOWNLOADS | word/excel各baidu/quark，空项禁用、仅无账号密码HTTPS，可含查询提取码 |
-| DOWNLOAD_GUIDE | 站内相对PNG内嵌、alt非空、steps非空，四段标题/说明/继续/取消文案仍TEXT，缺项停止生成 |
-| FEEDBACK | 邮箱→官网HTTPS映射、新标签noopener noreferrer，无映射mailto；复制仅地址，登录发送由用户完成 |
+| THEME              | 校验#RRGGBB后CSS变量，action/copy/version/selected/text控制对应局部区域，default_mode仅首次默认                                                                 |
+| WORKFLOW/FUTURE    | 已实现流程与讨论规划分开                                                                                                                                |
+| DOWNLOADS          | word/excel各baidu/quark，空项禁用、仅无账号密码HTTPS，可含查询提取码                                                                                             |
+| DOWNLOAD_GUIDE     | 站内相对PNG内嵌、alt非空、steps非空，四段标题/说明/继续/取消文案仍TEXT，缺项停止生成                                                                                         |
+| FEEDBACK           | 邮箱→官网HTTPS映射、新标签noopener noreferrer，无映射mailto；复制仅地址，登录发送由用户完成                                                                               |
 
 文本转义、JS以JSON序列化，DOM写textContent不拼执行HTML。保持导航、六分区、指南项目切换/搜索/空态/展开、版本筛选、复制/打印/返回顶部可操作；指南用户步骤不要夹构建细节。
 

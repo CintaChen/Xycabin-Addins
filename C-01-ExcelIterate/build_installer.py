@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT.parent / "C-03-Website·Xycabin/src"))
 from build_cache import compile_cached
 
 
-# rule=R-19
+# rule=R-18
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('incremental', 'full'), default='full')

@@ -15,7 +15,7 @@ from site_core import load, render, attach_installers, embedded_snapshot, instal
 import json
 
 
-# rule=R-15
+# rule=R-23
 def main():
     passed = 0
     def check(condition, name):
@@ -137,24 +137,38 @@ def main():
             launcher=location/source.name
             launcher.write_bytes(raw)
             stub=base/'rebuild.py'
-            for failed,selected in [(failed,selected) for failed in (False,True) for selected in (("incremental","full") if not is_addin else (None,))]:
+            vstub=base/'validate.py'
+            for outcome,selected in [(outcome,selected) for outcome in ('ok','rebuild','validate') for selected in (("incremental","full") if not is_addin else (None,))]:
                 code="import sys, json\nprint('ENTRY_ARGS=' + json.dumps(sys.argv[1:]),flush=True)\nprint('完成：中文路径·安装包已经生成',flush=True)\n"
-                if failed: code+="sys.exit(1)\n"
+                if outcome=='rebuild': code+="sys.exit(1)\n"
                 else: code+="print('已请求打开安装器' if '--open-installer-only' in sys.argv else '尚未打开安装器',flush=True)\n"
                 stub.write_text(code,encoding='utf-8')
+                vcode="import sys, json\nprint('VALIDATE_ARGS=' + json.dumps(sys.argv[1:]),flush=True)\n"
+                if outcome=='validate': vcode+="sys.exit(1)\n"
+                else: vcode+="print('收尾验证通过：中文路径',flush=True)\n"
+                vstub.write_text(vcode,encoding='utf-8')
                 command=['cmd.exe','/d','/c','call',str(launcher)]
                 result=subprocess.run(command,input=((b'x2\r\n\r\n' if selected=='full' else b'1\r\n\r\n') if not is_addin else b'Y\r\n\r\n'),capture_output=True,cwd=stage,timeout=20)
                 output=(result.stdout+result.stderr).decode('utf-8','strict')
-                logs.append(str(source)+' '+('failure' if failed else 'success')+'\n'+output)
+                logs.append(str(source)+' '+outcome+'\n'+output)
+                validate_args=[line[len('VALIDATE_ARGS='):] for line in output.splitlines() if line.startswith('VALIDATE_ARGS=')]
                 if not is_addin:
                     entry_args=next(line[len('ENTRY_ARGS='):] for line in output.splitlines() if line.startswith('ENTRY_ARGS='))
-                    check(json.loads(entry_args)==['--background','--mode',selected],'website launcher mode/background '+str(failed)+' '+selected)
+                    check(json.loads(entry_args)==['--background','--mode',selected],'website launcher mode/background '+outcome+' '+selected)
+                    if outcome=='rebuild':
+                        check(not validate_args,'rebuild failure skips the closing validation '+selected)
+                    else:
+                        check([json.loads(a) for a in validate_args]==[['--background','--mode',selected]],'website validate mode/background '+outcome+' '+selected)
                     check('1.' in output and '2.' in output and '增量检查' in output and '完整验证' in output,'CMD displays both mode choices')
                     check('\\n1.' not in output,'CMD menu has real line breaks')
-                check(result.returncode==(1 if failed else 0), 'CMD preserves rebuild status '+str(index)+' '+str(failed))
-                expected='构建失败' if failed else ('安装包已经生成' if is_addin else '两个安装包已同步更新')
-                check(expected in output and '\ufffd' not in output,'CMD Chinese final prompt '+str(index)+' '+str(failed))
-                if is_addin and not failed:
+                elif outcome=='rebuild':
+                    check(not validate_args,'rebuild failure skips the closing validation')
+                else:
+                    check([json.loads(a) for a in validate_args]==[['--background']],'addin validate background '+outcome)
+                check(result.returncode==(0 if outcome=='ok' else 1), 'CMD preserves rebuild/validate status '+str(index)+' '+outcome)
+                expected={'ok':('安装包已经生成' if is_addin else '两个安装包已同步更新'),'rebuild':'构建失败','validate':'收尾验证失败'}[outcome]
+                check(expected in output and '\ufffd' not in output,'CMD Chinese final prompt '+str(index)+' '+outcome)
+                if is_addin and outcome=='ok':
                     check('现在打开安装器？[Y/N]' in output and '已请求打开安装器' in output,'CMD Y choice passes open-only argument without installing')
         (ROOT/'build').mkdir(exist_ok=True)
         (ROOT/'build/cmd-encoding-probe.log').write_text('\n'.join(logs),encoding='utf-8')
