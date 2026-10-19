@@ -30,13 +30,22 @@ SHARED_FILES = (
     'AA-Program/一键重建并打包.bat',
 )
 
-DOCS = {'A0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
+DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
         'B2-DevExperience.md', 'B3-Uphold-Discipline.md'}
 SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享维护纪律')
 
 
 def check_documents():
     """Documents live once in C-04-Devlog; projects keep no copies."""
+    agents = ROOT / 'AGENTS.md'
+    if not agents.is_file():
+        raise ValueError('缺少仓库根 AGENTS.md 指针')
+    pointer = agents.read_text(encoding='utf-8-sig')
+    if (len(pointer.encode('utf-8')) > 300 or pointer.count('](') != 1
+            or '](C-04-Devlog/B0-Entry.md)' not in pointer):
+        raise ValueError('AGENTS.md 必须只放一个指向 C-04-Devlog/B0-Entry.md 的链接')
+    if '只作指针' not in pointer or '<!--' in pointer:
+        raise ValueError('AGENTS.md 不得维护规则或包含注释')
     docs = ROOT / 'C-04-Devlog'
     actual = {p.name for p in docs.iterdir()} if docs.is_dir() else set()
     if actual != DOCS:

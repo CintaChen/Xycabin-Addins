@@ -16,7 +16,7 @@ PROGRAM_OUT = ROOT / 'AA-Program'
 DESIGN_OUT = ROOT / 'AB-Graphic'
 OUT = PROGRAM_OUT
 DOCS = ROOT.parent / 'C-04-Devlog'
-DOC_FILES = ('A0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
+DOC_FILES = ('B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
              'B2-DevExperience.md', 'B3-Uphold-Discipline.md')
 CONFIGURE_NAME = {'C-01-ExcelIterate': 'C1-Exceliterate_Configure.py',
                   'C-02-WordUpdater': 'C2-Wordupdater_Configure.py'}[ROOT.name]

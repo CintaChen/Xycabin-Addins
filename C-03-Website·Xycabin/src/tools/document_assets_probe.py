@@ -108,7 +108,7 @@ def fixture(parent):
     (docs / 'B1-Project-Files.md').write_text(B1, encoding='utf-8')
     (docs / 'B2-DevExperience.md').write_text(B2, encoding='utf-8')
     (docs / 'B3-Uphold-Discipline.md').write_text(B3, encoding='utf-8')
-    (docs / 'A0-Entry.md').write_text('# 一. 入口\n', encoding='utf-8')
+    (docs / 'B0-Entry.md').write_text('# 一. 入口\n', encoding='utf-8')
     (base / 'AA-Program/C1-Exceliterate_Configure.py').write_text('# fixture\n', encoding='utf-8')
     (base / 'AA-Program/一键重建并打包.bat').write_bytes(b'chcp 65001\r\nset PYTHONUTF8=1\r\nset PYTHONIOENCODING=utf-8\r\n')
     (base / 'AA-Program/Excel_Iterate_Setup.exe').write_text('', encoding='utf-8')

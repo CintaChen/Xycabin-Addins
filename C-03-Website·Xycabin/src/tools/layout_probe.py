@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))
 from document_assets import collect as collect_document_assets
 PROGRAM, DESIGN = 'AA-Program', 'AB-Graphic'
-DOCS = {'A0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
+DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
         'B2-DevExperience.md', 'B3-Uphold-Discipline.md'}
 DEVLOG = 'C-04-Devlog'
 CONFIGURE = {'C-01-ExcelIterate': 'C1-Exceliterate_Configure.py',
@@ -118,7 +118,7 @@ def self_test():
         (base / DESIGN / 'README.txt').write_text('', encoding='utf-8')
         docs = parent / DEVLOG
         docs.mkdir()
-        for name in ('A0-Entry.md', 'B1-Project-Files.md', 'B2-DevExperience.md', 'B3-Uphold-Discipline.md'):
+        for name in ('B0-Entry.md', 'B1-Project-Files.md', 'B2-DevExperience.md', 'B3-Uphold-Discipline.md'):
             (docs / name).write_text('# 一. 标题\n', encoding='utf-8')
         (docs / 'A-UserGuide.md').write_text('[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
         verify(parent, folders={'C-01-ExcelIterate'})

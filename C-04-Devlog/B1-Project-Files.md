@@ -15,7 +15,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [A0-Entry.md](A0-Entry.md) | 接手入口、项目关系与交付边界 |
+| [B0-Entry.md](B0-Entry.md) | 入口与阅读顺序、项目关系、交付边界 |
 | [A-UserGuide.md](A-UserGuide.md) | 三产品使用说明 |
 | B1-Project-Files.md | 本章与三个项目档案：定位、版本摘要、命令按钮、源码地图、当前状态 |
 | [B2-DevExperience.md](B2-DevExperience.md) | 共享开发经验与三个专属经验 |

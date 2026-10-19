@@ -33,9 +33,10 @@
 ├── C-03-Website·Xycabin/
 │   ├── AA-Program/        站点配置器、启动器与生成的网页
 │   └── src/               模板、控制器、资产
-├── C-04-Devlog/           唯一文档维护位置（A0、A-UserGuide、B1、B2、B3）
-├── verify_devlog.py       文档编号、锚点与版本表校验
-└── verify_shared.py       两个加载项的公共源码一致性校验
+├── C-04-Devlog/           唯一文档维护位置（B0、A-UserGuide、B1、B2、B3）
+├── verify_devlog.py       文档结构、概览、审计与规则注册表校验
+├── verify_shared.py       两个加载项的公共源码一致性校验
+└── AGENTS.md              仅指向 B0-Entry.md
 ```
 
 ## 构建

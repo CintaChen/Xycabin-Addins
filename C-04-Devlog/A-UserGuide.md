@@ -388,7 +388,7 @@
 
 　　点击“反馈 → 问题反馈”，按页面提示联系开发者。提供版本、操作步骤、错误提示和相关日志。
 
-　　开发、配置和重建请查[开发日志](B1-Project-Files.md#二-excel-iterate-项目档案)；AI 接手入口见[AGENTS.md](A0-Entry.md)。
+　　开发、配置和重建请查[开发日志](B1-Project-Files.md#二-excel-iterate-项目档案)；AI 接手入口见[B0-Entry.md](B0-Entry.md)。
 
 
 <!-- scope:excel:end -->
@@ -588,7 +588,7 @@
 
 　　点击“反馈 → 问题反馈”，打开 QQ 邮箱网页版后自行登录并发送。邮箱地址可在按钮悬停提示中查看。
 
-　　提供版本、操作步骤、错误提示和日志。运行日志在 `%LocalAppData%/WordUpdater/WordUpdater.log`。开发方法、共享维护纪律及Word专属经验请查[开发日志](B1-Project-Files.md#三-wordupdater-项目档案)；AI 接手入口见[AGENTS.md](A0-Entry.md)。
+　　提供版本、操作步骤、错误提示和日志。运行日志在 `%LocalAppData%/WordUpdater/WordUpdater.log`。开发方法、共享维护纪律及Word专属经验请查[开发日志](B1-Project-Files.md#三-wordupdater-项目档案)；AI 接手入口见[B0-Entry.md](B0-Entry.md)。
 
 
 <!-- scope:word:end -->
@@ -642,7 +642,7 @@
 
 　　“问题反馈”可打开 QQ/Gmail 邮箱官网，登录和发送由你完成；“复制邮箱”只复制地址。
 
-　　加载项的详细操作见[Excel使用说明](A-UserGuide.md#一-excel-iterate)和[Word使用说明](A-UserGuide.md#二-wordupdater)。网站配置与重建见[开发日志](B1-Project-Files.md#四-xycabin-项目档案)，AI 接手入口见[AGENTS.md](A0-Entry.md)。
+　　加载项的详细操作见[Excel使用说明](A-UserGuide.md#一-excel-iterate)和[Word使用说明](A-UserGuide.md#二-wordupdater)。网站配置与重建见[开发日志](B1-Project-Files.md#四-xycabin-项目档案)，AI 接手入口见[B0-Entry.md](B0-Entry.md)。
 
 
 <!-- scope:site:end -->

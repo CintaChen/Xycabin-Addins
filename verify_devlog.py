@@ -11,7 +11,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 DOCS = ROOT / 'C-04-Devlog'
-FILES = ('A0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
+FILES = ('B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
          'B2-DevExperience.md', 'B3-Uphold-Discipline.md')
 LIMIT = 200
 
@@ -127,8 +127,8 @@ def verify_file(path):
     errors += check_dates(text, name, required=(name == 'B1-Project-Files.md'))
     blocks = chapter_blocks(text)
 
-    if name == 'A0-Entry.md':
-        required = ('阅读顺序', '三个输出的关系', '共享与同步', '交付边界')
+    if name == 'B0-Entry.md':
+        required = ('入口与阅读顺序', '三个输出的关系', '共享与同步', '交付边界')
         missing = [item for item in required if not re.search(r'(?m)^## \d+\. ' + re.escape(item) + r'$', text)]
         if missing:
             errors.append(name + ': 缺少章节 ' + ', '.join(missing))
