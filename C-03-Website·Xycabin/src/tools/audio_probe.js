@@ -1,6 +1,6 @@
 /* Run with Node.js: isolated DOM/AudioContext doubles, no browser or playback. */
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
-const root = path.resolve(__dirname, "../.."), html = fs.readFileSync(process.argv[2] || path.join(root, "AP1-程序/XyCabin.html"), "utf8");
+const root = path.resolve(__dirname, "../.."), html = fs.readFileSync(process.argv[2] || path.join(root, "AA-Program/XyCabin.html"), "utf8");
 const data = JSON.parse(html.match(/<script id="site-data" type="application\/json">([\s\S]*?)<\/script>/)[1]);
 const source = fs.readFileSync(path.join(root, "src/site_audio.js"), "utf8");
 let checks = 0;

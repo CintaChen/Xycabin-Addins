@@ -27,20 +27,33 @@ SHARED_FILES = (
     'src/tools/SignCmi.cs', 'src/tools/TrustAdd.cs', 'src/tools/UiPreviewProbe.cs',
     'src/tools/ValidateManifest.cs', 'src/tools/ValidateXmlSig.cs',
     'validate.py', 'verify_package.py',
-    'AP3-说明/AGENTS.md', 'AP1-程序/一键重建并打包.bat',
+    'AA-Program/一键重建并打包.bat',
 )
 
+DOCS = {'A0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
+        'B2-DevExperience.md', 'B3-Uphold-Discipline.md'}
+SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享维护纪律')
 
-def shared_text(project):
-    path = project / 'AP3-说明/开发日志.md'
-    text = path.read_text(encoding='utf-8-sig')
-    start, end = '<!-- shared-wps-experience:start -->', '<!-- shared-wps-experience:end -->'
-    if text.count(start) != 1 or text.count(end) != 1 or text.index(start) >= text.index(end):
-        raise ValueError(str(path) + ': 共享规范标记必须唯一且有序')
-    block = text.split(start, 1)[1].split(end, 1)[0]
-    if not block.strip():
-        raise ValueError(str(path) + ': 共享规范不能为空')
-    return block
+
+def check_documents():
+    """Documents live once in C-04-Devlog; projects keep no copies."""
+    docs = ROOT / 'C-04-Devlog'
+    actual = {p.name for p in docs.iterdir()} if docs.is_dir() else set()
+    if actual != DOCS:
+        raise ValueError('C-04-Devlog 必须恰好包含五份文档：' + ', '.join(sorted(actual)))
+    texts = {name: (docs / name).read_text(encoding='utf-8-sig') for name in DOCS}
+    for title in SHARED_TITLES:
+        count = sum(1 for text in texts.values() for line in text.splitlines() if line.strip() == title)
+        if count != 1:
+            raise ValueError('共享章节必须只保留一份：' + title)
+    for name, text in texts.items():
+        if 'shared-wps-experience' in text:
+            raise ValueError(name + ': 旧的共享标记必须删除')
+    for project in (ROOT / 'C-01-ExcelIterate', ROOT / 'C-02-WordUpdater', ROOT / 'C-03-Website·Xycabin'):
+        for name in ('开发日志.md', '使用说明.md', 'AGENTS.md'):
+            leftovers = [p for p in project.rglob(name) if 'build' not in p.parts]
+            if leftovers:
+                raise ValueError('项目内不得保留文档副本：' + str(leftovers[0]))
 
 
 def main():
@@ -56,16 +69,18 @@ def main():
             errors.append('缺少公共文件：' + '；'.join(missing))
         elif paths[0].read_bytes() != paths[1].read_bytes():
             errors.append('公共文件内容不同：' + relative)
-    if shared_text(left) != shared_text(right):
-        errors.append('两份开发日志的共享规范文字不同')
+    try:
+        check_documents()
+    except (OSError, ValueError) as error:
+        errors.append(str(error))
     for relative in ('src/document_assets.py', 'src/site_core.py', 'src/site_template.html',
-                     'AP1-程序/Configure_Site.py'):
+                     'AA-Program/C3-XycabinSite_Configure.py'):
         path = ROOT / 'C-03-Website·Xycabin' / relative
         if not path.is_file():
             errors.append('缺少集中网站接入文件：' + str(path))
     if errors:
         raise ValueError('\n'.join(errors))
-    print('PASS: shared devlog text and %d shared files are identical' % len(SHARED_FILES))
+    print('PASS: C-04 documents and %d shared files are consistent' % len(SHARED_FILES))
 
 
 if __name__ == '__main__':

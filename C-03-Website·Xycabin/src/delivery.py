@@ -10,6 +10,7 @@ import uuid
 import time
 import threading
 import queue
+from configurators import CONFIGURE
 
 RUN_STAGES = []
 
@@ -23,9 +24,12 @@ def projects(root=ROOT):
     result = []
     for folder, assembly, host in PROJECTS:
         base = Path(root).parent / folder
-        for item in ('project.json', 'rebuild.py', 'validate.py', 'AP1-程序/Configure_program.py', 'AP3-说明/开发日志.md'):
+        for item in ('project.json', 'rebuild.py', 'validate.py', 'AA-Program/' + CONFIGURE[folder]):
             if not (base / item).is_file():
                 raise FileNotFoundError('统一重建需要两个加载项项目，缺少：' + str(base / item))
+        documented = base.parent / 'C-04-Devlog/B1-Project-Files.md'
+        if not documented.is_file():
+            raise FileNotFoundError('统一重建需要仓库根文档，缺少：' + str(documented))
         identity = json.loads((base / 'project.json').read_text(encoding='utf-8-sig'))
         if identity['assembly'] != assembly or identity['host'] != host:
             raise ValueError('加载项身份不匹配：' + str(base))
@@ -34,9 +38,14 @@ def projects(root=ROOT):
 
 
 def version(base):
-    spec = importlib.util.spec_from_file_location('_xy_program', base / 'AP1-程序/Configure_program.py')
+    spec = importlib.util.spec_from_file_location('_xy_program', base / 'AA-Program' / CONFIGURE[base.name])
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module.get_version()
 
 

@@ -12,6 +12,7 @@ import sys
 import time
 import uuid
 from document_assets import referenced_paths
+from configurators import CONFIGURE
 
 sys.dont_write_bytecode = True
 SITE = Path(__file__).resolve().parents[1]
@@ -67,13 +68,14 @@ def environment():
 def inputs(base, snapshot):
     base = Path(base).resolve()
     paths = set(base.glob('*.py')) | {base / 'project.json'}
-    for directory in ('src', 'lib', 'icons', 'AP3-说明'):
+    for directory in ('src', 'lib', 'AB-Graphic'):
         paths.update(p for p in (base / directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
-    paths.add(base / 'AP1-程序/Configure_program.py')
+    paths.update(p for p in (base.parent / 'C-04-Devlog').rglob('*.md') if p.is_file())
+    paths.add(base / 'AA-Program' / CONFIGURE[base.name])
     paths.update(referenced_paths(base))
     paths.add(base.parent / 'verify_shared.py')
     paths.update(p for p in (SITE / 'src').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
-    paths.add(SITE / 'AP1-程序/Configure_Site.py')
+    paths.add(SITE / 'AA-Program/C3-XycabinSite_Configure.py')
     values = []
     for path in sorted(paths):
         if path.suffix.lower() == '.md':

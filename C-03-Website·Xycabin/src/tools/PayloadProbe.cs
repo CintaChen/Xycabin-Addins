@@ -48,9 +48,9 @@ internal static class PayloadProbe
             XmlElement doc = child as XmlElement;
             if (doc == null || doc.Name != "document" || doc.Attributes.Count != 4) throw new Exception("Invalid document asset manifest document");
             string name = doc.GetAttribute("name"), resource = doc.GetAttribute("resource");
-            string filename = name == "Readme" ? "开发日志.md" : name == "UserGuide" ? "使用说明.md" : null;
+            string filename = name == "Readme" ? "B-Devlog.md" : name == "UserGuide" ? "A-UserGuide.md" : null;
             if (filename == null || !documents.Add(name) || resource != "WpsShared.Agent." + name + ".md"
-                || doc.GetAttribute("path") != "AP3-说明/" + filename
+                || doc.GetAttribute("path") != "C-04-Devlog/" + filename
                 || !Regex.IsMatch(doc.GetAttribute("sha256"), "^[0-9a-f]{64}$")
                 || !String.Equals(Hash(Resource(assembly, resource)), doc.GetAttribute("sha256"), StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Invalid document asset manifest identity/hash");
@@ -62,16 +62,17 @@ internal static class PayloadProbe
                     throw new Exception("Invalid document asset entry");
                 string path = asset.GetAttribute("path"), digest = asset.GetAttribute("sha256"), assetResource = asset.GetAttribute("resource");
                 string[] parts = path.Split('/'); string extension = Path.GetExtension(path).ToLowerInvariant();
-                bool allowed = parts.Length == 2 && parts[0] == "AP2-美工" && extension == ".png"
-                    || parts.Length == 3 && parts[0] == "src" && parts[1] == "documentation" && extension == ".svg";
+                bool allowed = parts.Length == 3 && parts[1] == "AB-Graphic" && (extension == ".png" || extension == ".svg")
+                    && (parts[0] == "C-01-ExcelIterate" || parts[0] == "C-02-WordUpdater" || parts[0] == "C-03-Website·Xycabin");
                 if (!allowed || path.IndexOf('\\') >= 0 || path.IndexOf(':') >= 0 || !paths.Add(path)
                     || !Regex.IsMatch(digest, "^[0-9a-f]{64}$") || assetResource != "WpsShared.Agent.Asset." + digest + extension)
                     throw new Exception("Invalid document asset path/resource");
                 foreach (string part in parts) if (part == "." || part == ".." || part.Length == 0) throw new Exception("Document asset traversal");
-                string source = Path.GetFullPath(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar)));
-                string boundary = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-                if (!source.StartsWith(boundary, StringComparison.OrdinalIgnoreCase)) throw new Exception("Document asset escapes project");
-                for (string cursor = source; !String.Equals(cursor, Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase); cursor = Path.GetDirectoryName(cursor))
+                string repo = Path.GetDirectoryName(Path.GetFullPath(root));
+                string source = Path.GetFullPath(Path.Combine(repo, path.Replace('/', Path.DirectorySeparatorChar)));
+                string boundary = repo.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                if (!source.StartsWith(boundary, StringComparison.OrdinalIgnoreCase)) throw new Exception("Document asset escapes the repository");
+                for (string cursor = source; !String.Equals(cursor, repo, StringComparison.OrdinalIgnoreCase); cursor = Path.GetDirectoryName(cursor))
                     if ((File.GetAttributes(cursor) & FileAttributes.ReparsePoint) != 0) throw new Exception("Document asset reparse point");
                 long size;
                 byte[] bytes = Resource(assembly, assetResource), current = File.ReadAllBytes(source);
@@ -118,8 +119,8 @@ internal static class PayloadProbe
                 using (Stream input = dll.GetManifestResourceStream("WpsShared.Agent." + document + ".md"))
                 {
                     if (input == null) throw new Exception("Embedded document missing: " + document);
-                    string filename = document == "Readme" ? "开发日志.md" : "使用说明.md";
-                    string expected = File.ReadAllText(Path.Combine(root, "AP3-说明", filename), Encoding.UTF8);
+                    string filename = document == "Readme" ? "ComposedReadme.md" : "ComposedUserGuide.md";
+                    string expected = File.ReadAllText(Path.Combine(root, "build", filename), Encoding.UTF8);
                     expected = Regex.Replace(expected, "<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->", "", RegexOptions.Singleline);
                     expected = expected.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
                     using (var reader = new StreamReader(input, Encoding.UTF8))

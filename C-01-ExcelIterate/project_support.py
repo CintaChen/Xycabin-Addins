@@ -1,7 +1,7 @@
 """Shared project identity, configuration loading and compiler setup.
 
 Each sibling has its own project.json and builds with the sibling C-03 website directory.
-Versions and user-facing button settings still belong to AP1-程序/Configure_program.py.
+Versions and user-facing button settings still belong to the AA-Program configurator.
 """
 from pathlib import Path
 import importlib.util
@@ -12,10 +12,15 @@ import sys
 
 ROOT = Path(__file__).resolve().parent
 BUILD = ROOT / 'build'
-PROGRAM_OUT = ROOT / 'AP1-程序'
-DOC_OUT = ROOT / 'AP3-说明'
-DESIGN_OUT = ROOT / 'AP2-美工'
+PROGRAM_OUT = ROOT / 'AA-Program'
+DESIGN_OUT = ROOT / 'AB-Graphic'
 OUT = PROGRAM_OUT
+DOCS = ROOT.parent / 'C-04-Devlog'
+DOC_FILES = ('A0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
+             'B2-DevExperience.md', 'B3-Uphold-Discipline.md')
+CONFIGURE_NAME = {'C-01-ExcelIterate': 'C1-Exceliterate_Configure.py',
+                  'C-02-WordUpdater': 'C2-Wordupdater_Configure.py'}[ROOT.name]
+DOC_OUT = DOCS
 SRC = ROOT / 'src'
 LIB = ROOT / 'lib'
 PROJECT = json.loads((ROOT / 'project.json').read_text(encoding='utf-8-sig'))
@@ -45,7 +50,7 @@ def load_configure():
     previous = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
     try:
-        spec = importlib.util.spec_from_file_location('_wps_configuration', OUT / 'Configure_program.py')
+        spec = importlib.util.spec_from_file_location('_wps_configuration', OUT / CONFIGURE_NAME)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
@@ -87,11 +92,18 @@ SITE_ROOT = ROOT.parent / 'C-03-Website·Xycabin'
 
 def load_site():
     """The website source must exist; generated previews are never a fallback."""
-    for rel in ('AP1-程序/Configure_Site.py', 'src/site_core.py', 'src/site_template.html', 'src/tools/site_probe.py', 'src/tools/layout_probe.py', 'AP3-说明/开发日志.md', 'AP3-说明/AGENTS.md', 'AP3-说明/使用说明.md'):
+    for rel in ('AA-Program/C3-XycabinSite_Configure.py', 'src/site_core.py', 'src/site_template.html',
+                'src/tools/site_probe.py', 'src/tools/layout_probe.py'):
         if not (SITE_ROOT / rel).is_file():
             raise FileNotFoundError('缺少集中网站目录文件，请与加载项一起携带 C-03-Website·Xycabin：' + str(SITE_ROOT / rel))
+    for name in DOC_FILES:
+        if not (DOCS / name).is_file():
+            raise FileNotFoundError('缺少集中文档，请携带仓库根 C-04-Devlog：' + str(DOCS / name))
     spec = importlib.util.spec_from_file_location('_xy_site_core', SITE_ROOT / 'src/site_core.py')
     module = importlib.util.module_from_spec(spec)
+    site_src = str(SITE_ROOT / 'src')
+    if site_src not in sys.path:
+        sys.path.insert(0, site_src)
     spec.loader.exec_module(module)
     return module
 

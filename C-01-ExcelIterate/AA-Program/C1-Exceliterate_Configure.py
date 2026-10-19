@@ -1,16 +1,16 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-Configure_program.py —— 「Excel-iterate」按钮集中配置生成器
+C1-Exceliterate_Configure.py —— 「Excel-iterate」按钮集中配置生成器
 
 一、完整流程（就三步）
 ==============================================================================
 
   ① 在本文件顶部「按钮配置区」改好内容，然后运行本脚本
-         python AP1-程序\\Configure_program.py
+         python AA-Program\\C1-Exceliterate_Configure.py
      想换自定义图标的话，把图丢进项目根的 icons\\ 目录（可选）。
      注意：这一步只是"改配置 + 生成源码"，做完 WPS 里不会有任何变化。
 
-  ② 双击 AP1-程序\\一键重建并打包.bat
+  ② 双击 AA-Program\\一键重建并打包.bat
      编译 DLL、给两份清单签名、重新打包安装器，全自动。
      它自己也会跑一次第 ① 步，所以第 ① 步其实是可选的 —— 先单独跑的
      好处是能立刻发现配置写没写错。批处理完成后提示你自行保存文档并完全退出 WPS，
@@ -18,7 +18,7 @@ Configure_program.py —— 「Excel-iterate」按钮集中配置生成器
 
   ③ 让它在 WPS 里生效（这步手动执行）
        1) 保存文档并完全退出 WPS 表格，避免已加载的 DLL 占用安装目录
-       2) 运行 AP1-程序\\Excel_Iterate_Setup.exe，点「安装」；安装目录会回填上次的位置
+       2) 运行 AA-Program\\Excel_Iterate_Setup.exe，点「安装」；安装目录会回填上次的位置
        3) 安装器先检查 VSTO Runtime；缺少运行时时停止并显示解决说明，
           安装官方运行时后重新打开安装器，不以写入白名单替代运行时安装
        4) 安装器在本次安装过程中调用「Microsoft Office 自定义项安装程序」
@@ -72,7 +72,7 @@ TAB_INSERT_BEFORE_MSO = None
 TAB_ID_MSO = None
 
 # --- 自定义图标目录（相对项目根；改标点的话连带把图搬过去）---
-ICON_DIR = "icons"
+ICON_DIR = "AB-Graphic"
 
 # --- 图片透明区域的合成底色 ---
 #   WPS 功能区按钮只接收 HBITMAP，不支持真透明通道；带透明像素的 PNG 会先把
@@ -491,7 +491,7 @@ INSTALLER_FEATURE_TEXT = (
 #   例：下次想新增一个选项，直接在下面追加一行即可，无须改 C# 代码：
 #       ("XX", "https://……"),
 #
-# 注意：改完要重跑 python Configure_program.py，再 python build.py 重新编译，
+# 注意：改完要重跑 python C1-Exceliterate_Configure.py，再 python build.py 重新编译，
 #       网址会生成进 src/addin/ApiPlatforms.g.cs 并随 DLL 一起签名打包。
 API_PLATFORMS = [
     ("百度智能云", "https://cloud.baidu.com/product-s/qianfan_home"),

@@ -7,7 +7,7 @@
 
 <!-- agent-overview:start -->
 
-本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、维护纪律五类；版本 0.9.9.1，构建不安装或操作用户 WPS。
+本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、维护纪律五类。加载项主选项卡的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。版本 0.9.9.1，构建不安装或操作用户 WPS。
 
 <!-- agent-overview:end -->
 

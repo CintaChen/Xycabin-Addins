@@ -60,7 +60,7 @@ def main():
         check(target_a.read_bytes()==b'old-a', 'prepare failure does not replace an existing output')
         check(not list(stage.rglob('.xycabin-*')), 'prepare failure removes its partial temporary file')
         # Installer-free DLL pages and full download pages share every other byte.
-        config=vars(load(ROOT/'AP1-程序/Configure_Site.py'));versions={p['id']:p['version'] for p in config['PRODUCTS']}
+        config=vars(load(ROOT/'AA-Program/C3-XycabinSite_Configure.py'));versions={p['id']:p['version'] for p in config['PRODUCTS']}
         canonical=render(config,ROOT)
         word=stage/'WordUpdater_Setup.exe';excel=stage/'Excel_Iterate_Setup.exe'
         word.write_bytes(b'MZ-new-word');excel.write_bytes(b'MZ-new-excel')
@@ -105,7 +105,7 @@ def main():
         preview_site=stage/'预览来源/C-03-Website·Xycabin';(preview_site/'build').mkdir(parents=True)
         eligible={}
         for identity,folder,source in [('word','C-02-WordUpdater',word),('excel','C-01-ExcelIterate',excel)]:
-            path=preview_site.parent/folder/'AP1-程序'/source.name;path.parent.mkdir(parents=True);path.write_bytes(source.read_bytes())
+            path=preview_site.parent/folder/'AA-Program'/source.name;path.parent.mkdir(parents=True);path.write_bytes(source.read_bytes())
             eligible[identity]=path
         check(not preview_installers(preview_site,canonical),'standalone preview does not embed packages without verified delivery record')
         record=fingerprints(eligible.values())
@@ -122,7 +122,7 @@ def main():
             check('统一重建需要两个加载项' in str(error), 'missing project preflight has an actionable error')
 
         # The real cmd.exe reads real copied launchers; the Python stub has no install/UI effects.
-        launchers = [(ROOT/'AP1-程序/一键重建并打包.bat',False)] + [(ROOT.parent/folder/'AP1-程序/一键重建并打包.bat',True)
+        launchers = [(ROOT/'AA-Program/一键重建并打包.bat',False)] + [(ROOT.parent/folder/'AA-Program/一键重建并打包.bat',True)
                     for folder in ('C-01-ExcelIterate','C-02-WordUpdater')]
         logs=[]
         for index,(source,is_addin) in enumerate(launchers):
@@ -131,7 +131,7 @@ def main():
                   and b'PYTHONIOENCODING=utf-8' in raw and b'PYTHONUTF8=1' in raw,
                   'UTF-8/CRLF launcher contract '+source.parent.name)
             base=stage/('入口'+str(index)); base.mkdir()
-            location=base/'AP1-程序'
+            location=base/'AA-Program'
             location.mkdir(exist_ok=True)
             launcher=location/source.name
             launcher.write_bytes(raw)

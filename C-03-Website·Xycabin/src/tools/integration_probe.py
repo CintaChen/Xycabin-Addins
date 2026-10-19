@@ -41,28 +41,29 @@ def main():
         print('Isolated workspace: '+str(stage),flush=True)
         for folder in ('C-01-ExcelIterate','C-02-WordUpdater'):
             source=ROOT.parent/folder; target=stage/folder;target.mkdir()
-            for directory in ('src','lib','icons'):
+            for directory in ('src','lib'):
                 shutil.copytree(source/directory,target/directory,ignore=shutil.ignore_patterns('__pycache__'))
             for file in list(source.glob('*.py'))+[source/'project.json']:
                 shutil.copy2(file,target/file.name)
-            for directory in ('AP1-程序','AP3-说明','AP2-美工'):
+            for directory in ('AA-Program','AB-Graphic'):
                 shutil.copytree(source/directory,target/directory)
         website=stage/ROOT.name; website.mkdir()
         shutil.copytree(ROOT/'src',website/'src',ignore=shutil.ignore_patterns('__pycache__'))
         for file in ROOT.glob('*.py'):
             shutil.copy2(file,website/file.name)
-        for directory in ('AP1-程序','AP3-说明','AP2-美工'):
+        for directory in ('AA-Program','AB-Graphic'):
             shutil.copytree(ROOT/directory,website/directory)
         shutil.copy2(ROOT.parent/'verify_shared.py',stage/'verify_shared.py')
-        config=website/'AP1-程序/Configure_Site.py'
+        shutil.copytree(ROOT.parent/'C-04-Devlog',stage/'C-04-Devlog')
+        config=website/'AA-Program/C3-XycabinSite_Configure.py'
         text=config.read_text(encoding='utf-8')
         assert '"title": "XyCabin"' in text
         config.write_text(text.replace('"title": "XyCabin"','"title": "统一来源隔离验证"',1),encoding='utf-8',newline='\r\n')
-        setups=[stage/'C-01-ExcelIterate/AP1-程序/Excel_Iterate_Setup.exe',stage/'C-02-WordUpdater/AP1-程序/WordUpdater_Setup.exe']
+        setups=[stage/'C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe',stage/'C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe']
         originals=[digest(p) for p in setups]
         run(website/'rebuild.py',['--background'])
         check(all(digest(p)!=old for p,old in zip(setups,originals)),'one website edit updates both real EXE packages')
-        previews=[website/'AP1-程序/XyCabin.html']
+        previews=[website/'AA-Program/XyCabin.html']
         check(all(not (p.parent/'XyCabin.html').exists() for p in setups), 'add-ins have no delivered HTML copies')
         check(all(not (stage/f/'输出').exists() for f in ('C-01-ExcelIterate','C-02-WordUpdater',ROOT.name)), 'unified rebuild preserves the new three-part layout')
         check('统一来源隔离验证' in previews[0].read_text(encoding='utf-8'),'central custom text appears in delivered website')
@@ -97,7 +98,7 @@ def main():
         check(all(digest(p)==old for p,old in before.items()),'missing website retains formal outputs')
         # Project-specific configuration avoids the shared-source gate rejecting
         # the injected fault before the real first project has finished staging.
-        failing=stage/'C-02-WordUpdater/AP1-程序/Configure_program.py';saved=failing.read_bytes()
+        failing=stage/'C-02-WordUpdater/AA-Program/C2-Wordupdater_Configure.py';saved=failing.read_bytes()
         text=failing.read_text(encoding='utf-8-sig')
         match = re.search(r'SIGNING_CERT_THUMBPRINT\s*=\s*"([A-Fa-f0-9]{40})"', text)
         if match is None:

@@ -62,14 +62,14 @@ def collect(parent):
  return files,opaque
 
 def document_input_paths(files):
- return {asset for base in {base for _,base in files} if base.name in NAMES[:2] and all((base/'AP3-说明'/name).is_file() for name in ('开发日志.md','使用说明.md')) for asset in referenced_paths(base)}
+ return {asset for base in {base for _,base in files} if base.name in NAMES[:2] and (base.parent/'C-04-Devlog/B1-Project-Files.md').is_file() for asset in referenced_paths(base)}
 
 def input_file(path,base,document_paths=None):
  rel=path.relative_to(base)
- if rel.parts[0]=='AP2-美工' and path.suffix.lower()=='.png' and base.name in NAMES[:2]:
+ if rel.parts[0]=='AB-Graphic' and path.suffix.lower() in ('.png','.svg') and base.name in NAMES[:2]:
   if document_paths is None:document_paths=set(referenced_paths(base))
   if path.resolve() in document_paths:return True
- return rel.parts[0] in ('src','lib','icons','AP3-说明') or (len(rel.parts)==1 and path.suffix.lower() in ('.py','.json')) or (rel.parts[0]=='AP1-程序' and path.suffix.lower() in ('.py','.bat')) or path.suffix.lower() in SECRET
+ return rel.parts[0] in ('src','lib') or (len(rel.parts)==1 and path.suffix.lower() in ('.py','.json')) or (rel.parts[0]=='AA-Program' and path.suffix.lower() in ('.py','.bat')) or path.suffix.lower() in SECRET
 
 def references(files):
  # Positive references protect files; absence is never deletion authorization.
@@ -91,9 +91,9 @@ def references(files):
    for value in config.get('sources',[]):add(base/'src/addin'/value,path)
    for tool in config.get('tools',[]):add(base/tool['source'],path);add(base/'build'/(tool['name']+'.exe'),path)
  for base in {base for _,base in files}:
-  if base.name not in NAMES[:2] or not all((base/'AP3-说明'/name).is_file() for name in ('开发日志.md','使用说明.md')):continue
+  if base.name not in NAMES[:2] or not (base.parent/'C-04-Devlog/B1-Project-Files.md').is_file():continue
   for document in collect_document_assets(base)['documents']:
-   for asset in document['assets']:add(asset['source'],base/document['path'])
+   for asset in document['assets']:add(asset['source'],base.parent/document['path'])
  return refs
 
 def lifecycle(path,base):
@@ -191,7 +191,7 @@ def scan(parent):
   elif input_file(path,base,document_paths):category,reason=INPUT,'现行源码、配置、文档、依赖或签名资料'
   elif any('recovery' in part.casefold() for part in rel.parts) or path.name.startswith(('.EI_Operation_', '.EI_Link_')):category,reason=EVIDENCE,'可能仍用于恢复；未核验还原完成及确认，不参与历史清理'
   elif uses:category,reason=(EVIDENCE if path.suffix.lower() in ('.log','.json','.txt','.png') else PRODUCT),'现行源码或文档存在引用'
-  elif rel.parts[0] in ('AP1-程序','AP2-美工'):category,reason=PRODUCT,'正式交付分区中的当前文件'
+  elif rel.parts[0] in ('AA-Program','AB-Graphic'):category,reason=PRODUCT,'正式交付分区中的当前文件'
   elif path.name in CURRENT_LOGS or re.fullmatch(r'(?:Excel_Iterate|WordUpdater)-(?:rebuild|validation|payload|ui-validation)\.log',path.name):category,reason=EVIDENCE,'现行验证或交付记录'
   elif old:category,reason=HISTORY,old[1]
   elif rel.parts[0]=='build' and (path.suffix.lower() in ('.dll','.vsto','.manifest') or path.name in tools[base.name] or path.name=='InstallerAssemblyInfo.g.cs'):category,reason=PRODUCT,'当前编译载荷或现行工具'

@@ -428,7 +428,7 @@ partial class Feature099Probe
             Check(controls.OfType<WidthGrip>().Count()==9,"every editable input carries a width grip");
             var jump=controls.OfType<RoundedButton>().Single(b=>b.Name=="apiPlatformJump");
             Check(jump.Text=="跳转到API平台"&&jump.Font.Bold,"api platform entry point in the OCR row");
-            Check(ApiPlatforms.Names.SequenceEqual(new[]{"百度智能云","阿里云平台","未来计划"})&&ApiPlatforms.Urls[0].StartsWith("https://cloud.baidu.com/product-s/")&&ApiPlatforms.Urls[2]=="","platform options and placeholder come from Configure_program");
+            Check(ApiPlatforms.Names.SequenceEqual(new[]{"百度智能云","阿里云平台","未来计划"})&&ApiPlatforms.Urls[0].StartsWith("https://cloud.baidu.com/product-s/")&&ApiPlatforms.Urls[2]=="","platform options and placeholder come from the AA-Program configurator");
             using(var chooser=new ApiPlatformDialog()) {
                 var buttons=DialogFormatting.Walk(chooser).OfType<RoundedButton>().ToList();
                 Check(buttons.Count==4&&buttons[0].Text=="百度智能云"&&buttons[0].Enabled&&buttons[1].Enabled,"configured platforms open in the chooser");

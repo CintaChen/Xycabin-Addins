@@ -19,7 +19,7 @@ namespace WpsShared.Tools
     //
     // 用法：build\RibbonProbe.exe build\<程序集名>.dll
     //
-    // 不改 Configure_program.py 的配置区也能看看：
+    // 不改 AA-Program 配置器的配置区也能看看：
     //   1. 生成出来的功能区 XML 长什么样（选项卡/分组/按钮/提示文案）
     //   2. 每个按钮最终会用什么图标（自定义图 -> IPictureDisp，还是内置矢量图标）
     //   3. action="url" 的按钮最终会打开哪个地址
@@ -262,7 +262,7 @@ namespace WpsShared.Tools
                 string[] defaults = { "OnWrapIFError", "OnWrapRound" }, custom = { "OnCustomIFError", "OnCustomRound" };
                 for (int i = 0; i < labels.Length; i++)
                 {
-                    // Sibling order belongs to Configure_program.py; validate identity and wiring independently.
+                    // Sibling order belongs to 配置器脚本; validate identity and wiring independently.
                     XmlElement function = (XmlElement)wrapping.SelectSingleNode("r:menu[@id='" + functionIds[i] + "']", ns);
                     Assert(function != null && function.GetAttribute("label") == labels[i] && function.ChildNodes.Count == 2, "Function submenu " + labels[i]);
                     XmlElement standard = (XmlElement)function.ChildNodes[0], editor = (XmlElement)function.ChildNodes[1];

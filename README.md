@@ -25,16 +25,17 @@
 ```
 .
 ├── C-01-ExcelIterate/
-│   ├── AP1-程序/          配置、打包与签名入口
-│   ├── AP2-美工/          界面截图（供文档引用）
-│   ├── AP3-说明/          AGENTS.md、使用说明.md、开发日志.md
+│   ├── AA-Program/        配置器、启动器与安装包
+│   ├── AB-Graphic/        界面截图、功能区图标与示意 SVG
 │   ├── src/               源码
 │   └── lib/               微软版权互操作程序集（未入库）
 ├── C-02-WordUpdater/      结构同上
 ├── C-03-Website·Xycabin/
-│   ├── AP1-程序/          站点配置与构建入口
+│   ├── AA-Program/        站点配置器、启动器与生成的网页
 │   └── src/               模板、控制器、资产
-└── verify_shared.py       跨项目文档一致性校验
+├── C-04-Devlog/           唯一文档维护位置（A0、A-UserGuide、B1、B2、B3）
+├── verify_devlog.py       文档编号、锚点与版本表校验
+└── verify_shared.py       两个加载项的公共源码一致性校验
 ```
 
 ## 构建
@@ -68,17 +69,17 @@ python C-02-WordUpdater/rebuild.py --mode full
 python C-03-Website·Xycabin/rebuild.py
 ```
 
-或双击各项目 `AP1-程序/` 下的 `一键重建并打包.bat`。
+或双击各项目 `AA-Program/` 下的 `一键重建并打包.bat`。
 
 完整重建依次执行：写入配置 → 编译 → 生成并签名清单 → 封装安装包 → 校验。`--mode incremental` 会复用 `build/incremental-cache/` 中的编译缓存。
 
 ### 关于代码签名
 
-完整重建的最后阶段会使用 Authenticode 证书为 DLL、应用清单与部署清单签名。签名身份由 `AP1-程序/Configure_program.py` 中的 `SIGNING_CERT_THUMBPRINT` 决定。
+完整重建的最后阶段会使用 Authenticode 证书为 DLL、应用清单与部署清单签名。签名身份由各项目 `AA-Program` 下的配置器决定：Excel-Iterate 为 `C1-Exceliterate_Configure.py`，WordUpdater 为 `C2-Wordupdater_Configure.py`，其中的 `SIGNING_CERT_THUMBPRINT` 是唯一来源。
 
 **自行构建时，该指纹指向的证书在你的机器上并不存在，签名步骤会失败。** 有两种处理方式：
 
-1. 在 `Configure_program.py` 中将 `SIGNING_CERT_THUMBPRINT` 改为你自有证书的指纹，并确保证书位于当前用户的个人证书存储区且带私钥；
+1. 在对应项目的配置器中将 `SIGNING_CERT_THUMBPRINT` 改为你自有证书的指纹，并确保证书位于当前用户的个人证书存储区且带私钥；
 2. 跳过完整重建，改用 `build.py` 编译出 DLL，再手动安装 VSTO 加载项用于开发调试。
 
 原项目的发布证书为自签名证书，未加入任何公共信任根。因此安装官方构建的安装包时，Windows 会提示「未知的发行者」，这属于预期行为。
@@ -90,8 +91,8 @@ python C-03-Website·Xycabin/rebuild.py
 | `build/`、`stage/` | 构建快照与中间产物，体积可达数百 MB，可由源码重建 |
 | `.workbuddy/` | AI 辅助开发的工作记录，含本机路径与过程性内容 |
 | `**/lib/*.dll` | 微软版权程序集，再分发受许可限制 |
-| `AP1-程序/*_Setup.exe` | 发布产物，通过 Releases 分发 |
-| `C-03-Website·Xycabin/AP1-程序/XyCabin.html` | 由模板渲染生成的产物 |
+| `AA-Program/*_Setup.exe` | 发布产物，通过 Releases 分发 |
+| `C-03-Website·Xycabin/AA-Program/XyCabin.html` | 由模板渲染生成的产物 |
 | `*.cer`、`*.pfx`、`*.snk` | 证书与私钥材料 |
 
 ## 免责声明

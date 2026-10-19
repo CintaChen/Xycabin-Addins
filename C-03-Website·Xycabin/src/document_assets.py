@@ -10,17 +10,70 @@ import zlib
 from urllib.parse import unquote, urlsplit
 
 MANIFEST_RESOURCE = 'WpsShared.Agent.Assets.xml'
-DOCUMENTS = (('Readme', '开发日志.md'), ('UserGuide', '使用说明.md'))
+DEVLOG_DIR = 'C-04-Devlog'
+DOCUMENTS = (('UserGuide', 'A-UserGuide.md'), ('Readme', 'B-Devlog.md'))
+SOURCES = {'guide': 'A-UserGuide.md', 'b1': 'B1-Project-Files.md',
+           'b2': 'B2-DevExperience.md', 'b3': 'B3-Uphold-Discipline.md'}
+SCOPES = {'C-01-ExcelIterate': 'excel', 'C-02-WordUpdater': 'word', 'C-03-Website·Xycabin': 'site'}
+SCOPE_MARK = re.compile(r'<!--\s*scope:([a-z]+):(start|end)\s*-->')
 AUDIT_START, AUDIT_END = '<!-- delivery-audit:start -->', '<!-- delivery-audit:end -->'
 
 
-def document_text(path):
-    text = Path(path).read_text(encoding='utf-8-sig')
+def select_scopes(text, allowed):
+    """Keep shared and requested project scopes; drop the other projects' chapters."""
+    allowed = set(allowed) | {'shared'}
+    out, stack = [], []
+    for line in text.splitlines():
+        mark = SCOPE_MARK.search(line)
+        if mark:
+            if mark.group(2) == 'start':
+                stack.append(mark.group(1))
+            elif stack:
+                stack.pop()
+            continue
+        if all(scope in allowed for scope in stack):
+            out.append(line)
+    return '\n'.join(out)
+
+
+def strip_title(text):
+    lines = text.splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if lines and lines[0].startswith('**') and lines[0].rstrip().endswith('**'):
+        lines.pop(0)
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    return '\n'.join(lines)
+
+
+def project_documents(project):
+    """Compose the two embedded documents from the single C-04 source."""
+    project = Path(project).resolve()
+    root = project.parent
+    key = SCOPES[project.name]
+
+    def read(name):
+        return (root / DEVLOG_DIR / name).read_text(encoding='utf-8-sig').replace('\r\n', '\n')
+
+    guide = select_scopes(read(SOURCES['guide']), {key})
+    parts = [select_scopes(read(SOURCES['b1']), {'shared', key})]
+    for source in ('b2', 'b3'):
+        parts.append(strip_title(select_scopes(read(SOURCES[source]), {'shared', key})))
+    readme = '\n\n'.join(part.strip('\n') for part in parts if part.strip())
+    return {'UserGuide': guide, 'Readme': readme}
+
+
+def normalize_text(text):
     if AUDIT_START in text or AUDIT_END in text:
         if text.count(AUDIT_START) != 1 or text.count(AUDIT_END) != 1 or text.index(AUDIT_START) > text.index(AUDIT_END):
-            raise ValueError(str(path) + ': 交付审计标记必须唯一、有序')
+            raise ValueError('交付审计标记必须唯一、有序')
         text = re.sub(re.escape(AUDIT_START) + r'.*?' + re.escape(AUDIT_END), '', text, flags=re.S)
     return text
+
+
+def document_text(path):
+    return normalize_text(Path(path).read_text(encoding='utf-8-sig'))
 
 
 def normalize_document(path):
@@ -105,7 +158,7 @@ def markdown_targets(text):
         i = j
 
 
-def _regular_asset(base, target):
+def _regular_asset(root, docs, target):
     parts = urlsplit(target)
     suffix = Path(unquote(parts.path)).suffix.lower()
     if suffix not in ('.png', '.svg'): return None
@@ -115,21 +168,22 @@ def _regular_asset(base, target):
     relative = unquote(parts.path)
     if Path(relative).is_absolute() or PureWindowsPath(relative).is_absolute() or relative.startswith(('\\', '/')):
         raise ValueError('文档图片路径不得为绝对路径：' + target)
-    candidate = Path(os.path.abspath(base / 'AP3-说明' / relative))
+    candidate = Path(os.path.abspath(docs / relative))
     resolved = candidate.resolve()
-    if not resolved.is_relative_to(base): raise ValueError('文档图片路径越出项目：' + target)
-    rel = resolved.relative_to(base)
-    allowed = (len(rel.parts) == 2 and rel.parts[0] == 'AP2-美工' and suffix == '.png') or (len(rel.parts) == 3 and rel.parts[:2] == ('src', 'documentation') and suffix == '.svg')
-    if not allowed: raise ValueError('文档资产只允许 AP2 PNG 或 src/documentation 示意SVG：' + target)
+    if not resolved.is_relative_to(root): raise ValueError('文档图片路径越出仓库：' + target)
+    rel = resolved.relative_to(root)
+    allowed = (len(rel.parts) == 3 and rel.parts[0] in SCOPES
+               and rel.parts[1] == 'AB-Graphic' and suffix in ('.png', '.svg'))
+    if not allowed: raise ValueError('文档资产只允许各项目 AB-Graphic 的 PNG 或 SVG：' + target)
     if not candidate.is_file(): raise FileNotFoundError('文档图片缺失：' + str(candidate))
     cursor = candidate
     while True:
         info = cursor.lstat()
         if cursor.is_symlink() or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
             raise ValueError('文档图片路径含重解析点：' + str(cursor))
-        if cursor == base: break
+        if cursor == root: break
         cursor = cursor.parent
-        if not cursor.is_relative_to(base): raise ValueError('文档图片路径越出项目：' + target)
+        if not cursor.is_relative_to(root): raise ValueError('文档图片路径越出仓库：' + target)
     return resolved
 
 
@@ -204,16 +258,18 @@ def validate_svg(content):
 
 
 def collect(base):
-    base = Path(base).resolve(); documents, by_resource = [], {}
+    base = Path(base).resolve(); root = base.parent
+    docs = root / DEVLOG_DIR
+    texts = project_documents(base)
+    documents, by_resource = [], {}
     for name, filename in DOCUMENTS:
-        source = base / 'AP3-说明' / filename
-        text = document_text(source)
+        text = normalize_text(texts[name])
         content = text.replace('\n', os.linesep).encode('utf-8')
         paths = {}
         for target in markdown_targets(text):
-            path = _regular_asset(base, target)
+            path = _regular_asset(root, docs, target)
             if path is None: continue
-            relative = path.relative_to(base).as_posix()
+            relative = path.relative_to(root).as_posix()
             if relative.casefold() in paths: continue
             raw = path.read_bytes(); suffix = path.suffix.lower()
             try: validate_png(raw) if suffix == '.png' else validate_svg(raw)
@@ -223,7 +279,7 @@ def collect(base):
             paths[relative.casefold()] = asset
             existing = by_resource.setdefault(asset['resource'], asset)
             if existing['content'] != raw: raise ValueError('文档资源摘要冲突')
-        documents.append({'name': name, 'resource': 'WpsShared.Agent.' + name + '.md', 'path': 'AP3-说明/' + filename, 'sha256': hashlib.sha256(content).hexdigest(), 'content': content, 'assets': sorted(paths.values(), key=lambda item: item['path'])})
+        documents.append({'name': name, 'resource': 'WpsShared.Agent.' + name + '.md', 'path': DEVLOG_DIR + '/' + filename, 'sha256': hashlib.sha256(content).hexdigest(), 'content': content, 'assets': sorted(paths.values(), key=lambda item: item['path'])})
     return {'documents': documents, 'assets': sorted(by_resource.values(), key=lambda item: item['resource'])}
 
 

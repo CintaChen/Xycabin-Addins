@@ -395,7 +395,7 @@ namespace Excel_Iterate
         }
     }
     // Chooser window behind 跳转到API平台. Options and URLs come from ApiPlatforms
-    // (Configure_program.py -> ApiPlatforms.g.cs); an empty URL renders a disabled row.
+    // (配置器脚本 -> ApiPlatforms.g.cs); an empty URL renders a disabled row.
     internal sealed class ApiPlatformDialog:Form {
         internal ApiPlatformDialog() {
             Text="跳转到API平台";FormBorderStyle=FormBorderStyle.FixedDialog;MinimizeBox=MaximizeBox=false;ShowInTaskbar=false;StartPosition=FormStartPosition.CenterParent;AutoSize=true;AutoSizeMode=AutoSizeMode.GrowAndShrink;

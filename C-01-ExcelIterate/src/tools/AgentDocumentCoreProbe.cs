@@ -56,8 +56,8 @@ internal static class AgentDocumentCoreProbe
     { return Path.Combine(bundle, relative.Replace('/', Path.DirectorySeparatorChar)); }
     private sealed class Sample
     {
-        internal const string Png = "AP2-美工/图像 样例.png", Svg = "src/documentation/图例 测试.svg";
-        internal string Developer = "# 开发\r\n![插图](<../AP2-美工/图像 样例.png>)\r\n[矢量](<../src/documentation/图例 测试.svg>)\r\n";
+        internal const string Png = "C-01-ExcelIterate/AB-Graphic/图像 样例.png", Svg = "C-01-ExcelIterate/AB-Graphic/图例 测试.svg";
+        internal string Developer = "# 开发\r\n![插图](<../C-01-ExcelIterate/AB-Graphic/图像 样例.png>)\r\n[矢量](<../C-01-ExcelIterate/AB-Graphic/图例 测试.svg>)\r\n";
         internal readonly string Guide = "# 用户\r\n仅用户说明\r\n";
         internal readonly Dictionary<string, byte[]> Resources = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         internal readonly XmlDocument Manifest = new XmlDocument();
@@ -67,9 +67,9 @@ internal static class AgentDocumentCoreProbe
             using (var bitmap = new Bitmap(3, 2))
             using (var memory = new MemoryStream()) { bitmap.SetPixel(0, 0, Color.FromArgb(color, 42, 90)); bitmap.Save(memory, ImageFormat.Png); png = memory.ToArray(); }
             Manifest.AppendChild(Manifest.CreateElement("documentAssets")); Manifest.DocumentElement.SetAttribute("version", "1");
-            XmlElement developer = Document("Readme", Developer, "AP3-说明/开发日志.md");
+            XmlElement developer = Document("Readme", Developer, "C-04-Devlog/B-Devlog.md");
             Asset(developer, Png, png); Asset(developer, Svg, Utf8("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"3\" height=\"2\"><path d=\"M0 0L3 2\"/></svg>"));
-            Document("UserGuide", Guide, "AP3-说明/使用说明.md");
+            Document("UserGuide", Guide, "C-04-Devlog/A-UserGuide.md");
         }
         private XmlElement Document(string name, string text, string path)
         {
@@ -127,10 +127,10 @@ internal static class AgentDocumentCoreProbe
         string guide = (string)Invoke("ExportDocumentBundle", "CoreFixture", true, sample.Guide, sample.Bytes,
             new Func<string, byte[]>(name => { reads.Add(name); return sample.Read(name); }));
         Check(reads.Count == 1 && reads[0] == "WpsShared.Agent.UserGuide.md", "guide export never reads developer Markdown or developer assets");
-        Check(!File.Exists(Path.Combine(Bundle(guide), "AP3-说明", "开发日志.md")) && !Directory.Exists(Path.Combine(Bundle(guide), "AP2-美工")), "guide package does not leak developer files or assets");
+        Check(!File.Exists(Path.Combine(Bundle(guide), "C-04-Devlog", "B-Devlog.md")), "guide package does not leak developer files or assets");
         var examples = new Sample(12);
         foreach (XmlNode node in examples.Manifest.SelectNodes("//asset")) node.ParentNode.RemoveChild(node);
-        examples.SetDeveloper("# 示例\r\n<!--![图](../AP2-美工/缺失.png)-->\r\n`[代码](../AP2-美工/缺失.png)`\r\n```md\r\n![围栏](../AP2-美工/缺失.png)\r\n```\r\n\r\n    [缩进](../AP2-美工/缺失.png)\r\n");
+        examples.SetDeveloper("# 示例\r\n<!--![图](../C-01-ExcelIterate/AB-Graphic/缺失.png)-->\r\n`[代码](../C-01-ExcelIterate/AB-Graphic/缺失.png)`\r\n```md\r\n![围栏](../C-01-ExcelIterate/AB-Graphic/缺失.png)\r\n```\r\n\r\n    [缩进](../C-01-ExcelIterate/AB-Graphic/缺失.png)\r\n");
         Check(File.Exists(Export(examples, false)), "comment, code-span, fence and indented examples do not require image resources");
 
         string cache = (string)files.GetField("CacheRoot", All).GetValue(null);
@@ -150,7 +150,7 @@ internal static class AgentDocumentCoreProbe
         var badSvg = new Sample(12); badSvg.Set((XmlElement)badSvg.Manifest.SelectSingleNode("//asset[contains(@path,'.svg')]"), Sample.Svg,
             Utf8("<!DOCTYPE svg [<!ENTITY x SYSTEM 'file:///never-read'>]><svg xmlns=\"http://www.w3.org/2000/svg\">&x;</svg>"));
         Reject(() => Export(badSvg, false), "SVG DTD and external entity are prohibited");
-        foreach (string invalid in new[] { "../outside.png", "C:/outside.png", "/AP2-美工/x.png", "AP2-美工/../x.png", "AP2-美工\\x.png", "AP2-美工//x.png", "src/x.svg", "AP2-美工/x.png?query" })
+        foreach (string invalid in new[] { "../outside.png", "C:/outside.png", "/C-01-ExcelIterate/AB-Graphic/x.png", "C-01-ExcelIterate/AB-Graphic/../x.png", "C-01-ExcelIterate\\AB-Graphic\\x.png", "C-01-ExcelIterate/AB-Graphic//x.png", "src/x.svg", "C-01-ExcelIterate/AB-Graphic/x.png?query", "AB-Graphic/x.png", "C-09-Unknown/AB-Graphic/x.png" })
         {
             var bad = new Sample(12); bad.FirstAsset.SetAttribute("path", invalid); Reject(() => Export(bad, false), "illegal asset path rejected: " + invalid);
         }
@@ -181,20 +181,20 @@ internal static class AgentDocumentCoreProbe
             bool guide = doc.GetAttribute("name") == "UserGuide";
             byte[] source = Resource(doc.GetAttribute("resource"));
             Check(Hash(source) == doc.GetAttribute("sha256"), "real document resource matches manifest digest: " + doc.GetAttribute("name"));
-            Check(Hash(SourceDocument(Target(project, doc.GetAttribute("path")))) == Hash(source), "embedded Markdown matches current normalized source: " + doc.GetAttribute("name"));
+            Check(Hash(SourceDocument(Path.Combine(project, "build", doc.GetAttribute("name") == "Readme" ? "ComposedReadme.md" : "ComposedUserGuide.md"))) == Hash(source), "embedded Markdown matches current normalized source: " + doc.GetAttribute("name"));
             string output = (string)Invoke("ExportDocument", guide, Encoding.UTF8.GetString(source));
             Check(Hash(File.ReadAllBytes(output)) == Hash(source), "actual export preserves original embedded MD bytes: " + doc.GetAttribute("name"));
             foreach (XmlElement asset in doc.SelectNodes("asset"))
             {
                 byte[] bytes = Resource(asset.GetAttribute("resource")); string relative = asset.GetAttribute("path");
                 Check(Hash(bytes) == asset.GetAttribute("sha256") && bytes.LongLength.ToString(System.Globalization.CultureInfo.InvariantCulture) == asset.GetAttribute("size"), "real asset manifest byte identity: " + relative);
-                Check(Hash(File.ReadAllBytes(Target(project, relative))) == Hash(bytes), "embedded asset matches original source: " + relative);
+                Check(Hash(File.ReadAllBytes(Target(Path.GetDirectoryName(project), relative))) == Hash(bytes), "embedded asset matches original source: " + relative);
                 Check(Hash(File.ReadAllBytes(Target(Bundle(output), relative))) == Hash(bytes), "offline exported asset matches embedded bytes: " + relative);
                 if (relative.EndsWith(".png", StringComparison.Ordinal))
                     using (var memory = new MemoryStream(bytes, false)) using (Image image = Image.FromStream(memory, true, true)) Check(image.Width > 0 && image.Height > 0, "real PNG is decodable: " + relative);
                 else Check(Xml(bytes).DocumentElement.LocalName == "svg", "real SVG is valid offline XML: " + relative);
             }
-            if (guide) Check(!File.Exists(Path.Combine(Bundle(output), "AP3-说明", "开发日志.md")), "real guide package does not include developer Markdown");
+            if (guide) Check(!File.Exists(Path.Combine(Bundle(output), "C-04-Devlog", "B-Devlog.md")), "real guide package does not include developer Markdown");
         }
     }
     private static void AccessFlow()

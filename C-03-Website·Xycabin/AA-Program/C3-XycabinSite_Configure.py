@@ -6,7 +6,7 @@
 先生成两DLL共用快照，构建并验证两个加载项，再附加本轮安装包生成独立网页，事务发布两包与网页。
 保存文件、完全退出 WPS 后分别重装，两个加载项网站才能更新。
 模板和美工在 src/site_template.html，音频在 src/site_audio.js，下载在 src/site_downloads.js；生成器在 src/site_core.py。
-程序菜单、图标、版本、安装器及固定证书仍在各加载项的 Configure_program.py。
+程序菜单、图标、版本、安装器及固定证书仍在各加载项的 AA-Program 配置器。
 开发需携带本网站目录；安装后的用户不需要网站源码。Wordupdater项目和Exceliterate项目完整说明见 开发日志.md。
 
 文案按网页从上到下的顺序分章节排列：页头 → Hero → 01 PROJECTS → 02 FIELD GUIDE
@@ -98,7 +98,7 @@ TEXT_PROJECTS = {
 
 # 每个项目支持任意数量的功能和指南。保留 word/excel 的 id，以定位程序版本；
 # name 和 host 是展示文案，可按需要修改。
-# version 会在生成时读取本机相应项目 Configure_program.py；独立复制时另一项目用这里的版本快照。
+# version 会在生成时读取本机相应项目的 AA-Program 配置器；独立复制时另一项目用这里的版本快照。
 PRODUCTS = [{'id': 'word',
   'name': 'WordUpdater',
   'host': 'WPS 文字',

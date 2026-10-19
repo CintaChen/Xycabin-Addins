@@ -1,4 +1,4 @@
-"""Build a self-contained, offline website from Configure_Site.py."""
+"""Build a self-contained, offline website from C3-XycabinSite_Configure.py."""
 from pathlib import Path
 import copy
 import base64
@@ -10,13 +10,19 @@ import hashlib
 import re
 import sys
 from urllib.parse import urlsplit
+from configurators import CONFIGURE, BY_PRODUCT
 sys.dont_write_bytecode = True
 
 
 def load(path):
     spec = importlib.util.spec_from_file_location("_xy_site_config", path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module
 
 
@@ -122,7 +128,7 @@ def payload(config, root):
         if not re.fullmatch(r"[a-z][a-z0-9_-]*", identity) or identity in identities:
             raise ValueError("项目 id 必须唯一且为小写字母、数字或下划线/连字符")
         identities.add(identity)
-        program = project_paths.get(identity, root / "__absent__") / "AP1-程序" / "Configure_program.py"
+        program = project_paths.get(identity, root / "__absent__") / "AA-Program" / BY_PRODUCT.get(identity, "__absent__.py")
         if program.is_file():
             version = load(program).get_version()
             if product["versions"][0]["version"] == product["version"]:
@@ -221,7 +227,7 @@ def preview_installers(root, text):
     data=json.loads(re.search(r'<script id="site-data" type="application/json">(.*?)</script>',text,re.S).group(1))
     versions={p['id']:p['version'] for p in data['products']};result={}
     for identity,folder,name in [('word','C-02-WordUpdater','WordUpdater'),('excel','C-01-ExcelIterate','Excel_Iterate')]:
-        path=root.parent/folder/'AP1-程序'/(name+'_Setup.exe');item=evidence.get(str(path.resolve()),{})
+        path=root.parent/folder/'AA-Program'/(name+'_Setup.exe');item=evidence.get(str(path.resolve()),{})
         try:
             content=path.read_bytes()
             if item.get('version')==versions[identity] and item.get('bytes')==len(content) and item.get('sha256')==hashlib.sha256(content).hexdigest(): result[identity]=path
@@ -233,7 +239,7 @@ def generate(config, root, target=None, standalone=True):
     text=render(config,root)
     if standalone: text=attach_installers(text,preview_installers(root,text))
     content=text.encode("utf-8")
-    target = Path(target).resolve() if target is not None else root / "AP1-程序/XyCabin.html"
+    target = Path(target).resolve() if target is not None else root / "AA-Program/XyCabin.html"
     target.parent.mkdir(parents=True, exist_ok=True)
     if not target.is_file() or target.read_bytes() != content:
         target.write_bytes(content)
@@ -243,7 +249,7 @@ def generate(config, root, target=None, standalone=True):
 
 def build(root, target=None):
     root = Path(root).resolve()
-    config = vars(load(root / "AP1-程序/Configure_Site.py"))
+    config = vars(load(root / "AA-Program/C3-XycabinSite_Configure.py"))
     return generate(config, root, target or root / "build/site-embedded.snapshot.html", standalone=False)
 
 
@@ -263,7 +269,7 @@ def validate_snapshot(path, project=None, require_embedded=False):
     if project is not None:
         project = Path(project).resolve()
         host = json.loads((project / "project.json").read_text(encoding="utf-8-sig"))["host"]
-        expected = load(project / "AP1-程序/Configure_program.py").get_version()
+        expected = load(project / "AA-Program" / CONFIGURE[project.name]).get_version()
         if ids["word" if host == "Word" else "excel"]["version"] != expected:
             raise ValueError("网站快照与程序版本不一致：" + str(project))
     return path

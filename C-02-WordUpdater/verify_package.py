@@ -24,7 +24,7 @@ def verify(build=None, verifier=None):
         raise ValueError('SIGNING_CERT_THUMBPRINT must be a string')
     thumb = configured.strip().upper()
     if not re.fullmatch(r'[0-9A-F]{40}', thumb):
-        raise ValueError('Configure_program.py must pin a 40-character SIGNING_CERT_THUMBPRINT')
+        raise ValueError('配置器脚本 must pin a 40-character SIGNING_CERT_THUMBPRINT')
     if not verifier.is_file():
         raise ValueError('Mandatory cryptographic verifier is missing; run build.py')
     for name in PAYLOAD:

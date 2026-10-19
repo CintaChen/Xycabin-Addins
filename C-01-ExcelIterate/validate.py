@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--mode', choices=('incremental', 'full'), default='full')
     parser.add_argument('--skip-ui', action='store_true')
     parser.add_argument('--background', action='store_true', help='只运行已核对不会显示或激活窗口的探针，其余明确列为待验收')
-    parser.add_argument('--site-html', type=Path, default=SITE_ROOT / 'AP1-程序/XyCabin.html')
+    parser.add_argument('--site-html', type=Path, default=SITE_ROOT / 'AA-Program/XyCabin.html')
     parser.add_argument('--installer', type=Path, default=OUT / (PROJECT['assembly'] + '_Setup.exe'))
     args = parser.parse_args()
     mode, background = args.mode, args.background

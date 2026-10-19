@@ -54,7 +54,7 @@ def rebuild():
             outputs = [base / 'build' / (name + '.exe') for name in common] + [base / 'build' / (t['name'] + '.exe') for t in identity['tools']]
             outputs += [base / 'build' / name for name in (assembly+'.dll', 'Microsoft.Office.Tools.Common.v4.0.Utilities.dll',
                         'Interop.Microsoft.Office.Core.dll', assembly+'.dll.manifest', assembly+'.vsto')]
-            target = base / 'AP1-程序' / setup.name
+            target = base / 'AA-Program' / setup.name
             outputs.append(target)
             cache = ROOT / 'build/incremental-cache' / (assembly + '.json')
             expected = inputs(base, snapshot)
@@ -80,7 +80,7 @@ def rebuild():
                 validate.append('--background')
             run(validate, base, ROOT / ('build/' + assembly + '-validation.log'))
             verify_payload(base, assembly, setup, snapshot, ROOT)
-            target = base / 'AP1-程序' / setup.name
+            target = base / 'AA-Program' / setup.name
             packages["word" if assembly=="WordUpdater" else "excel"]=setup
             updates.append((setup, target))
             delivered.append(target)
@@ -94,9 +94,9 @@ def rebuild():
             (packages['word' if assembly=='WordUpdater' else 'excel'],version(base)) for base,assembly in bases}
         verify_installers(complete_text,expected_packages)
         run([sys.executable, ROOT / 'src/tools/site_probe.py', '--html', complete],ROOT,ROOT/'build/site-downloads-validation.log')
-        updates.append((complete, ROOT / 'AP1-程序/XyCabin.html'))
+        updates.append((complete, ROOT / 'AA-Program/XyCabin.html'))
         evidence = {str(target): list(fingerprints([Path(source)]).values())[0] for source, target in updates}
-        for base,assembly in bases: evidence[str(base/'AP1-程序'/(assembly+'_Setup.exe'))]['version']=version(base)
+        for base,assembly in bases: evidence[str(base/'AA-Program'/(assembly+'_Setup.exe'))]['version']=version(base)
         record = stage / 'delivery-record.json' 
         record.write_text(json.dumps(evidence, ensure_ascii=False, indent=2), encoding='utf-8')
         updates.append((record, ROOT / 'build/current-delivery.json'))
@@ -122,7 +122,7 @@ def rebuild():
     print('两个项目已同步完成。安装前请保存文件并完全退出 WPS，然后分别运行：', flush=True)
     for target in delivered:
         print(target, flush=True)
-    print('网站预览：' + str(ROOT / 'AP1-程序/XyCabin.html'), flush=True)
+    print('网站预览：' + str(ROOT / 'AA-Program/XyCabin.html'), flush=True)
 
 
 def main():

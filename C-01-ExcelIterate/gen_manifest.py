@@ -5,18 +5,18 @@ import hashlib
 import os
 import sys
 sys.dont_write_bytecode = True
-from project_support import PROJECT
+from project_support import PROJECT, CONFIGURE_NAME
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(ROOT, "build")
 
-# 版本号不在这里维护 —— 唯一准绳是 AP1-程序/Configure_program.py 的 INSTALLER_VERSION
+# 版本号不在这里维护 —— 唯一准绳是 AA-Program 配置器的 INSTALLER_VERSION
 # （四段式）。改版本只改那里，此处自动跟随。
-# Configure_program.py 有 __name__ == "__main__" 保护，可以安全地当模块导入。
+# 配置器有 __name__ == "__main__" 保护，可以安全地当模块导入。
 def _load_configure():
     import importlib.util
-    cfg = os.path.join(ROOT, "AP1-程序", "Configure_program.py")
+    cfg = os.path.join(ROOT, "AA-Program", CONFIGURE_NAME)
     if not os.path.isfile(cfg):
         sys.exit("[manifest] 找不到配置脚本：" + cfg)
     old = sys.dont_write_bytecode

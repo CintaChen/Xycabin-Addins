@@ -4,7 +4,7 @@ import argparse
 import subprocess
 import sys
 sys.dont_write_bytecode = True
-from project_support import ROOT, OUT, PROJECT, load_site, verify_layout
+from project_support import ROOT, OUT, PROJECT, CONFIGURE_NAME, load_site, verify_layout
 
 
 def main():
@@ -22,7 +22,7 @@ def main():
     if args.site_html:
         website.validate_snapshot(args.site_html, ROOT, require_embedded=True)
     environment = dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1')
-    for index, script in enumerate(('AP1-程序/Configure_program.py', 'build.py', 'resign.py', 'build_installer.py'), 1):
+    for index, script in enumerate(('AA-Program/' + CONFIGURE_NAME, 'build.py', 'resign.py', 'build_installer.py'), 1):
         print('[%d/4] %s' % (index, script), flush=True)
         command = [sys.executable, str(ROOT / script)]
         if script in ('build.py', 'build_installer.py'):

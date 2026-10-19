@@ -179,7 +179,7 @@ internal static class AgentExtensionProbe
             {
                 string full = (string)docs.GetMethod("Read", All).Invoke(null, new object[] { guide });
                 string project = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(args[0])));
-                string expected = File.ReadAllText(Path.Combine(project, "AP3-说明", guide ? "使用说明.md" : "开发日志.md"), Encoding.UTF8);
+                string expected = File.ReadAllText(Path.Combine(project, "build", guide ? "ComposedUserGuide.md" : "ComposedReadme.md"), Encoding.UTF8);
                 expected = Regex.Replace(expected, "<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->", "", RegexOptions.Singleline);
                 // Match the compiler's universal-newline UTF-8 input normalization.
                 expected = expected.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
@@ -286,7 +286,7 @@ internal static class AgentExtensionProbe
             files.GetField("BrowserLauncher", All).SetValue(null, new Action<string>(delegate(string pathToHome) { home = pathToHome; }));
             connectType.GetMethod("OnAgentHome").Invoke(connect, new object[] { null });
             string projectRoot = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(args[0])));
-            string websitePath = args.Length > 1 ? Path.GetFullPath(args[1]) : Path.Combine(Directory.GetParent(projectRoot).FullName, "C-03-Website·Xycabin", "AP1-程序", "XyCabin.html");
+            string websitePath = args.Length > 1 ? Path.GetFullPath(args[1]) : Path.Combine(Directory.GetParent(projectRoot).FullName, "C-03-Website·Xycabin", "AA-Program", "XyCabin.html");
             Check(home != null && File.ReadAllText(home, Encoding.UTF8) == CorePage(File.ReadAllText(websitePath, Encoding.UTF8)), "home callback opens complete embedded site");
             Check(home.Contains(Path.Combine("Xy", "AgentEvo", "Home")) && Path.GetFileName(home) == "index.html", "home independent of install and shadow-cache paths");
             connectType.GetMethod("OnAgentHome").Invoke(connect, new object[] { null });

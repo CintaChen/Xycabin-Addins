@@ -28,10 +28,10 @@ build_last.log
 # ============================================================
 # 发布产物（通过 GitHub Releases 分发，不入库）
 # ============================================================
-C-01-ExcelIterate/AP1-程序/Excel_Iterate_Setup.exe
-C-02-WordUpdater/AP1-程序/WordUpdater_Setup.exe
-C-03-Website·Xycabin/AP1-程序/XyCabin.html
-C-03-Website·Xycabin/AP1-程序/index.html
+C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe
+C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe
+C-03-Website·Xycabin/AA-Program/XyCabin.html
+C-03-Website·Xycabin/AA-Program/index.html
 
 # ============================================================
 # 微软版权互操作程序集（从本地 VSTO / WPS 运行时获取，不再分发）

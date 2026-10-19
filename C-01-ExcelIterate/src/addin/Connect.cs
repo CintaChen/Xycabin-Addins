@@ -22,7 +22,7 @@ namespace Excel_Iterate
     //
     // 按钮专属回调名原则（参考项目实测）：函数名即身份，不读 control.Id
     // （网络盘文档回调代理读不出 Id，靠 id 分发会把所有按钮认成同一个）。
-    // 新增按钮 = Configure_program.py 加条目 + 这里加一行包装（配置器校验存在性）。
+    // 新增按钮 = 配置器脚本 加条目 + 这里加一行包装（配置器校验存在性）。
     // =====================================================================
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.AutoDispatch)]
@@ -129,7 +129,7 @@ namespace Excel_Iterate
 
         // ------------------------ IRibbonExtensibility ------------------------
 
-        // Ribbon XML 由 Configure_program.py 依据「按钮配置区」生成，
+        // Ribbon XML 由 配置器脚本 依据「按钮配置区」生成，
         // 输出到 src/addin/Ribbon.g.cs —— 改标题/提示/顺序请改配置后重跑脚本。
         public string GetCustomUI(string RibbonID)
         {
