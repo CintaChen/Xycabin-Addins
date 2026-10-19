@@ -1,123 +1,10 @@
-**Excel-Iterate · 开发实践与维护手册**
+**共享开发经验与三个项目的专属经验**
 
-最后更新：2026-10-18 ｜ 当前版本：**0.9.9.1** ｜ 交付物：`Excel_Iterate_Setup.exe`
-
-# 一. Agent及开发者接手概览
-
-<!-- agent-overview:start -->
-
-WPS表格VSTO加载项：引用/从属追踪、公式、筛选、链接、目录、文件整理/命名、文件名称/OCR、表头匹配合并及合并抵消。本日志按项目档案、Word/Excel共享开发经验、共享维护纪律、本宿主专属经验组织。先读AP3-说明/AGENTS.md与本日志，再核使用说明和当前源码；主选项卡的“扩展→Agent扩展”显示Agent-Evo，提供概览/全文、网站和自定配置。版本0.9.9.1，构建不安装或操作用户WPS。
-
-<!-- agent-overview:end -->
-
-## 1. 目录与阅读顺序
-
-| 所属部分                          | 二级主题与阅读入口                                                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| [项目档案](#二-项目档案)               | [定位/输出](#1-定位与输出)、[版本摘要](#2-版本摘要)、[命令按钮](#3-当前命令按钮概览)、[源码/运行入口](#4-源码地图与运行入口)、[当前状态/交付](#5-当前状态与交付)                        |
-| [共享开发经验](#三-word与excel共享开发经验) | [从零构建](#1-从零构建加载项)、[按钮/图标/菜单](#2-功能区按钮图标与菜单)、[弹窗/控件/网格](#3-弹窗美工控件与网格)                                                      |
-| 共享开发经验（续）                     | [线程/寿命/预览](#4-宿主线程窗口寿命与安全预览)、[四种拖动/生效](#5-四种拖动及配置生效)、[Agent/文档/网站](#6-agent-evo内嵌文档与网站)                                    |
-| [共享维护纪律](#四-word与excel共享维护纪律) | [写作/编号](#1-文档编号与经验更新)、[重建/签名/交付](#2-重建签名与交付)、[验证/缓存/证据](#3-验证缓存与证据边界)、[冗余清理](#4-冗余文件清理)、[格式维护](#5-格式维护规范)                  |
-| [本项目经验](#五-excel专属开发经验)       | [单元格/选区/公式](#1-单元格选区与公式)、[工作簿/目录/表头合并](#2-工作簿目录与表头匹配合并)、[链接/文件批次](#3-外部链接与文件批次)、[文件名/OCR](#4-文件提取名称与云端ocr)、[合并抵消](#5-合并抵消) |
-| 使用者与其他入口                      | [使用说明](使用说明.md)、[AGENTS](AGENTS.md)、[网站日志](../../C-03-Website·Xycabin/AP3-说明/开发日志.md)                                      |
-
-# 二. 项目档案
-
-## 1. 定位与输出
-
-WPS表格VSTO加载项：引用/从属追踪、公式、筛选、链接、目录、文件整理/命名、文件名称/OCR、表头匹配合并及合并抵消。命名空间/程序集 `Excel_Iterate`，唯一安装器[AP1-程序/Excel\_Iterate\_Setup.exe](../AP1-程序/Excel_Iterate_Setup.exe)，内嵌五载荷；用户需完整VSTO运行库及官方授权。Agent-Evo同一DLL提供网站、离线文档、四项自定配置和需求记录，实验OCR占位灰色。
-
-AP1-程序放配置/批处理/正式程序，AP2-美工放当前PNG，AP3-说明仅本日志、使用说明和AGENTS；build是工具、中间产物和验证证据。C-01/C-02各保留完整公共源码，C-03是网站唯一源码及联合交付入口，不建立网站副本。
-
-## 2. 版本摘要
-
-版本来源与归并规则见[维护纪律](#1-文档编号与经验更新)，本次标记为0.9.9.1并沿用原固定发布者。
-
-| 版本      | 重要变更                                                                                                                                                                                                 |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.9.5.0 | 1. 首次提供WPS表格加载项，支持引用与从属追踪；2. 采用VSTO构建，提供单文件安装包。                                                                                                                                                      |
-| 0.9.6.0 | 1. 完善引用与从属追踪；2. 统一窗口和图标；3. 增加运行库检查与固定证书签名，提升安装可靠性。                                                                                                                                                   |
-| 0.9.7.0 | 1. 新增公式封装与计算、筛选增强、链接助手和工作表目录；2. 改善选区兼容与目录显示；3. 新增Agent-Evo选项卡、离线文档预览及网站入口。                                                                                                                           |
-| 0.9.8.0 | 1. 新增文件整理与清单改名、链接清单保存替换，支持取消还原与确认清理；2. 改善筛选与反馈；3. Agent-Evo提供离线文档及树形尺寸设置；4. XyCabin提供离线下载、音乐和独立音量。                                                                                                   |
-| 0.9.9.0 | 1. 文件整理、清单命名及多前缀OCR，按行断链、整簿恢复与编辑保护；2. 六列预览、布局回缩，即时配置及控件缩放，表头单行居中；3. 追踪引用新增显示错误来源：沿引用链定位错误源头格，可跳转标黄；4. 审计工具箱新增合并抵消：往来按单位对冲、坏账按比例冲回，收入成本逐行算未实现利润，列映射+分录预览+备份还原；5. 修复追踪弹窗锁死宿主：去除工具窗样式并对齐链接助手，根治抢焦点/失激活。 |
-| 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。 |
+<!-- scope:shared:start -->
+# 一. Word与Excel共享开发经验
 
 
-## 3. 当前命令按钮概览
-
-本表以当前生成的功能区 XML 现状为准，逐行列出全部顶层命令按钮及菜单子项，唯一数据源为 `AP1-程序/Configure_program.py` 的 `BUTTONS` 与 `EXTRA_TABS`；按钮、菜单或网址调整后须同步本表，Agent-Evo 为默认隐藏页，命令名称与顺序以用户自定配置为准。
-
-| 命令按钮    | 选项卡与分组           | 子选项                                                                                                                                             | 功能摘要                                                                                    | 实现来源                                                                                                                                                               |
-| ------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 追踪引用    | Excel-Iterate·数据 | —                                                                                                                                               | 解析当前单元格公式，逐项展开被引用单元格的详情；错误行红字，选中后可「显示错误来源」回溯定位源头格并跳转                                    | OnTracePrecedents（Connect.cs:392）→ TrackerForm.cs；ErrorSourceEngine.cs/ErrorSourceForm.cs                                                                          |
-| 追踪从属    | Excel-Iterate·数据 | —                                                                                                                                               | 遍历所有已打开工作簿，找出哪些单元格的公式引用了当前单元格                                                           | OnTraceDependents（Connect.cs:420）→ TrackerForm.cs                                                                                                                  |
-| 筛选增强    | Excel-Iterate·数据 | 按列筛选、快捷高筛                                                                                                                                       | 按活动单元格所在表格的表头选择显示列                                                                      | OnFilterColumns（Connect.cs:277）→ ColumnFilterForm.cs；OnQuickAdvancedFilter（Connect.cs:256）→ WorkbookFeatures.cs                                                    |
-| 审计工具箱   | Excel-Iterate·数据 | 表头匹配增加、合并抵消（往来抵消、收入成本抵消）                                                                                                                        | 按表头列名批量匹配多个工作簿，把列数据合并到目标工作簿；往来抵消按列映射生成抵消分录，收入成本抵消按三维聚合生成矩阵式底稿（借贷恒等式保证平衡），两者均写入前备份、可一键还原 | OnMergeHeaders（Connect.MergeHeaders.cs:24）→ MergeHeadersForm.cs；OnEliminationReceivable/OnEliminationRevenueCost（Connect.Elimination.cs:46/49）→ EliminationForm.cs |
-| 一键公式    | Excel-Iterate·操作 | 进行公式封装（IFERROR封装〔默认返回空、自定义封装〕、ROUND封装〔默认保留2位、自定义封装〕、ABS封装、自定义函数）、移除公式封装、数值计算（加〔默认加100、自定义计算〕、减〔默认减100、自定义计算〕、乘〔默认乘100、自定义计算〕、除〔默认除10000、自定义计算〕） | 封装或移除当前选区公式的最外层函数                                                                       | 15 个回调均在 Connect.cs:197-228，委托 FormulaCommandEngine.cs                                                                                                             |
-| 文件操作    | Excel-Iterate·操作 | 文件批量整理、文件批量命名、文件提取名称                                                                                                                            | 整理文件或通过工作表清单批量重命名                                                                       | OnOrganizeFiles/OnRenameFiles（Connect.cs:242/249）→ FileToolForms.cs；OnFileNames（Connect.FileNames.cs:422）                                                          |
-| 链接助手    | Excel-Iterate·操作 | —                                                                                                                                               | 扫描 xlsx 外部引用，C列填新路径或「请断开该链接」后执行                                                         | OnLinkAssistant（Connect.cs:270）→ LinkAssistant.cs                                                                                                                  |
-| 生成目录    | Excel-Iterate·操作 | —                                                                                                                                               | 链接全部工作表，隐藏表点击后显示并跳转                                                                     | OnGenerateDirectory（Connect.cs:263）→ WorkbookFeatures.cs                                                                                                           |
-| 问题反馈    | Excel-Iterate·反馈 | —                                                                                                                                               | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版）                                                             | OnOpenUrl_btnFeedback（Connect.cs:453）→ RibbonConfig.GetUrl 字典                                                                                                      |
-| Agent扩展 | Excel-Iterate·扩展 | —                                                                                                                                               | 显示或隐藏 Agent-Evo 选项卡（开关，按用户记住选择）                                                         | OnToggleAgentExtension（Connect.Agent.cs:131）                                                                                                                       |
-| 调用API   | Agent-Evo·详情     | 智能云-API（百度智能云、阿里智能云）、Agent-API（国内Agent：WorkBuddy、TRAE、Qoder、DeepSeek、豆包、Kimi；国外Agent：ChatGPT、Claude、Gemini）                                     | 四级嵌套菜单，打开对应云控制台或 AI 网站（无 screentip，url 按钮）                                              | OnOpenUrl_btnAgentXxx×9 与 OnOpenUrl_btnAgentBaidu/Aliyun（Connect.Agent.cs）→ RibbonConfig.GetUrl 字典                                                                 |
-| 开发流程    | Agent-Evo·详情     | 开发预览、用户预览、XyCabin                                                                                                                               | 打开内嵌开发/用户文档与网站首页                                                                        | OnOpenAgentReadme/OnOpenAgentUserGuide（Connect.Agent.cs:154/155）→ AgentDocumentForm.cs；OnAgentHome（Connect.Agent.cs:161）→ AgentLocalFiles.cs                       |
-| 自定配置    | Agent-Evo·操作     | 自定排序、自定名称、自定格式、交互弹窗                                                                                                                             | Agent 弹窗的自定义项                                                                           | OnAgentSort/Names/Formats（Connect.Customization.cs:16-18）→ AgentCustomization.cs；OnOpenAgentDialogSizes（Connect.Agent.cs:147）→ DialogSizeEditor.cs                 |
-| 实验计划    | Agent-Evo·操作     | OCR识别（置灰占位，未开放）、需求记录                                                                                                                            | 实验性功能入口                                                                                 | OnAgentOcrPlaceholder（Connect.Customization.cs:20，空实现）；OnAgentRequirements（Connect.Customization.cs:19）→ AgentCustomization.cs                                     |
-
-## 4. 源码地图与运行入口
-
-| 子系统        | 当前入口（未加目录者均在src/addin）                                                                                                                                |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 身份/生成      | project.json、project_support.py、AP1-程序/Configure_program.py、src/configuration/configure_core.py                                                       |
-| 加载/界面      | ThisAddIn、Connect及分部、Ribbon.g、InteropDefs、UiKit、HostDialogService                                                                                     |
-| Agent/自定配置 | Connect.Agent/Customization、AgentDocumentForm/LocalFiles、AgentCustomization、DialogFormatting、FormatEditorThread/Session、CustomizationSaving           |
-| 尺寸/预览      | DialogSizes、DialogSizeEditor、DialogPreviewFactory；src/tools/dialog_catalog_probe与DialogSizesProbe                                                     |
-| 单元格/公式/筛选  | FormulaRefParser、Tracker引擎、ErrorSourceEngine/Form、FormulaCommandEngine/Interaction/WindowThread、WorksheetIdentity、ColumnVisibilityEngine              |
-| 目录/合并      | WorkbookFeatures、FormulaRefRewriter、MergeHeadersEngine/Host/Form、EliminationEngine/Matrix/Diff/Host/Form、Connect.MergeHeaders、Connect.Elimination     |
-| 链接/文件/OCR  | XlsxLinkPackage、LinkAssistant/BreakActions/Batch/OperationLog、FileOperations/OperationBatch/RecycleFiles、FileOcr/Selection/CloudOcr、Connect.FileNames |
-| 构建/安装      | build/rebuild/resign/gen_manifest/build_installer/verify_package/validate.py；src/installer及src/tools                                                  |
-| 验证/网站      | src/testharness、src/tools；同级Website完整源码与父verify_shared.py                                                                                             |
-
-单项目：`python rebuild.py --mode full` 后 `python validate.py --background`。联合文档/网页交付：Website `python rebuild.py --background --mode full`，随后 `python validate.py --background`。用已实际--version验证的解释器；新设备从[从零流程](#1-从零构建加载项)开始。
-
-## 5. 当前状态与交付
-
-### (1). 当前实现与待验收
-
-本次将文档整理为五部分，共享方法与维护纪律分开，删重复流水和外部历史范例依赖；保留宿主独有算法/恢复边界，修正控件与四种拖动术语、窗口过度因果和内嵌网页一致性表述。新增表头匹配合并的接线、公式相对行规则与独立验收边界。
-
-本批（0.9.9.0）修复追踪弹窗锁死宿主并经真实WPS实机验证：弹窗打开后可正常键入单元格、点开有子选项的功能区菜单；合并抵消由置灰占位转为可用：引擎/宿主/窗体三层拆分，写入前备份、可一键还原。收入成本抵消已改为矩阵式审计底稿（三维聚合+活公式+动态年度列，详见第五章(3)），离线探针144项锁定会计模型。底稿写入与还原待联机验收。
-
-原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
-
-<!-- delivery-audit:start -->
-### (2). 本轮交付证据
-
-10月14日本批沿用0.9.9.0及原固定证书，重排C01／C02第四章“5. 格式维护规范”：两类对象各含格式说明、表头及列宽／正文规则和代码复现方法；三个C#片段原样迁移，新增两张格式效果图及工作表示意SVG。现有程序功能保留。下表与[同批交付记录](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
-
-| 正式产物                                                                                |         字节 | SHA-256                                                          |
-| ----------------------------------------------------------------------------------- | ---------: | ---------------------------------------------------------------- |
-| [Excel\_Iterate\_Setup.exe](../../C-01-ExcelIterate/AP1-程序/Excel_Iterate_Setup.exe) |  3,789,312 | 0140bcd0cee69ade21198bcabeaafb21524d1f26edeab0e9d82161ef40c42f92 |
-| [WordUpdater\_Setup.exe](../../C-02-WordUpdater/AP1-程序/WordUpdater_Setup.exe)       |  3,312,128 | 439049743202508e17c4cdf306f08c73dfa66fee2b10986c96d152e1aeb31a6b |
-| [XyCabin.html](../../C-03-Website·Xycabin/AP1-程序/XyCabin.html)                      | 10,689,158 | 8c6ae132f17684a61fd6f6022f4dedc436353382dac2bc5d4d1338248b0fe453 |
-
-| 本批检查    | 结果与证据                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 文档与代码复现 | 两份共享正文逐字一致、五级编号及新旧锚点检查通过；三个C#片段与旧节相同，重新抽取并编译通过。原表头、正文列宽、手动列宽、隐藏状态、失败恢复、保存与摘要顺序分别归入对应对象。[重排证明](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/document-reorg-proof.json)、[文档门禁及编译](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/prebuild-verification.json)。                                                                                                                                                                        |
-| 配图与离线全文 | 网格图为既有离线生产控件渲染，工作表为可编辑构造示意，最后行包含最长文本，正文居中与OCR实现一致；两项目三份资源相同。各DLL17项PNG/SVG与当前源码一致；在系统TEMP的隔离副本运行真实导出代码，两产品各121项通过，不依赖原源码目录。[资产QA](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/format-asset-qa.json)、[脱离源码导出](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/offline-export-verification.json)。                                                                                                                                    |
-| 原功能后台回归 | 完整联合重建及独立后台验证通过；Excel／Word Feature099各7169／2366项，WorkbookTools292项，尺寸核心89／57项通过。[Excel独立验证](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/Excel_Iterate-background-validation.log)、[Word独立验证](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/WordUpdater-background-validation.log)。                                                                                                                                                |
-| 同批联合交付  | 两安装器五载荷、固定证书与双清单签名、内嵌日志／使用说明／17项图像资源及共同网站快照通过；网页下载包与正式EXE逐字节一致。[重建](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/rebuild.log)、[独立验证](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-background-validation.log)、[Excel载荷](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/Excel_Iterate-payload.log)、[Word载荷](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/WordUpdater-payload.log)。 |
-| 已有改动保留  | 既有业务源码、依赖、证书、原配图及两宿主专属章节保留；生成源码仅刷新时间注释。审计回填不改变已内嵌正文。[修改范围](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/change-preservation.json)、[冻结输入](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/frozen-input-check.json)、[正文保留](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/audit-body-preservation.json)。                                                                                                          |
-| 真实验收边界  | 未使用computer-use、未自动安装或启动／退出WPS、未调用真实云端OCR。后台导出已通过；外部MD查看器可见显图、真实WPS表头与拖动、工作表AutoFit与隐藏行／超限正文、系统缩放及跨屏DPI仍单独待验收。                                                                                                                                                                                                                                                                                                                                                               |
-
-前一批审计保留于[旧审计归档](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/before-audits.json)；最终包已纳入独立复核的正文居中和恢复措辞修正。完整结果见[最终验证记录](../../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/final-delivery-summary.json)。
-
-<!-- delivery-audit:end -->
-
-<!-- shared-wps-experience:start -->
-# 三. Word与Excel共享开发经验
-
-本章与第四章在两加载项逐字相同。共享的是加载、界面、配置和交付方法；Word字段与表格、Excel单元格与工作簿算法分别见第五章。网站前端方法只维护于[网站日志](../../C-03-Website·Xycabin/AP3-说明/开发日志.md)。
+本章与第四章在两加载项逐字相同。共享的是加载、界面、配置和交付方法；Word字段与表格、Excel单元格与工作簿算法分别见第五章。网站前端方法只维护于[网站日志](B1-Project-Files.md#四-xycabin-项目档案)。
 
 ## 1. 从零构建加载项
 
@@ -127,7 +14,7 @@ AP1-程序放配置/批处理/正式程序，AP2-美工放当前PNG，AP3-说明
 
 | 输入                                                                                                               | 最小职责                               |
 | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| project.json、AP1-程序/Configure_program.py                                                                         | 宿主/身份/sources/tools与唯一界面、版本、固定证书配置 |
+| project.json、AA-Program/C1-Exceliterate_Configure.py                                                                         | 宿主/身份/sources/tools与唯一界面、版本、固定证书配置 |
 | src/addin/ThisAddIn.cs、Connect.cs、InteropDefs.cs、AssemblyInfo.cs                                                 | VSTO入口、专属回调、COM声明、程序集GUID          |
 | src/addin/UiKit.cs、HostDialogService.cs及所依赖公共源码                                                                  | 界面、宿主确认隔离；依赖以实际sources和工具清单为准      |
 | src/configuration、project_support.py、build/rebuild/resign/gen_manifest/build_installer/verify_package/validate脚本 | 生成、编译、签名、打包与验证；文件名中的斜线表示各独立脚本      |
@@ -202,9 +89,9 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 本节是常见对象的实用参考，不穷举全部控件。编号1—27以项目实际窗口和源码为依据，28—36为“当前项目未使用”的通用示意；图3—5的局部来自不同窗口。按窗口名称、区域用途、对象及修改范围描述需求，图中轮廓仅用于定位。
 
-**图1：结构、容器与文字。** 关注容器层级及内容区域，特别区分外层日志卡片（3）和内部日志文本框（6）。[可编辑SVG](../src/documentation/ui-object-map.svg)。
+**图1：结构、容器与文字。** 关注容器层级及内容区域，特别区分外层日志卡片（3）和内部日志文本框（6）。[可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-object-map.svg)。
 
-![跨工作簿表头匹配合并：结构、容器与文字](../AP2-美工/界面对象-表头合并-编号示意.png)
+![跨工作簿表头匹配合并：结构、容器与文字](../C-01-ExcelIterate/AB-Graphic/界面对象-表头合并-编号示意.png)
 
 | 准确称呼（图1编号）     | 本项目中的具体对象                                          | 实现及修改范围                                                                                |
 | -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -217,9 +104,9 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 | 数据网格（9）        | 上方来源网格Sources、中部匹配结果网格Map、下方公式样本网格Samples          | DataGridView；数据展示、编辑、选择及列宽、行高                                                          |
 | 网格列标题／行头（11）   | 网格顶部“来源工作簿”“工作表”“表头行”等列名栏；本窗三张网格均隐藏左侧行头            | DataGridViewColumnHeaderCell／DataGridViewRowHeaderCell；标题文案、字体及尺寸；数据列中的“表头行”或“序号”不等于行头 |
 
-**图2：选择、按钮、拖动与滚动。** 沿用图1的窗口布局；网格滚动部件另作局部放大，使用构造样例解释当前网格支持的双向滚动。数值输入框（8）来自“自定排序”另窗例子；空来源网格的下拉列（10）只标列范围。[可编辑SVG](../src/documentation/ui-interaction-map.svg)。
+**图2：选择、按钮、拖动与滚动。** 沿用图1的窗口布局；网格滚动部件另作局部放大，使用构造样例解释当前网格支持的双向滚动。数值输入框（8）来自“自定排序”另窗例子；空来源网格的下拉列（10）只标列范围。[可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-interaction-map.svg)。
 
-![跨工作簿表头匹配合并：选择、按钮、拖动与滚动](../AP2-美工/界面对象-表头合并-交互操作示意.png)
+![跨工作簿表头匹配合并：选择、按钮、拖动与滚动](../C-01-ExcelIterate/AB-Graphic/界面对象-表头合并-交互操作示意.png)
 
 | 准确称呼（图2编号）      | 本项目中的具体对象                                                              | 实现及修改范围                                                    |
 | --------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -234,39 +121,39 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 | 滚动滑块（17）        | 图2放大示例中，滚动条上可拖动的小块；水平与垂直滚动条各有滑块                                        | 拖动滑块查看对应方向的内容；描述时指明所属滚动条，可提出尺寸、颜色、可见性或拖动反馈需求，并核对原生控件支持范围   |
 | 滚动轨道（18）        | 图2放大示例中，供滑块移动的区域，包括滑块上下或左右两侧的空余部分                                      | 描述轨道颜色或点击轨道的滚动行为；须核对原生控件是否支持所需定制                           |
 
-**图3：选项与网格操作。** [可编辑SVG](../src/documentation/ui-options-map.svg)。
+**图3：选项与网格操作。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-options-map.svg)。
 
-![图3：选项与网格操作](../AP2-美工/界面对象-选项与网格操作.png)
+![图3：选项与网格操作](../C-01-ExcelIterate/AB-Graphic/界面对象-选项与网格操作.png)
 
 | 准确称呼（对应图号）      | 实例或使用状态                               | 实现、修改范围及源码入口                                                                                                                                                                         |
 | --------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../src/addin/DialogFormatting.cs)、[FileToolForms.cs](../../C-01-ExcelIterate/src/addin/FileToolForms.cs)                              |
-| 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](../../C-01-ExcelIterate/src/addin/ColumnFilterForm.cs)                                                           |
-| 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](../../C-01-ExcelIterate/src/addin/LinkAssistant.cs)                                                                               |
-| 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](../../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)、[DialogSizeEditor.cs](../src/addin/DialogSizeEditor.cs) |
+| 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)、[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)                              |
+| 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](../C-01-ExcelIterate/src/addin/ColumnFilterForm.cs)                                                           |
+| 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)                                                                               |
+| 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)、[DialogSizeEditor.cs](../C-01-ExcelIterate/src/addin/DialogSizeEditor.cs) |
 
-**图4：树与分区。** [可编辑SVG](../src/documentation/ui-tree-map.svg)。
+**图4：树与分区。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-tree-map.svg)。
 
-![图4：树与分区](../AP2-美工/界面对象-树与分区.png)
+![图4：树与分区](../C-01-ExcelIterate/AB-Graphic/界面对象-树与分区.png)
 
 | 准确称呼（对应图号）   | 实例或使用状态                        | 实现、修改范围及源码入口                                                                                                                                                           |
 | ------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 树形控件／树节点（22） | “自定格式”的控件树、“自定名称／自定排序”的命令树     | TreeView／TreeNode；层级、展开折叠、选中、节点身份和同父排序；六点排序柄是节点子部件；[DialogFormatting.cs](../src/addin/DialogFormatting.cs)、[AgentCustomization.cs](../src/addin/AgentCustomization.cs) |
-| 分区容器／分隔条（23） | “自定格式”中formatSplit的左侧控件区和右侧预览区 | SplitContainer及其分隔条；SplitterDistance、分区最小宽度、拖动后布局；与13号独立宽度拖柄分别命名；[DialogFormatting.cs](../src/addin/DialogFormatting.cs)                                               |
+| 树形控件／树节点（22） | “自定格式”的控件树、“自定名称／自定排序”的命令树     | TreeView／TreeNode；层级、展开折叠、选中、节点身份和同父排序；六点排序柄是节点子部件；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)、[AgentCustomization.cs](../C-01-ExcelIterate/src/addin/AgentCustomization.cs) |
+| 分区容器／分隔条（23） | “自定格式”中formatSplit的左侧控件区和右侧预览区 | SplitContainer及其分隔条；SplitterDistance、分区最小宽度、拖动后布局；与13号独立宽度拖柄分别命名；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)                                               |
 
-**图5：反馈与临时菜单。** [可编辑SVG](../src/documentation/ui-feedback-map.svg)。
+**图5：反馈与临时菜单。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-feedback-map.svg)。
 
-![图5：反馈与临时菜单](../AP2-美工/界面对象-反馈与临时菜单.png)
+![图5：反馈与临时菜单](../C-01-ExcelIterate/AB-Graphic/界面对象-反馈与临时菜单.png)
 
 | 准确称呼（对应图号）        | 实例或使用状态                      | 实现、修改范围及源码入口                                                                                                                                                                                                                 |
 | ----------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 进度条（24）           | Excel“追踪从属”的扫描进度；“追踪引用”未创建此条 | UiProgressBar／ProgressBar；进度范围、当前值、连续或不确定状态，不用于滚动内容；[TrackerForm.cs](../../C-01-ExcelIterate/src/addin/TrackerForm.cs)                                                                                                       |
-| 上下文菜单／菜单项／分隔线（25） | 追踪网格的右键复制菜单，及OCR候选单元格打开的菜单   | ContextMenuStrip／ToolStripMenuItem／ToolStripSeparator；出现位置、命令、启用状态、分组与关闭释放；[TrackerForm.cs](../../C-01-ExcelIterate/src/addin/TrackerForm.cs)、[Connect.FileNames.cs](../../C-01-ExcelIterate/src/addin/Connect.FileNames.cs) |
-| 悬浮提示（26）          | 合并窗按钮的说明；Word“查看链接”的摘要全文提示   | ToolTip或网格单元格提示；提示文案、关联控件、显示时机及释放；[MergeHeadersForm.cs](../../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)、[LinkViewForm.cs](../../C-02-WordUpdater/src/addin/LinkViewForm.cs)                                           |
+| 进度条（24）           | Excel“追踪从属”的扫描进度；“追踪引用”未创建此条 | UiProgressBar／ProgressBar；进度范围、当前值、连续或不确定状态，不用于滚动内容；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)                                                                                                       |
+| 上下文菜单／菜单项／分隔线（25） | 追踪网格的右键复制菜单，及OCR候选单元格打开的菜单   | ContextMenuStrip／ToolStripMenuItem／ToolStripSeparator；出现位置、命令、启用状态、分组与关闭释放；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)、[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs) |
+| 悬浮提示（26）          | 合并窗按钮的说明；Word“查看链接”的摘要全文提示   | ToolTip或网格单元格提示；提示文案、关联控件、显示时机及释放；[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)、[LinkViewForm.cs](../C-02-WordUpdater/src/addin/LinkViewForm.cs)                                           |
 
-**图6：通用选择与输入参考。** [可编辑SVG](../src/documentation/ui-common-input-map.svg)。
+**图6：通用选择与输入参考。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-common-input-map.svg)。
 
-![图6：通用选择与输入参考](../AP2-美工/界面对象-通用选择与输入.png)
+![图6：通用选择与输入参考](../C-01-ExcelIterate/AB-Graphic/界面对象-通用选择与输入.png)
 
 | 准确称呼（对应图号）   | 实例或使用状态         | 实现、修改范围及源码入口                                                |
 | ------------ | --------------- | ----------------------------------------------------------- |
@@ -276,9 +163,9 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 | 勾选列表框（31）    | 当前项目未使用；图6为通用示意 | CheckedListBox；列表项的勾选与选中分别说明；不同于20号网格复选列                    |
 | 日期／时间选择器（33） | 当前项目未使用；图6为通用示意 | DateTimePicker；日期／时间值、范围、显示格式及日历选择；不同于普通文本框                 |
 
-**图7：通用列表与展示参考。** [可编辑SVG](../src/documentation/ui-common-display-map.svg)。
+**图7：通用列表与展示参考。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-common-display-map.svg)。
 
-![图7：通用列表与展示参考](../AP2-美工/界面对象-通用列表与展示.png)
+![图7：通用列表与展示参考](../C-01-ExcelIterate/AB-Graphic/界面对象-通用列表与展示.png)
 
 | 准确称呼（对应图号） | 实例或使用状态         | 实现、修改范围及源码入口                                       |
 | ---------- | --------------- | -------------------------------------------------- |
@@ -291,11 +178,11 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 **滚动与尺寸调整要分别描述。** 滚动条用于查看更多内容，13／14号拖柄用于调整控件或区域尺寸。合并窗日志logView当前为只读RichTextBox，WordWrap=true（自动换行）、ScrollBars=Vertical（仅启用纵向滚动）；长行通过换行显示，未启用横向滚动。内容未溢出时可能看不到滚动条；图2的滚动部件用独立网格构造样例展示，未给日志增加横向滚动条。若要求左右查看完整长行，应明确提出关闭自动换行、启用双向滚动，这是新增需求，不能描述为修复已有横向滚动条。该窗口三张数据网格已配置ScrollBars.Both，网格的滚动能力不能当作日志的既有能力。
 
-两图中的合并窗对象集中在[MergeHeadersForm.cs](../../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)：构造函数组装布局和卡片，BuildSourcesGrid配置来源列，AppendLog添加时间戳。卡片与控件外观见[UiKit.cs](../src/addin/UiKit.cs)；另窗数值控件分别见[AgentCustomization.cs](../src/addin/AgentCustomization.cs)的CommandCustomizationForm和[DialogFormatting.cs](../src/addin/DialogFormatting.cs)的DialogFormatEditor。这些源码入口供两项目共享参考，不表示Word加载项具有Excel合并业务。
+两图中的合并窗对象集中在[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)：构造函数组装布局和卡片，BuildSourcesGrid配置来源列，AppendLog添加时间戳。卡片与控件外观见[UiKit.cs](../C-01-ExcelIterate/src/addin/UiKit.cs)；另窗数值控件分别见[AgentCustomization.cs](../C-01-ExcelIterate/src/addin/AgentCustomization.cs)的CommandCustomizationForm和[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)的DialogFormatEditor。这些源码入口供两项目共享参考，不表示Word加载项具有Excel合并业务。
 
 典型关系为“窗口→布局容器→卡片→输入控件／日志文本框／数据网格”；仅数据网格继续区分数据行、列和单元格。布局容器也可直接放控件。TableLayoutPanel的布局行列用于排列，DataGridView的行列用于展示业务数据；界面网格单元格与宿主工作表单元格、Word文档表格单元格分别命名。“来源网格中的‘表头行’列”是输入工作表行号的数据列，“来源网格的列标题”才是顶部列名栏。涉及单条记录时用文件名、工作表名等业务身份定位，不能只靠排序后的可视行号。
 
-宽度拖柄（图2·13）与高度拖柄（图2·14）的定位、拖动方向和作用范围见表；其他拖动对象按用途命名：**格式预览缩放手柄**位于“自定格式”右侧预览的选中控件右边、下边和右下角，调整尺寸草稿；**命令树排序拖柄**是“自定排序”树节点的六点标记，拖动节点调整同父命令顺序。这两种预览／排序手柄未出现在合并窗截图中。需求应写明位置、调整目标和是否保存重开后的结果；机制和源码入口见[四种拖动及配置生效](#5-四种拖动及配置生效)。
+宽度拖柄（图2·13）与高度拖柄（图2·14）的定位、拖动方向和作用范围见表；其他拖动对象按用途命名：**格式预览缩放手柄**位于“自定格式”右侧预览的选中控件右边、下边和右下角，调整尺寸草稿；**命令树排序拖柄**是“自定排序”树节点的六点标记，拖动节点调整同父命令顺序。这两种预览／排序手柄未出现在合并窗截图中。需求应写明位置、调整目标和是否保存重开后的结果；机制和源码入口见[四种拖动及配置生效](B2-DevExperience.md#5-四种拖动及配置生效)。
 
 需求句式为：**窗口名称／菜单路径→区域位置和用途→对象及作用范围→要改的属性或动作→期望效果→生效与保存方式（需要时）**。例如：
 
@@ -325,7 +212,7 @@ RoundedButton不透明父色覆盖整区，禁系统默认按钮绘制，保留�
 
 搜索只改可见行，不改勾选；全选只作用当前结果。行Tag绑定原对象/列身份，排序后提交、恢复仍按身份，特殊自身行不混入业务计数。Rows.Add首行可能在Tag赋值前触发选中事件，填完显式同步明细/按钮；右键先选鼠标所指行。
 
-行高默认约34、表头约38，关闭EnableHeadersVisualStyles；添加行前设RowTemplate，句柄创建及格式应用后复核DPI。表头完整单行、居中且默认加粗，显式自定格式可关闭粗体；实际字体、字号、Padding和排序图标决定最小列宽与单行表头高度，不启用表头换行。短列AllCells、长列Tag存逻辑上限、末列Fill，均须先满足完整表头宽度；手动缩窄不低于该下限，窄窗横滚。文件提取名称另按正文30个“0”限宽，表头所需宽度优先，不能被局部策略或后续格式应用覆盖。DataGridViewColumn没有MaximumWidth。特殊行同时设普通/选中背景；全文提示用未受EndEllipsis限制的真实测量。规范与维护范围见[格式维护规范](#5-格式维护规范)。
+行高默认约34、表头约38，关闭EnableHeadersVisualStyles；添加行前设RowTemplate，句柄创建及格式应用后复核DPI。表头完整单行、居中且默认加粗，显式自定格式可关闭粗体；实际字体、字号、Padding和排序图标决定最小列宽与单行表头高度，不启用表头换行。短列AllCells、长列Tag存逻辑上限、末列Fill，均须先满足完整表头宽度；手动缩窄不低于该下限，窄窗横滚。文件提取名称另按正文30个“0”限宽，表头所需宽度优先，不能被局部策略或后续格式应用覆盖。DataGridViewColumn没有MaximumWidth。特殊行同时设普通/选中背景；全文提示用未受EndEllipsis限制的真实测量。规范与维护范围见[格式维护规范](B3-Uphold-Discipline.md#5-格式维护规范)。
 
 保留原生Ctrl+C，扩展快捷键采用Ctrl+Shift。Clipboard.SetDataObject(text,true)支持宿主退出后粘贴，保留业务已有占用重试。界面或日志显示失败不改变已提交业务事实；诊断与用户结果分流。
 
@@ -389,7 +276,7 @@ RibbonCustomization从默认XML登记稳定命令，根菜单转dynamicMenu；�
 
 EXTRA_TABS预声明选项卡；主toggle的get_pressed与附加tab的get_visible读同一Visible，onLoad登记Ribbon，点击修改/刷新/原子存AgentExtension.state，失败刷新回旧状态、保存失败如实提示。默认隐藏，显示后由用户选择；新增第二附加tab须独立状态/键/刷新集合，不能只追加配置。卸载清窗与引用。
 
-概览从开发日志/使用说明的唯一agent-overview标记提取；构建将去除delivery-audit的开发日志正文与完整使用说明以UTF-8规范换行内嵌，修改后必须重建才能更新DLL。全文每次经SHOpenWithDialog选择应用，取消保留概览、不写默认关联。AgentLocalFiles按程序集与文档／资产联合摘要释放内容包：AP3-说明中的Markdown与同级AP2-美工图片、src/documentation示意SVG保持原相对路径。WpsShared.Agent.Assets.xml记录当前文档的资源映射、大小及摘要；只导出本次请求的文档和资产，缺失／损坏缓存修复后才打开应用，保留可能在用的旧包。构建、增量缓存、文件盘点和图片门禁复用Website的document_assets收集函数，只把实际引用资源列为必要输入。
+概览从A-UserGuide与B1-Project-Files的唯一agent-overview标记提取；构建按当前项目从C-04-Devlog抽取章节、拼接B1/B2/B3并去除delivery-audit正文，以UTF-8规范换行内嵌，修改后必须重建才能更新DLL。全文每次经SHOpenWithDialog选择应用，取消保留概览、不写默认关联。AgentLocalFiles按程序集与文档／资产联合摘要释放内容包：包内逻辑路径固定为C-04-Devlog/A-UserGuide.md与C-04-Devlog/B-Devlog.md，图片资源指向各项目AB-Graphic下的PNG与SVG。WpsShared.Agent.Assets.xml记录当前文档的资源映射、大小及摘要；只导出本次请求的文档和资产，缺失／损坏缓存修复后才打开应用，保留可能在用的旧包。构建、增量缓存、文件盘点和图片门禁复用Website的document_assets收集函数，只把实际引用资源列为必要输入。
 
 开发预览的“全文”每次由AgentDocumentAccess发起口令验证，提示“请输入开发者的微信名称”；掩码TextBox仅在当前窗口中保存输入，产品只存校验摘要，不写输入日志、不持久化授权。错误可重试，取消／Esc／关闭／异常均不导出、不选应用；用户全文、概览和复制不验证。DeveloperPasswordForm通过HostDialogService的结果型隔离接口显示，登记agent.developerpassword及其预览、尺寸和退出清理；预览构造不验证、不导出。该验证保护入口，不加密已导出的MD。正文里的业务源码、姊妹项目与历史证据链接仍是工作区定位，离线内容包只随附文档配图及示意SVG。AgentDocumentCoreProbe为无窗体后台回归入口，不把后台结果登记为真实查看器或WPS验收。
 
@@ -397,234 +284,11 @@ EXTRA_TABS预声明选项卡；主toggle的get_pressed与附加tab的get_visible
 
 RequirementsForm使用Requirements.txt UTF-8原子保存并查外部修改；介绍Label独立。普通关闭保存/放弃/取消，宿主退出原子保存唯一unsaved草稿，下一次选择恢复；正式保存成功后清草稿失败不能误报保存失败。预览只用固定样例，不读写用户记录。
 
-# 四. Word与Excel共享维护纪律
+<!-- scope:shared:end -->
 
-## 1. 文档、编号与经验更新
+<!-- scope:excel:start -->
+# 二. Excel-Iterate 专属开发经验
 
-AGENTS只放阅读顺序/正文链接；开发日志保存可执行方法、边界、入口和证据；使用说明保存用户步骤/结果/限制。源码文档为知识来源，不依赖旧聊天或隐藏记忆。不额外建立维护副本。
-
-标题体系如下，最多五级，不为凑层级拆短句；同级连续编号、新父级重置子级，编号后一个半角空格。新增经验归现有主题，必要时用第五级细分，代码围栏内不参与编号：
-
-```markdown
-# 一. 标题
-## 1. 标题
-### (1). 标题
-#### a. 标题
-##### i. 标题
-##### ii. 标题
-```
-
-维护顺序：对照最终源码→提炼做法/边界/入口/证据→判断共享→更新对应主题、指南/地图/目录/顶部日期→文档/锚点/共享门禁→固定正文重建→回填审计。共同经验及公共源码成对同步、逐字/字节一致；宿主算法留第五章，姊妹缺失写待同步，不声称成对通过。无新增可迁移经验如实说明，不编造根因。
-
-版本唯一来源INSTALLER_VERSION，四段0～65534，仅用户指定才修改；两日志版本表升序，每版一行最多200字，新第三段主版本将前一主版本子版本并入末段0。安装器/加载项/清单版本同源，配置导入不生成文件/字节码，值不变不回写；网站PRODUCTS从新到旧但摘要与对应日志一致。
-
-保持唯一agent-overview、shared-wps-experience、delivery-audit标记有序；共享区域连续包含第三、第四章，目录在概览外。devlog_probe/markdown_gate检查九份文档编号与本地标题锚点，verify_shared核对公共副本及共享块；Markdown可视化编辑器删注释后必须修复。审计只放本次产物/结果索引，不放有效开发经验，回填审计不改变内嵌正文。
-
-## 2. 重建、签名与交付
-
-现有单项目入口只重建自己，无--background参数：`python rebuild.py --mode full` 后 `python validate.py --background`。两产品文档/网页共同交付直接在Website运行 `python rebuild.py --background --mode full`（或其AP1批处理选2），再 `python validate.py --background`；增量选1/--mode incremental，无mode默认full。携带完整Website；两加载项均在时带父verify_shared.py。构建不安装、不结束WPS。
-
-链路为 Configure_program.py→build.py→resign.py→build_installer.py；每次编译后必须重签，csc的新MVID会改变DLL摘要。固定证书缺失/无私钥/过期或错指纹即停，不切换发布者。安装器内嵌主DLL、Utilities、Office.Core、应用清单、部署清单共五载荷。
-
-清单保留FullTrust/customHostSpecified/GAC与vstav3/vstov4结构；未强签DLL依赖不带token。应用清单签后读顶层identity重建vsto引用，计算的是manifest文件本身的精确大小与SHA-256 Base64摘要；UTF-8 BOM/CRLF。SignCmi采用SHA-256，两清单分别有StrongName/Authenticode签名；ValidateManifest查结构，ValidateXmlSig查整清单及license绑定。信任缺失与签名损坏分别报告，缺校验器/载荷不符阻止交付。
-
-统一入口固定空installer-assets快照→两包暂存与后台验证→独立HTML附本轮包→核对正文/资源/包字节→事务替换两EXE、HTML和current-delivery.json。失败保留上轮正式产物，回滚未完保留恢复文件；只生成配置预览不表示完成联合发布。两个DLL的HTML资源相同，不要求DLL相同；发布后再次单独打包须重跑联合入口以恢复下载一致性。
-
-安装需完整VSTO Runtime和官方VSTOInstaller：RuntimeLocator查HKLM两视图及Common Files，缺少先停止，不释放新载荷/写信任。用户保存文件并完全退出WPS后运行安装器，在官方窗口授权；注销本产品旧订阅成功才替换/重装，真实退出0才补Manifest、LoadBehavior=3、AddinsWL。取消/非零退出如实报告，不静默安装。卸载只清自身订阅/挂载/白名单/信任/载荷，保留LastInstallDir。
-
-排障按“运行库→SetupLogs→五载荷/挂载/白名单/订阅信任→签名摘要→真实宿主”。Manifest是绝对file URL+|vstolocal，codebase相对；移动目录须重装。同版本不代表同字节，查安装路径与实际加载DLL摘要。COMAddIns.Connect可作连接证据，Object=null/模块扫描/文件释放不能单独定启用。SetupDoctor在build，只读诊断不随正式输出交付。
-
-## 3. 验证、缓存与证据边界
-
-### (1). 用COM启动、附加和验证WPS
-
-在STA执行：表格用KET.Application并创建Workbooks.Add，文字用KWPS.Application并创建Documents.Add。只读诊断用Marshal.GetActiveObject附加现有实例，失败返回SKIP/INCOMPLETE，不启动应用；已授权需要启动时使用Type.GetTypeFromProgID加Activator.CreateInstance（PowerShell等价为New-Object -ComObject），再设置Visible并创建测试对象，不能只打开WPS首页。附加模式只限定不启动宿主，不自动使业务只读；只读诊断不创建或修改文档。以下为现有.NET Framework 4.8探针中ProbeSession的开窗接线示例，外围Main标记[STAThread]，捕获异常并用session.Finish记录结果；它不包含具体业务验收断言。PowerShell直接调用Marshal.GetActiveObject应使用Windows PowerShell 5.1，PowerShell 7须采用适用的ROT/原生接口实现。
-
-```csharp
-bool isSheet = true;                         // false：WPS文字
-bool attachOnly = true;                      // 显式启动时才改为false
-string progId = isSheet ? "KET.Application" : "KWPS.Application";
-dynamic app = session.Take(ProbeSession.Connect(new[] { progId }, attachOnly));
-if (app == null) return session.Finish(2);
-string exe = Path.Combine(Convert.ToString(app.Path), isSheet ? "et.exe" : "wps.exe");
-FileVersionInfo info = FileVersionInfo.GetVersionInfo(exe);
-if ((info.ProductName ?? "").IndexOf("WPS", StringComparison.OrdinalIgnoreCase) < 0)
-    throw new InvalidOperationException("无法确认WPS宿主，停止写入。");
-session.Override(() => (object)app.Visible, v => app.Visible = v, true, "Visible");
-dynamic items = session.Take(isSheet ? (object)app.Workbooks : (object)app.Documents);
-object sample = items.Add();
-session.Own(sample, delegate {
-    if (isSheet) ((dynamic)sample).Close(false); else ((dynamic)sample).Close(0);
-});
-// 仅对sample及独立临时目录执行写入、保存、读回和恢复断言；不操作用户文档。
-return session.Finish(2);                    // 仅演示开窗；补齐业务断言后才可返回0
-```
-
-注册映射和进程核对另按上节执行；示例中的文件产品检查不能代替完整身份记录。ProgID不存在、指向不符、未发现现有实例或身份不足时明确失败/未完成；以WPS为目标的验收不静默改用Excel.Application/Word.Application。现有业务探针的兼容回退链不是严格WPS启动契约，运行前须核对实际连接；附加失败可检查ROT文件moniker，但只能选择明确的测试文件，不能任取第一个文档。GetActiveObject也不保证拿到用户眼前那个窗口，目标用实际文档/工作簿身份确认。
-
-CreateInstance可能复用已有Application，不能据此认领或Quit宿主。仅关闭自己创建并持有的测试文档/簿；所有自取COM属性/集合/范围逐次登记并ReleaseComObject，避免链式访问产生遗漏，不FinalRelease共享RCW。读取原值成功后才临时设置Visible、DisplayAlerts、ScreenUpdating、EnableEvents等，并在finally恢复；无法读取则不改。原文档Saved只观察，不设true掩盖修改；按需恢复原活动文档/簿、选区和剪贴板。失败返回非零并保留样本及日志，不按全局新增PID退出或强杀进程。实现入口为两项目src/tools/LiveProbeSafety.cs及对应实机探针。
-
-COM可验证真实宿主中的业务读写、字段/公式、保存与还原；不能代替按钮点击、键入焦点、弹窗外观、鼠标拖动及实际跨屏DPI验收。COMAddIns.Connect仅说明连接状态；本项目未提供COMAddIns.Object自动化桥，Object=null须记INCOMPLETE，不能用新建Connect实例冒充已加载Ribbon回调。COM/API检查不需要computer-use；可见交互尚未执行时保留人工待验收状态。启动与附加API区别参见[New-Object](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/new-object)、[GetActiveObject](https://learn.microsoft.com/en-us/dotnet/fundamentals/runtime-libraries/system-runtime-interopservices-marshal-getactiveobject)。
-
-### (2). 弹窗维护规范
-
-交互弹窗设错窗口样式会把宿主锁死：弹窗打开后无法在单元格键入、点不开有子选项的功能区菜单，而宿主窗口 enabled 仍为 True、宿主线程仍活着（功能区主按钮可反复点击），极易误判为宿主被禁用或线程阻塞。真根因是工具窗样式：设 `ShowInTaskbar = false`、`MinimizeBox = false` 会加上 WS_EX_TOOLWINDOW，无主非模态 tool 窗在 WPS 宿主线程上抢焦点/失激活——前台被弹窗把持，键盘输入进不了文档、功能区下拉点不开，宿主 enabled 与线程状态都不受影响，表现为“假死”。曾两度误判：先删无主窗的 TopMost，再把 Load 内业务 BeginInvoke 异步化，均未生效；按打开前后 enabled 均 True 排除宿主被禁用、功能区主按钮可反复点排除线程阻塞、前台窗口=弹窗指向激活/焦点问题三重排除后，才锁定与链接助手等正常弹窗的样式差异。Word 与 Excel 两侧的交互弹窗都按本节构建。
-
-正确构建交互弹窗：不设 `ShowInTaskbar = false`、`MinimizeBox = false`（即不引入 WS_EX_TOOLWINDOW），不重写 ShowWithoutActivation，不向无主窗设 TopMost，与链接助手等既有正常弹窗保持同套默认样式；非模态显示统一 `IntPtr owner = GetHostWindowHandle(); if (owner == IntPtr.Zero) form.Show(); else form.Show(new WindowWrapper(owner));`，WPS 回调线程上 owner 校验常不成立、取到 0 时走普通 Show 即可，样式正确即不锁死，不为拿 owner 改样式；Load 只做界面装配，重业务移出 Show 栈（BeginInvoke 到消息泵 idle），内置打开前后 enabled/前台/owner 诊断日志，复发时按三重排除定位，不再次误判；新弹窗在 DialogSizes、DialogPreviewFactory、dialog_catalog_probe、GridHeadersProbe 登记尺寸与目录，探针补源码守卫（禁 TopMost=true 与工具窗样式）和预览构造断言（ShowInTaskbar/MinimizeBox 保持默认 true），把根因钉进门禁；验收必须含真实宿主交互：开窗后键入单元格、展开功能区子菜单、Esc 关闭，后台探针通过不等于焦点与菜单验收。
-
-## 4. 冗余文件清理
-
-只有用户实际要求“启动冗余清理”才触发盘点/删除；讨论规则、改文档或构建不触发历史清理。默认范围三个项目，另指定从其指令；项目外原图、用户配置/缓存不自动纳入。
-
-冗余候选须同时满足：生命周期结束/有有效再生办法；不在现行依赖闭包（含动态加载、资源、文档/证据引用）；独有经验/恢复信息已归并；隔离排除候选后从保留输入无旧build重建和适用验证通过。旧日期、old/backup文件名、build目录或搜不到引用都不足以证明可删。
-
-分五类盘点：必要输入、当前产物、有效证据、可删历史、未确认。按实际字节从大到小核对用途/摘要，公共副本职责不同不能因同SHA删除；移动项目内不算释放。私钥/必要依赖/未完成恢复资料始终保护，.cer和公共CA .pem不按扩展名误作私钥。
-
-执行顺序：记录范围/版本/用途/数量/字节/摘要→归并经验修引用→隔离排除候选完成重建/签名/载荷/资源验证→Website `src/tools/cleanup.py --dry-run`生成schema 3五类清单→逐项审阅→`--apply`读同一清单复查→复核正式产物/链接并报告实际删除/失败/保留及字节差。清单后的输入/目标变化须重新盘点。
-
-fixture-state必须真实结束；cleanup-review绑定源码指纹、逐文件摘要、用途/经验结论、隔离成功证据及原日志摘要，禁止伪造状态。删除前核绝对路径在指定项目内，不删项目根、不跟随联接、不碰项目外文件；不完整恢复保留。已授权确认项按范围执行。探针成功仅释放自建临时文件，失败保留诊断与恢复资料。
-
-## 5. 格式维护规范
-
-### (1). 弹窗中数据网格的格式规范
-
-#### a. 格式规范说明
-
-##### i. 表头格式规范
-
-所有新增及现有生产弹窗的数据网格表头完整单行显示、居中、默认加粗。用户在“自定格式”中明确关闭粗体时尊重其选择；字号、字体、颜色和表头文字仍可自定，不能因此开启换行或截断表头。单行表头高度随实际字体、字号和DPI重新测量，避免上下裁剪；正文样式、网格稳定身份和已有用户配置保持，不通过重置配置取得默认外观。
-
-![弹窗数据网格表头格式的离线控件渲染](../AP2-美工/格式规范-弹窗网格表头-离线渲染.png)
-
-上图来自“设置OCR前缀”的离线生产控件渲染，展示完整、单行、居中加粗的表头；非真实WPS截图，不作为宿主交互验收证据。
-
-##### ii. 列宽与正文显示规范
-
-列宽下限按当前实际表头字体、文字、内边距和排序图标测量，包含Fill列、复选列、下拉列与按钮列。手动缩窄不得低于完整表头宽度；宽度总和超过窗口时通过横向滚动查看，不压缩或换行表头。
-
-文件提取名称正文自动适配上限仍为当前字体30个“0”加内边距，通常下限50逻辑像素，完整表头需要更宽时优先。该上限不裁剪数据、不限制手动调宽。新扫描重启适配周期；本周期后续重试、核对、规则调整与窗口缩放尊重已手调列宽。
-
-#### b. 代码复现方法
-
-源码链接在完整项目目录中使用；加载项离线全文保留下列片段，不携带业务源码。完整实现以链接中的函数为准；在同一加载项源码程序集内复用现有内部类型，修改公共网格代码后同步两个项目，不另维护一份格式实现。
-
-| 用途            | 可复用的现有实现                                                                                                                                                                                     | 调用位置与边界                                                                                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 网格默认样式及完整表头测量 | [UiKit.cs](../src/addin/UiKit.cs)：Ui.StyleGrid、Ui.AutoFitColumns、Ui.EnsureGridHeaders                                                                                                        | 创建列后适配；StyleGrid在HandleCreated复核DPI；EnsureGridHeaders按逐列表头字体／Padding／排序图标计算下限与高度，不强制覆盖显式的非粗体字体                                                                                    |
-| 自定格式应用后的收敛    | [DialogFormatting.cs](../src/addin/DialogFormatting.cs)：DialogFormatting.Apply                                                                                                               | finally阶段完成布局后重新测宽；普通网格调用Ui.AutoFitColumns，尺寸配置调用专属FitColumns，不再开启表头换行                                                                                                            |
-| 保留局部列宽策略      | [FileNamesLayout.cs](../../C-01-ExcelIterate/src/addin/FileNamesLayout.cs)：FileNamesForm.FitResultColumns；[DialogSizeEditor.cs](../src/addin/DialogSizeEditor.cs)：DialogSizesForm.FitColumns | 文件提取先在fittingColumns保护内调用EnsureGridHeaders，再处理正文30个0上限和手动列宽；尺寸目录保留树缩进及自绘按钮测量。文件提取通过ResultGrid／IGridColumnFit接线，局部回调不反调Ui.AutoFitColumns；尺寸目录由DialogFormatting.Apply直接调用FitColumns |
-
-**最小调用示例。** 在已经登记并使用DialogSizing.Prepare的业务窗中，先创建全部列，将grid加入业务窗的既有布局容器，再调用共享入口：
-
-```csharp
-var grid = new DataGridView {
-    Dock = DockStyle.Fill, ScrollBars = ScrollBars.Both,
-    AllowUserToAddRows = false, RowHeadersVisible = false
-};
-Ui.StyleGrid(grid);                         // 居中、单行、默认粗体
-var column = new DataGridViewTextBoxColumn {
-    Name = "result", HeaderText = "处理结果", // 保持稳定列ID
-    AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
-};
-grid.Columns.Add(column);
-Ui.AutoFitColumns(grid);                    // 包括Fill列的完整表头下限
-```
-
-以下是EnsureGridHeaders的关键测宽逻辑摘录，不是独立的完整函数；完整函数还负责重入保护和单行表头高度。graphics是从该网格CreateGraphics取得并由using释放的Graphics，不按字符串字符数换算像素：
-
-```csharp
-column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-column.HeaderCell.Style.WrapMode = DataGridViewTriState.False;
-var style = column.HeaderCell.InheritedStyle;
-Size text = TextRenderer.MeasureText(graphics, column.HeaderText ?? "",
-    style.Font ?? grid.Font, Size.Empty,
-    TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
-int sorting = column.SortMode == DataGridViewColumnSortMode.NotSortable
-    ? 0 : Ui.Px(grid, 18);
-column.MinimumWidth = Math.Max(Ui.Px(grid, 50),
-    text.Width + style.Padding.Horizontal + Ui.Px(grid, 12) + sorting);
-```
-
-**调用顺序与边界。** 创建列→加入既有布局→调用Ui.AutoFitColumns；表头字体或文案调整复用DialogFormatting，最终阶段重新测量。不要单独开启表头换行或用固定宽度压缩标题。文件提取的ResultGrid／IGridColumnFit保持局部适配回调，尺寸目录保留专属树形绘制及FitColumns，不以普通适配覆盖它们。
-
-生产网格按实例盘点，不把测试夹具计入：Excel为追踪结果、按列筛选、文件提取名称、OCR前缀、OCR字段核对、合并的来源／映射／样本及交互弹窗尺寸共9张；Word为查看链接的来源／明细及交互弹窗尺寸共3张。所有入口及专属网格均遵守完整表头下限。
-
-**验证方法。** 两项目[GridHeadersProbe.cs](../src/testharness/GridHeadersProbe.cs)的GridHeaderChecks构造真实生产控件，比较WinForms原生表头所需宽高；工具先按project.json编译，再用`Feature099Probe.exe --grid-headers`单独运行。检查完整单行表头、居中、默认粗体及显式关闭粗体，覆盖旧自定配置、较大字号、排序图标、窄窗横滚、手动缩窄／调宽、反复缩放和100／125／150／200%字体模拟条件。后台控件检查不连接WPS，字体模拟及离线渲染不证明真实WPS外观、鼠标拖动或跨屏DPI；未执行的实机交互单独列待验收。
-
-### (2). 程序所新生成工作表的格式规范
-
-#### a. 格式规范说明
-
-本节格式规范以 `AP2-美工/格式维护.xlsx`（桌面样张 `工作簿1.xlsx` 的「格式维护」工作表同源）为权威样张，所有新增正式结果表必须严格遵循。
-
-##### i. 首行合计（SUBTOTAL）
-
-正式结果表首行为合计行，每个金额列写 `=SUBTOTAL(9, <数据首行>:<工作表末行>)`（如 `=SUBTOTAL(9,G4:G1048576)`）。该行字体 Times New Roman 11、套会计数字格式（见 iii）、垂直居中、**不设边框**（样张 R1 border 为空）；合计行不计入表头行高 26 磅下限，按默认行高。
-
-##### ii. 表头格式规范
-
-表头行统一设置：居中、加粗、不换行；填充色 `#4874CB`（主题色 accent1）、白字；字体 Times New Roman 11；行高按最终字体适配、保留 26 磅下限；空结果仍须完整显示表头。
-
-![程序生成工作表的表头与全数据列宽适配构造示意](../AP2-美工/格式规范-生成工作表-构造示意.png)
-
-上图为构造示意，非真实WPS截图：表头单行、居中加粗，列宽依据表头和全部数据适配，最后一行的最长文本也参与测量。[可编辑SVG](../src/documentation/output-format-maintenance.svg)。
-
-##### iii. 数据行格式规范
-
-数据行字体 Times New Roman 11、不加粗；金额列套会计数字格式 `_ * #,##0.00_ ;_ * \-#,##0.00_ ;_ * "-"??_ ;_ @_ `（含千位分隔、负数带减号、零显短横）；垂直居中（valign=center）；备注/调整事项/会计科目等指定列水平居中。
-
-##### iv. 边框规范
-
-表头与数据区统一边框：**最左列 left=medium（xlContinuous, xlMedium）、其余内部边框=slantDashDot（xlSlantDashDot=13）**——即表格左缘为粗实线、内部网格为斜点划线。**首行合计行（SUBTOTAL）不设边框**。表头顶边为 medium。
-
-##### v. 列宽与正文显示规范
-
-在数据、字体、数字格式及超链接设置完成后，对包含表头和全部写入数据的输出范围执行列AutoFit，不只测表头，不再用固定列宽覆盖适配结果。最长值在最后一行或隐藏行也应参与；OCR起始列不必为A列。为测量隐藏数据，可临时显露输出范围内的隐藏行，必须在finally逐一恢复原Hidden，不改变AutoFilter及其条件；恢复失败须报告，不能记为完成。
-
-极长正文达到宿主列宽上限仍显示不全时，只对本程序输出区域的正文换行并适配行高，不改数据内容或套用网格的30字符上限；表头保持单行。业务状态回写结束后适配本批结果，不持续监听用户后续编辑而覆盖手动列宽。
-
-所有新增正式结果表沿用此规则；本次范围为Excel的"OCR提取结果""文件批量命名""外部链接""高筛结果"和工作表目录，目录保留已有全表样式。已有合并目标表、业务临时条件表及Word文档表格不套用报告格式。测量范围限定为本程序输出区域；列宽和行高属于整列／整行属性，会影响同列／同行的其他单元格显示，不能据此改变其数据。
-
-#### b. 代码复现方法
-
-共享的是维护规范，具体工作表操作由Excel实现。源码链接在完整项目目录中使用；下列片段在同一加载项源码程序集内复用，依赖现有内部类型。OutputFormatSnapshot和UpdateReport为私有实现，阅读其逻辑并从原业务入口接入，不作为外部直接调用接口。
-
-| 用途           | 可复用的现有实现                                                                                                                                                                                                 | 调用位置与边界                                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 完整报告范围及隐藏行测量 | [WorkbookFeatures.cs](../../C-01-ExcelIterate/src/addin/WorkbookFeatures.cs)：WorkbookUi.StyleHeader、FitOutput、ReadRowHeight、OutputFormatSnapshot                                                         | StyleHeader规范表头；FitOutput在最终数据／字体／数字格式后测完整输出范围、适配表头行高；超限正文换行。失败时按快照还原列宽／换行／行高，finally恢复原Hidden；隐藏行的0／null行高先安全读取潜在高度 |
-| OCR写入与失败还原   | [Connect.FileNames.cs](../../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)：FileNameWorksheet.Write                                                                                                   | 写入前保留值／公式／格式／尺寸／隐藏状态，已有筛选保留，新增筛选后再FitOutput；失败逐项还原并报告未恢复项                                                            |
-| 状态回写与保存      | [LinkAssistant.cs](../../C-01-ExcelIterate/src/addin/LinkAssistant.cs)：Scan、UpdateReport；[FileToolForms.cs](../../C-01-ExcelIterate/src/addin/FileToolForms.cs)：RenameWorkbookSession.Create、WriteResult | 内容及状态回写完成→FitOutput→保存；断链清单保存后才登记checkpoint.LastHash                                                                 |
-| 目录及高筛结果      | [WorkbookFeatures.cs](../../C-01-ExcelIterate/src/addin/WorkbookFeatures.cs)：DirectoryNavigation.Generate、QuickAdvancedFilter.Run                                                                        | 目录在Hyperlinks.Add和全表字体／对齐设置后适配；高筛在原列数字格式恢复和最终字体设置后适配，业务临时条件表不套报告格式                                                   |
-
-**最小调用示例。** 以下完整接线片段演示新报告的格式调用，不代替现有写入／保存／恢复事务。rows包含表头，startColumn可不是A列，最后一个地址须包含最后一条数据；sheet由业务入口提供：
-
-```csharp
-object[,] values = { { "名称", "说明" }, { "样例文件", "完整结果文字" } };
-int startColumn = 2;                        // 从B列写入
-int rows = values.GetLength(0), columns = values.GetLength(1);
-using (var bag = new ComBag()) {
-    string address = ComFormulaHost.Address(1, startColumn) + ":" +
-        ComFormulaHost.Address(rows, startColumn + columns - 1);
-    dynamic range = bag.Own(((dynamic)sheet).Range[address]);
-    range.NumberFormat = "@";
-    range.Value2 = values;
-    WorkbookUi.FitOutput(sheet, startColumn, columns, rows);
-    // FitOutput内设置表头、完整范围Columns.AutoFit及表头Rows.AutoFit；
-    // 超限时只对正文WrapText及Rows.AutoFit，并恢复原Hidden。
-}
-// 如该业务需要保存，应在适配成功后调用原保存入口；不要额外自动保存OCR结果。
-```
-
-**调用顺序与边界。** 内容及状态回写→完成字体、数字格式、超链接及筛选设置→FitOutput→按原业务入口保存→登记提交摘要。适配后不回写固定列宽；OCR结果沿用不自动保存的行为。外部链接清单和文件命名清单的格式适配在相关保存之前完成，含断链清单须在适配及保存后登记提交摘要，不能使恢复记录与实际文件字节不一致。
-
-列宽、正文换行及受影响行高纳入原操作失败恢复；测量或格式写入失败须还原本次已尝试改动并报告未恢复项。格式快照和隐藏行恢复复用现有实现，保留原业务的内容、公式、筛选和恢复事务，不能用示例替换业务入口。
-
-**验证方法。** 工具先按Excel的project.json编译；[Feature099Probe.cs](../../C-01-ExcelIterate/src/testharness/Feature099Probe.cs)通过`Feature099Probe.exe --output-format`覆盖OCR及格式快照恢复，[WorkbookToolsProbe.cs](../../C-01-ExcelIterate/src/testharness/WorkbookToolsProbe.cs)通过`WorkbookToolsProbe.exe`覆盖链接、命名、目录及高筛输出接线。检查五类输出、空结果、最后一行最长值、非A列起始、隐藏数据、超长正文、状态回写及适配中途失败后的恢复；测试模型应保存列宽、换行、行高与测量范围，不能只统计AutoFit调用次数。
-
-这些后台COM模型检查不连接WPS；高筛模型仅预置原生筛选结果，验证格式步骤，不验证宿主筛选算法。后台通过不证明真实WPS列宽、隐藏行测量或可见换行效果；尚未执行的实机交互单独列待验收。
-<!-- shared-wps-experience:end -->
-
-# 五. Excel专属开发经验
 
 ## 1. 单元格、选区与公式
 
@@ -755,7 +419,7 @@ Feature099Probe覆盖百度接口/Token、无位置隔离、阿里固定签名�
 
 ## 5. 合并抵消
 
-交互弹窗的宿主锁死根因与构建规范属 Word/Excel 共享维护纪律，见[弹窗维护规范](#2-弹窗维护规范)；本章只记 Excel 侧合并抵消的分层、会计模型与写入还原边界。
+交互弹窗的宿主锁死根因与构建规范属 Word/Excel 共享维护纪律，见[弹窗维护规范](B3-Uphold-Discipline.md#2-弹窗维护规范)；本章只记 Excel 侧合并抵消的分层、会计模型与写入还原边界。
 
 ### (1). 合并抵消的分层与会计模型
 
@@ -806,3 +470,108 @@ EliminationProbe 92 项锁定金额/比例解析、角色猜测、映射校验�
 - **「写数值不写公式」复选框删除**：写公式多次在宿主核对环节报错（跨表引用 `$` 规范化等），`request.StaticValues` 恒 true、金额恒写静态数值；确认文案同步
 - **拖柄加固 + 留白根除**：`WidthGrip.OnPaintBackground` 由空改为铺底色（双保险）；删除 `gripSource/gripTarget` 两个行拖柄；`Ui.Grip` 包按钮时清其底边距，前导 Label 上边距 8→6、非按钮输入框上下边距归零、hint 上下边距 8→2、来源/目标间隔行 8→2、两卡片纵向 Padding 8→4。**多轮压缩无效的真根因（新增 LayoutProbe 离线测量证实）**：AutoSize 行里放 `Dock=Fill` 的子控件时，TLP 读的是子控件「当前实际高度」而非期望高度（循环依赖），卡片渲染高 100px 而内容仅需 46/38px——改 `AutoSize=true + Dock=Top` 后卡片高度由内容决定（46/38px），留白彻底消失。`UiKit.cs` 共享，改后同步 C-02
 - **公式写入核对失败（G4）修复**：结果表跨表引用 `='差异表(2)'!I3` 写入后，宿主把相对引用规范化为 `$I$3` 回读，`NormalizeFormula` 不去 `$` 致逐字符比对失败。修复：NormalizeFormula 追加 `Replace("$","")`；核对失败消息附带期望/实际公式便于诊断；写入顺序改为**先写差异表、后写结果表**（引用目标先有数据）。`MergeHeadersHost.cs` 共享，改后同步 C-02
+
+<!-- scope:excel:end -->
+
+<!-- scope:word:start -->
+# 三. WordUpdater 专属开发经验
+
+
+## 1. LINK字段与表格选区
+
+### (1). 建立逐格链接
+
+LinkPasteEngine优先在原文档文末临时区PasteSpecial读取WPS生成的LINK代码，删临区并恢复选区；该类型原文档探测失败后回退自建并激活临时文档，finally按不保存关闭，不能保证无新标签闪现。DataType依文本2/RTF1/OLE0，每种先命名再位置参数。Fields.Add逐格重建并沿用剪贴板表名前缀：WPS LINK用R1C1，写A1可能Update成功但结果空，须内容核对。字段形状例如 `LINK Excel.Sheet.12 "C:\路径\Book.xlsx" "Sheet1!R1C1:R4C4" \t \a`。
+
+源按Areas顺序、区域先行后列，目标所选矩形先行后列，格数严格相等、不扩大整表；Selection.Cells失败再Range.Cells，核RowIndex/ColumnIndex、包围盒和去重数。跨表/越界/合并拆分/嵌套/超过500格预检拒绝；清内容用End-1保留单元格结束符。
+
+### (2). Ctrl多区域来源与边界
+
+剪贴板可能只有包围盒；只有解析一片且格数不等于目标，才回读仍打开ET的Selection.Areas，核FullName/表名/所有片段在包围盒内；失败沿原剪贴板规则，不扩目标。若包围盒格数恰好等目标不会回读，可能按包围盒链接，需核映射或分块复制。真机多选先Range.Select再Copy，单Copy不改变Selection。
+
+预检拒绝与写入失败分开报告；UndoRecord及一次Ctrl+Z效果依宿主，不能承诺所有环境整批撤销，写入前保存用户文档。这些几何与LINK字段规则不能套用Excel Range事务。
+
+### (3). 正文顶层表格
+
+Selection.Information(12)判断表内，Table.Uniform=false先拒绝，直接Columns.Count可能抛错；cell.Range.Tables.Count>1识别嵌套。先核Range边界再读Cells，越表时WPS曾返Cells.Count=-1。
+
+全选表格仅正文顶层，不含页眉页脚/嵌套：清旧EditableRanges→逐表Editors.Add(-1)→SelectAllEditableRanges(-1)→删临时标记，保留多段选区。表单保护2提前拒绝，异常也清标记并恢复ScreenUpdating。
+
+## 2. 更新、查看、定位与高亮
+
+### (1). 更新与变化比对
+
+UpdateEngine扫描当前选区，ShapeRange/InlineShapes按锚点去重；只有成功更新的LINK文本参与变化比对，图片/OLE单列无文本可比，失败不算变化/不标黄。Ordinal字符串比较，不解析数字；先Trim空格/制表/CR/LF/单元格结束符\a及\0。位置依表格行列、段落、页码、兜底描述，合并格异常可降级。
+
+### (2). 重新定位对象
+
+字段定位Code、内嵌对象Range、浮动Anchor；操作前按稳定序号/特征重取，文档改变要求刷新，定位后交还WPS焦点。Update后旧Result可能失效，必须该次重新取Result。
+
+FlashHighlighter存原HighlightColorIndex、黄色7；通常用Result，ShowCodes用Code。LinkViewForm.JumpToSelectedItem必须先ClearPendingFlash，再由JumpToItemEx读原色并标黄，最后SharedFlash.Add/Restart；同一字段可能重取不同Range包装，不能靠引用去重补救顺序错误。若先标黄后清旧状态，第二次会读入临时黄、清掉新高亮，最终残留黄。还原保留0、其他颜色及原本黄色7，不统一清零；关窗同样恢复。更新结果提示关闭后启动约2.5秒计时。Window.ScrollIntoView逐级兼容，全部失败保留视图，不用Select/Activate替代而改选区。
+
+验收分两层：[LinkViewFormProbe](../C-02-WordUpdater/src/tools/LinkViewFormProbe.cs)调用实际私有定位方法，以私有desktop隐藏窗体/假宿主验证清理顺序；真实KWPS核心序列覆盖自建LINK字段的Result/Code、0/2/7原色、连续及换字段恢复和旧明细拒绝。LINK结果文字是自建DOCX显式缓存样本，不代表来源刷新、真实按钮点击或2.5秒计时器验收。各批断言、旧顺序失败及正式DLL复验记录集中放在交付审计区。
+
+## 3. 源文件、ROT与隐藏ET
+
+### (1). 路径与来源实例
+
+LINK代码反斜杠可能双写，FullName单写；比较折连续反斜杠保留UNC前缀，File.Exists成功不能证明原字符串相等。默认关联打开失败可Explorer选中供用户处理，不改关联。
+
+GetActiveObject只有一个实例可能为隐藏ET，枚举ROT逐个核ProgID/CLSID/簿完整路径/表名/Selection能力，不能用不相关实例来源。EtSelectionReader只读取已运行实例；候选Application、ROT枚举和选区/Areas/表/簿等引用按每次取得登记，逆序逐次ReleaseComObject，重复候选、异常与提前返回同样释放。不使用FinalReleaseComObject，不启动、Quit或关闭宿主。EtSelectionReaderProbe通过反射验证实际读选区、引用登记/去重与异常释放路径，使用假引用，不枚举原生ROT或附加WPS。
+
+### (2). 隐藏ET诊断与进程归属
+
+LINK粘贴/更新可能留下隐藏et.exe。EtCleanup前记PID，快照不完整返回null；后续只检查并记录新增隐藏/窗口状态未知的候选，不发WM_CLOSE、不Kill、不等待退出。调用方仅看到PID差集，并未明确创建或持有实例，不能证明独占归属；既有/并发/未知用户实例保留，CleanedHiddenHosts为0。源文件可能仍被占用，用户保存工作后自行确认关闭对应WPS。EtCleanupProbe以假候选覆盖旧PID、并发、未知窗口与异常边界，不操作真实进程。
+
+LinkMap/Update/LinkView/LinkViewForm等隔离探针保留映射、更新、列表身份与窗口回归；真实映射/字段内容/焦点/源占用与进程归属诊断另记，不以假对象或旧截图当当前宿主验收。
+
+<!-- scope:word:end -->
+
+<!-- scope:site:start -->
+# 四. XyCabin 专属开发经验
+
+
+## 1. 从零网站与配置接线
+
+从最小“模板+配置→校验/转义→单文件HTML→浏览器交互→行为探针”开始，再接下载/音频/联合交付。site_core.render生成公共正文，template负责结构，控制器处理状态，不手改生成页；普通构建只依项目内资产，无外部CDN/fetch邻近文件。新配置先定义用户可见行为/空态与失败，再生成器校验、模板DOM接线、隔离探针、指南和正式重建。
+
+| 配置 | 接线与边界 |
+| --- | --- |
+| SITE/TEXT/PRODUCTS | 品牌/文案/指南/版本；TEXT按页序拆NAV/AUDIO/HERO/PROJECTS/GUIDE/VERSIONS/DOWNLOAD_GUIDE/WORKFLOW/FUTURE/FEEDBACK/FOOTER小字典末尾合并，键对应data-text或T.xxx，改名同步DOM |
+| THEME | 校验#RRGGBB后CSS变量，action/copy/version/selected/text控制对应局部区域，default_mode仅首次默认 |
+| WORKFLOW/FUTURE | 已实现流程与讨论规划分开 |
+| DOWNLOADS | word/excel各baidu/quark，空项禁用、仅无账号密码HTTPS，可含查询提取码 |
+| DOWNLOAD_GUIDE | 站内相对PNG内嵌、alt非空、steps非空，四段标题/说明/继续/取消文案仍TEXT，缺项停止生成 |
+| FEEDBACK | 邮箱→官网HTTPS映射、新标签noopener noreferrer，无映射mailto；复制仅地址，登录发送由用户完成 |
+
+文本转义、JS以JSON序列化，DOM写textContent不拼执行HTML。保持导航、六分区、指南项目切换/搜索/空态/展开、版本筛选、复制/打印/返回顶部可操作；指南用户步骤不要夹构建细节。
+
+## 2. 布局、按钮与弹窗
+
+网页卡片/网格是HTML/CSS布局，不能套用加载项WinForms类或宿主表格语义。局部按钮配色限定立即使用、下载两半、版本复制/筛选，悬停保留对应填充；版本选中背景/边框/加粗显示状态，按钮统一45px最小高/字号行高/内边距，下载三角等高，不改全站按钮。max-width会限制width，反馈区用.wrap宽度/13px字体，宽屏单行、窄屏自然换行。
+
+下载主按钮先展示dialog指引，明确继续才发下载、暂不关闭；dialog不支持或缺指引数据则退回直接下载，不阻断功能。下拉未配禁用，支持键盘/Esc/外部点击/项目切换关闭，初焦点preventScroll。菜单CSS常规245px、min-width:0和视口上限；展开清旧位移后getBoundingClientRect测边界，visualViewport width/offsetLeft优先、clientWidth回退，两边留8px，translateX纠溢；resize/scroll重测，长文换行。只改left/right不足以覆盖两侧按钮和缩放。
+
+最小真实验收：深浅主题/两项目/宽窄屏/展开后改变宽度，菜单左右不出可见区；再测键盘/外部关闭/切换与默认/云下载。download_probe几何替身不等于实际移动浏览器或安装验收。
+
+## 3. 下载、字节校验与能力降级
+
+独立HTML Base64生成Blob+临时a.download，只请求不运行EXE；DLL空数据页按百度→夸克降级，皆空提示，无配置不能冒充有包。按当前项目即时读取，不捕获旧选择。Blob Base64按87380字符（4倍数）分块atob→Uint8Array，避免整份二进制字符串；防重复，异常恢复控件可用，成功请求60秒后revoke，异常/pagehide立即释放ObjectURL。
+
+校验分两层：构建侧site_core.verify_installers真正计算SHA-256并与本轮EXE逐字节核对；浏览器site_downloads只核摘要字段格式、解码总字节数并生成Blob，没有自行计算SHA-256。不得把字段存在写成浏览器已验内容摘要。download_probe正式HTML路径验证Blob字节与安装包；真实保存位置/下载许可由浏览器，提示“已请求下载”不等于已保存。
+
+单配置预览仅附成功交付记录且版本/大小/摘要匹配的包；正式交付从空快照编译，attach_installers只改唯一installer-assets JSON区，embedded_snapshot归一空数据后与DLL网页资源比较。网页正文还可能有生成元数据，按当前snapshot规范比较，不扩大为所有原始HTML字符串都相同。
+
+localStorage try/catch，禁存不影响当前操作；复制失败兼容再显示可选文本，旧剪贴板工具值不能单独证明写入失败。浏览器工具拒file时不得绕策略或用HTTP结果代替；file测试列待验收。
+
+## 4. 声音资产与异步播放
+
+SOUND默认正弦640Hz/70ms、gain0.40/max1.0，仅可信主动按钮click、100ms限频，滚动/悬停/输入/滑块无音效。BACKGROUND默认tranquility、volume0.50/max0.90，音效与背景独立增益再经总静音/压缩器。场景id保afternoon/tranquility，名称描述可改；相对MP3越界/缺失构建失败。
+
+宁静平原是用户原MP3的60～111秒、128kbps/44.1kHz立体声、首尾200ms淡化、仅音频流51秒项目片段；原文件摘要保留，普通重建不访问开发机原盘。午后暖阳合成琴音。Base64转ArrayBuffer后decodeAudioData，不截编码字节冒可解码片段；MP3解码缓存循环，暂停保当前进度、换曲从头，位置不持久化。
+
+xy-home-audio version2将旧百分比除2仅迁移一次、支持小数，旧sound开关保留；用户静音/0/曲目优先，删曲回默认、畸形或禁存储不阻本次。加载试自动播放，suspended静默；若autoplay与play_on_first_interaction都开，首次可信普通导航/指南/主题click补一次，键盘可信click也可，模拟click/音频控件/搜索输入/音量面板排除。音效开关不阻补播，可信事件内先resume、再异步解码，复用未完resume避免多源。
+
+暂停/静音/背景0/换曲/pagehide以代次令牌取消未完播放和补播资格，不能由后续普通点击恢复；手动播放可重试，旧源/调度器释放，手动解码失败显示普通状态仍可用其他网页功能。AudioProbe是隔离DOM/AudioContext状态回归、不发声；真实效果依系统音量/压缩器/录音，不能将增益倍数承诺为听感倍数。
+
+<!-- scope:site:end -->

@@ -1,0 +1,23 @@
+**三项目接手入口**
+
+# 一. 开发接手入口
+
+## 1. 阅读顺序
+
+先读[A-UserGuide.md](A-UserGuide.md)了解使用方式，再按任务读[B1-Project-Files.md](B1-Project-Files.md)核对源码与状态、[B2-DevExperience.md](B2-DevExperience.md)查实现方法、[B3-Uphold-Discipline.md](B3-Uphold-Discipline.md)查交付与清理。知识以当前源码与文档为准，不依赖旧聊天或隐藏记忆；`C-04-Devlog` 是唯一文档入口。
+
+## 2. 三个输出的关系
+
+| 输出 | 目录 | 说明 |
+| --- | --- | --- |
+| Excel-Iterate | C-01-ExcelIterate | WPS 表格加载项；`AA-Program` 放配置器、启动器和安装包，`AB-Graphic` 放界面截图与功能区资源 |
+| WordUpdater | C-02-WordUpdater | WPS 文字加载项，目录结构同上 |
+| XyCabin | C-03-Website·Xycabin | 两加载项共用的单文件离线网站与联合交付入口 |
+
+## 3. 共享与同步
+
+C-01 与 C-02 的公共源码逐字节相同，运行仓库根 `verify_shared.py` 校验；三个项目的文档只在 `C-04-Devlog` 维护，项目内不再保留副本。
+
+## 4. 交付边界
+
+沿用原版本、固定证书/私钥和稳定 ID。先固定非审计正文，再重建/签名/打包/验证，最后回填 delivery-audit；后台、历史及真实验收分开记录。构建不安装、不关闭 WPS。文档改动不触发冗余清理，实际清理指令才按正文执行。
