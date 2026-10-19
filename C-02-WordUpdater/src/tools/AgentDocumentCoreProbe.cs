@@ -169,7 +169,7 @@ internal static class AgentDocumentCoreProbe
     private static byte[] SourceDocument(string path)
     {
         string text = File.ReadAllText(path, Encoding.UTF8).Replace("\r\n", "\n").Replace("\r", "\n");
-        text = Regex.Replace(text, "<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->", "", RegexOptions.Singleline);
+        
         return Utf8(text.Replace("\n", Environment.NewLine));
     }
     private static void ActualResources(string project)

@@ -2,14 +2,9 @@
 
 最后更新：2026-10-18 ｜ 当前版本：**0.9.9.1** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
-<!-- scope:shared:start -->
 # 一. Agent及开发者接手概览
 
-<!-- agent-overview:start -->
-
 本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、维护纪律五类。加载项主选项卡的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。版本 0.9.9.1，构建不安装或操作用户 WPS。
-
-<!-- agent-overview:end -->
 
 ## 1. 目录与阅读顺序
 
@@ -33,11 +28,7 @@
 
 三个项目统一为 `AA-Program`（配置器、启动器、正式产物）与 `AB-Graphic`（界面截图、功能区图标、示意 SVG）；源码在 `src/`，构建中间物与验证证据在 `build/`。文档只在仓库根 `C-04-Devlog` 维护，项目内不再保留副本。
 
-<!-- scope:shared:end -->
-
-<!-- scope:excel:start -->
 # 二. Excel-Iterate 项目档案
-
 
 ## 1. 定位与输出
 
@@ -57,7 +48,6 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.8.0 | 1. 新增文件整理与清单改名、链接清单保存替换，支持取消还原与确认清理；2. 改善筛选与反馈；3. Agent-Evo提供离线文档及树形尺寸设置；4. XyCabin提供离线下载、音乐和独立音量。                                                                                                   |
 | 0.9.9.0 | 1. 文件整理、清单命名及多前缀OCR，按行断链、整簿恢复与编辑保护；2. 六列预览、布局回缩，即时配置及控件缩放，表头单行居中；3. 追踪引用新增显示错误来源：沿引用链定位错误源头格，可跳转标黄；4. 审计工具箱新增合并抵消：往来按单位对冲、坏账按比例冲回，收入成本逐行算未实现利润，列映射+分录预览+备份还原；5. 修复追踪弹窗锁死宿主：去除工具窗样式并对齐链接助手，根治抢焦点/失激活。 |
 | 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。 |
-
 
 ## 3. 当前命令按钮概览
 
@@ -106,7 +96,6 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
 
-<!-- delivery-audit:start -->
 ### (2). 本轮交付证据
 
 10月14日本批沿用0.9.9.0及原固定证书，重排C01／C02第四章“5. 格式维护规范”：两类对象各含格式说明、表头及列宽／正文规则和代码复现方法；三个C#片段原样迁移，新增两张格式效果图及工作表示意SVG。现有程序功能保留。下表与[同批交付记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
@@ -128,13 +117,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 前一批审计保留于[旧审计归档](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/before-audits.json)；最终包已纳入独立复核的正文居中和恢复措辞修正。完整结果见[最终验证记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/final-delivery-summary.json)。
 
-<!-- delivery-audit:end -->
-
-<!-- scope:excel:end -->
-
-<!-- scope:word:start -->
 # 三. WordUpdater 项目档案
-
 
 ## 1. 定位与输出
 
@@ -185,7 +168,6 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 构建/安装      | build/rebuild/resign/gen_manifest/build_installer/verify_package/validate.py；src/installer及src/tools                                        |
 | 验证/网站      | src/testharness、src/tools；同级Website完整源码与父verify_shared.py                                                                                   |
 
-
 单项目：`python rebuild.py --mode full` 后 `python validate.py --background`。联合文档/网页交付：Website `python rebuild.py --background --mode full`，随后 `python validate.py --background`。用已实际--version验证的解释器；新设备从[从零流程](B2-DevExperience.md#1-从零构建加载项)开始。
 
 ## 5. 当前状态与交付
@@ -195,7 +177,6 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 本次将文档整理为五部分，共享方法与维护纪律分开，删重复流水和外部历史范例依赖；保留宿主独有算法/恢复边界，修正控件与四种拖动术语、窗口过度因果和内嵌网页一致性表述。已审阅Excel专属合并、OCR与文件批次，只同步界面/维护方法，不移植工作表业务。
 
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
-<!-- delivery-audit:start -->
 ### (2). 本轮交付证据
 
 10月17日本批沿用0.9.9.0及原固定证书。C-02侧本轮仅同步C-01的共享文件与共享块（src/addin/UiKit.cs、MergeHeadersHost.cs、EliminationHost.cs 及开发日志共享经验/纪律块），未重新打包WordUpdater安装器；产物沿用上轮正式包，字节与SHA-256如下表，与[同批交付记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
@@ -209,13 +190,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 共享一致性  | 两份开发日志共享经验/纪律块逐字一致、62个共享源码文件一致；verify_shared 与两项目 devlog_probe 均通过。共享块按C-01同步：删「3. 验证、缓存与证据边界」的(1)(2)(4)三节并重编号(3)→(1)、(5)→(2)；(2). 程序所新生成工作表的格式规范按「格式维护」样张重写（首行SUBTOTAL、#4874CB表头、Times New Roman 11、会计格式含千分位、medium+slantDashDot边框）。 |
 | 纪律守卫   | 新增 DisciplineProbe（C-01）：源码扫描断言「写入后必套样式」「交互弹窗禁 TopMost/工具窗样式」；两项目 EliminationProbe/Feature099 等离线回归通过。                                                                                                                                |
 | 真实验收边界 | 未使用computer-use、未自动安装或启动/退出WPS、未调用真实云端OCR；共享块文字变化不影响Word侧既有功能，真实WPS交互仍单独待验收。                                                                                                                                                          |
-<!-- delivery-audit:end -->
 
-<!-- scope:word:end -->
-
-<!-- scope:site:start -->
 # 四. XyCabin 项目档案
-
 
 ## 1. 定位、关系与源码地图
 
@@ -248,7 +224,6 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 源码与正式产物内容指纹控制增量；两包、独立页和交付记录统一事务发布。后台前端/下载/音频替身不发声、不真实下载，不能代替file页面、听感、浏览器许可或安装效果。当前交付摘要在审计区，方法不重复历史流水。
 
-<!-- delivery-audit:start -->
 ### (2). 本轮交付证据
 
 10月14日本批沿用0.9.9.0及原固定证书，重排C01／C02第四章“5. 格式维护规范”：两类对象各含格式说明、表头及列宽／正文规则和代码复现方法；三个C#片段原样迁移，新增两张格式效果图及工作表示意SVG。现有程序功能保留。下表与[同批交付记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/joint-current-delivery.json)核对。
@@ -269,6 +244,3 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 真实验收边界 | 未使用computer-use、未自动安装或启动／退出WPS、未调用真实云端OCR。后台导出已通过；外部MD查看器可见显图、真实WPS表头与拖动、工作表AutoFit与隐藏行／超限正文、系统缩放及跨屏DPI仍单独待验收。 |
 
 前一批审计保留于[旧审计归档](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/before-audits.json)；最终包已纳入独立复核的正文居中和恢复措辞修正。完整结果见[最终验证记录](../C-03-Website·Xycabin/build/format-maintenance-reorg-20261014/final-delivery-summary.json)。
-<!-- delivery-audit:end -->
-
-<!-- scope:site:end -->

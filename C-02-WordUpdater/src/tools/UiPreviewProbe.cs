@@ -130,7 +130,7 @@ namespace WpsUiChecks
                         foreach (Control control in Descendants(reader)) if (control is RichTextBox) content = (RichTextBox)control;
                         Check("Agent reader readable body " + factor, content != null && content.ReadOnly && content.Width >= 400 * factor && content.Height >= 220 * factor);
                         Check("Agent reader focus and Esc " + factor, content.TabStop && reader.CancelButton != null);
-                        Check("Agent reader Chinese and no marker " + factor, content.Text.Contains("Agent-Evo") && !content.Text.Contains("<!-- agent-overview"));
+                        Check("Agent reader Chinese and no marker " + factor, content.Text.Contains("Agent-Evo") && !content.Text.Contains("<!--"));
                         CheckOverviewFormatting(reader, content, factor);
                         content.Select(0, 0); content.ScrollToCaret();
                     }

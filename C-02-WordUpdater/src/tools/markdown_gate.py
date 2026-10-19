@@ -117,10 +117,8 @@ def verify_guide(path):
     text = path.read_text(encoding='utf-8-sig')
     verify_local_anchors(path)
     errors, titles = hierarchy(text, str(path))
-    for marker in ('agent-overview',):
-        a,b = '<!-- '+marker+':start -->', '<!-- '+marker+':end -->'
-        if text.count(a) != 1 or text.count(b) != 1 or text.index(a) >= text.index(b):
-            errors.append(str(path) + ': 概览标记缺失、重复或乱序')
+    if '<!--' in text:
+        errors.append(str(path) + ': 文档不得包含 HTML 注释')
     if errors:
         raise ValueError('\n'.join(errors))
     return titles

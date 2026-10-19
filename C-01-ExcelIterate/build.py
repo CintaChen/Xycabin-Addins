@@ -9,7 +9,7 @@ from project_support import ROOT, SRC, BUILD, LIB, CSC, COMMON_REF, PROJECT, DEF
 
 sys.path.insert(0, str(SITE_ROOT / "src"))
 from build_cache import compile_cached
-from document_assets import collect as collect_document_assets, manifest_bytes, MANIFEST_RESOURCE
+from document_assets import collect as collect_document_assets, document_overview, manifest_bytes, MANIFEST_RESOURCE
 MODE = "full"
 
 
@@ -41,9 +41,10 @@ def document_resources(site_html=None):
     for document in bundle['documents']:
         filename, resource = document['path'], document['name']
         text = document['content'].decode('utf-8')
-        start, end = "<!-- agent-overview:start -->", "<!-- agent-overview:end -->"
-        if text.count(start) != 1 or text.count(end) != 1 or text.index(start) >= text.index(end) or not text.split(start)[1].split(end)[0].strip():
-            raise ValueError(filename + ": 概览标记必须唯一、有序且非空")
+        try:
+            document_overview(text)
+        except ValueError as error:
+            raise ValueError(filename + ": " + str(error)) from error
         # Embed normalized UTF-8, including files copied from a BOM/CRLF editor.
         target = BUILD / ("Composed" + resource + ".md")
         target.write_bytes(document['content'])

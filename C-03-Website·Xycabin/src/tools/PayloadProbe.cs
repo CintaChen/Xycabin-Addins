@@ -121,7 +121,7 @@ internal static class PayloadProbe
                     if (input == null) throw new Exception("Embedded document missing: " + document);
                     string filename = document == "Readme" ? "ComposedReadme.md" : "ComposedUserGuide.md";
                     string expected = File.ReadAllText(Path.Combine(root, "build", filename), Encoding.UTF8);
-                    expected = Regex.Replace(expected, "<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->", "", RegexOptions.Singleline);
+                    
                     expected = expected.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
                     using (var reader = new StreamReader(input, Encoding.UTF8))
                         if (reader.ReadToEnd() != expected) throw new Exception("Embedded document differs from current source: " + filename);

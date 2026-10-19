@@ -23,75 +23,47 @@ def png(pixel=b'\x10\x20\x30', width=1, height=1, filter_byte=0):
             + chunk(b'IDAT', zlib.compress(bytes([filter_byte]) + pixel)) + chunk(b'IEND', b''))
 
 
-GUIDE = '''**使用说明**
+GUIDE_HEAD = '**使用说明**\n\n三个产品共用一份使用说明。\n\n'
 
-<!-- agent-overview:start -->
-
-三个产品共用一份使用说明。
-
-<!-- agent-overview:end -->
-
-<!-- scope:word:start -->
-# 二. WordUpdater
-Word 专属正文
-<!-- scope:word:end -->
-
-<!-- scope:excel:start -->
-# 一. Excel-Iterate
+GUIDE = GUIDE_HEAD + '''# 一. Excel-Iterate
 ![图](<../C-01-ExcelIterate/AB-Graphic/中文 空格(一).png> "标题")
 [矢量](<../C-01-ExcelIterate/AB-Graphic/图示.svg>)
-<!-- scope:excel:end -->
+
+# 二. WordUpdater
+Word 专属正文
 '''
 
 B1 = '''**项目档案**
 
 最后更新：2026-10-18 ｜ 当前版本：**0.9.9.1**
 
-<!-- scope:shared:start -->
-# 一. 接手概览
-
-<!-- agent-overview:start -->
+# 一. Agent及开发者接手概览
 
 共享概览。
 
-<!-- agent-overview:end -->
-<!-- scope:shared:end -->
-
-<!-- scope:excel:start -->
 # 二. Excel-Iterate 项目档案
 共享概览之外的项目档案。
-<!-- scope:excel:end -->
 
-<!-- scope:word:start -->
 # 三. WordUpdater 项目档案
 Word 项目档案。
-<!-- scope:word:end -->
 '''
 
 B2 = '''**开发经验**
 
-<!-- scope:shared:start -->
 # 一. Word与Excel共享开发经验
 ![图](../C-01-ExcelIterate/AB-Graphic/副本.png)
-<!-- scope:shared:end -->
 
-<!-- scope:excel:start -->
 # 二. Excel-Iterate 专属开发经验
 Excel 专属正文
-<!-- scope:excel:end -->
 
-<!-- scope:word:start -->
 # 三. WordUpdater 专属开发经验
 Word 专属正文
-<!-- scope:word:end -->
 '''
 
 B3 = '''**维护纪律**
 
-<!-- scope:shared:start -->
 # 一. Word与Excel共享维护纪律
 共享纪律正文
-<!-- scope:shared:end -->
 '''
 
 
@@ -160,21 +132,28 @@ def self_test():
 
         guide = docs / 'A-UserGuide.md'
         body = guide.read_text(encoding='utf-8-sig')
-        guide.write_text(body + '\n<!-- delivery-audit:start -->[旧图](../C-01-ExcelIterate/AB-Graphic/不存在.png)<!-- delivery-audit:end -->\n', encoding='utf-8')
-        check(len(collect(base)['assets']) == 2 and '不存在'.encode() not in normalize_text(guide.read_text(encoding='utf-8')).encode(), 'delivery audit excluded from resources and closure')
-        for malformed in ('<!-- delivery-audit:start -->', '<!-- delivery-audit:end --><!-- delivery-audit:start -->',
-                          '<!-- delivery-audit:start --><!-- delivery-audit:start --><!-- delivery-audit:end -->'):
-            guide.write_text(body + malformed, encoding='utf-8'); reject(lambda: collect(base), 'invalid audit markers fail closed')
+        excel = ('# 一. Excel-Iterate\n![图](<../C-01-ExcelIterate/AB-Graphic/中文 空格(一).png>)\n'
+                 '[矢量](<../C-01-ExcelIterate/AB-Graphic/图示.svg>)\n')
+        audit = '\n### (2). 本轮交付证据\n[旧图](../C-01-ExcelIterate/AB-Graphic/不存在.png)\n'
+        guide.write_text(GUIDE_HEAD + excel + audit, encoding='utf-8')
+        check(len(collect(base)['assets']) == 2 and '不存在'.encode() not in normalize_text(guide.read_text(encoding='utf-8')).encode(), 'delivery evidence excluded from resources and closure')
+        four = ''
+        for index, name in enumerate(('甲', '乙', '丙', '丁'), start=1):
+            four += '## %d. %s\n### (2). 本轮交付证据\nx\n' % (index, name)
+        guide.write_text(GUIDE_HEAD + excel + four, encoding='utf-8'); reject(lambda: collect(base), 'more than three delivery evidence sections fail')
+        guide.write_text('### (2). 本轮交付证据\nx\n', encoding='utf-8'); reject(lambda: collect(base), 'a document made only of delivery evidence fails')
+        guide.write_text(GUIDE_HEAD + '# 一. 未知产品\n正文\n', encoding='utf-8'); reject(lambda: collect(base), 'unknown chapter title fails')
+        guide.write_text(GUIDE_HEAD + '# 一. Excel-Iterate 与 WordUpdater\n正文\n', encoding='utf-8'); reject(lambda: collect(base), 'ambiguous chapter title fails')
         guide.write_text(body, encoding='utf-8')
         for target in ('../C-01-ExcelIterate/AB-Graphic/不存在.png', '../../outside.png',
                        '/absolute.png', 'C:/absolute.png',
                        '../C-01-ExcelIterate/AB-Graphic/中文%20空格(一).png?x=1',
                        '../C-01-ExcelIterate/AB-Graphic/中文%20空格(一).png#x',
                        '../C-01-ExcelIterate/src/evil.png'):
-            guide.write_text('[图](<' + target + '>)\n', encoding='utf-8'); reject(lambda: collect(base), 'missing/outside/disallowed asset rejected: ' + target)
+            guide.write_text(GUIDE_HEAD + '[图](<' + target + '>)\n', encoding='utf-8'); reject(lambda: collect(base), 'missing/outside/disallowed asset rejected: ' + target)
         guide.write_text(body + '[remote](https://example.invalid/x.png)\n', encoding='utf-8')
         check(len(collect(base)['assets']) == 2, 'remote PNG is not fetched or packaged')
-        guide.write_text('[图](../C-01-ExcelIterate/AB-Graphic/中文%20空格%28一%29.png)\n', encoding='utf-8')
+        guide.write_text(GUIDE_HEAD + '[图](../C-01-ExcelIterate/AB-Graphic/中文%20空格%28一%29.png)\n', encoding='utf-8')
         check(collect(base)['documents'][0]['assets'][0]['path'] == 'C-01-ExcelIterate/AB-Graphic/中文 空格(一).png', 'percent-encoded Chinese-space destination normalized')
         check(list(markdown_targets('[x](a(b).png "t") [y][id]\n[id]: <z z.svg>\n')) == ['a(b).png', 'z z.svg'], 'balanced parentheses, titles and named references parsed')
         guide.write_text(body, encoding='utf-8')

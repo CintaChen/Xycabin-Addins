@@ -1,8 +1,6 @@
 **共享开发经验与三个项目的专属经验**
 
-<!-- scope:shared:start -->
 # 一. Word与Excel共享开发经验
-
 
 本章与第四章在两加载项逐字相同。共享的是加载、界面、配置和交付方法；Word字段与表格、Excel单元格与工作簿算法分别见第五章。网站前端方法只维护于[网站日志](B1-Project-Files.md#四-xycabin-项目档案)。
 
@@ -83,7 +81,6 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 32画布主体约24～28并保留安全边距；内置垫白、自定义按配置底色合成24bpp兼容WPS alpha。窗口图标单独生成16/32透明ICO并由窗口释放。悬停文案按中文2/半角1折行、XML转义；结果模板按ID，仍补充真实失败和清理结果。
 
 ## 3. 弹窗美工、控件与网格
-
 
 ### (1). 先确定容器，再确定数据控件
 
@@ -276,7 +273,7 @@ RibbonCustomization从默认XML登记稳定命令，根菜单转dynamicMenu；�
 
 EXTRA_TABS预声明选项卡；主toggle的get_pressed与附加tab的get_visible读同一Visible，onLoad登记Ribbon，点击修改/刷新/原子存AgentExtension.state，失败刷新回旧状态、保存失败如实提示。默认隐藏，显示后由用户选择；新增第二附加tab须独立状态/键/刷新集合，不能只追加配置。卸载清窗与引用。
 
-概览从A-UserGuide与B1-Project-Files的唯一agent-overview标记提取；构建按当前项目从C-04-Devlog抽取章节、拼接B1/B2/B3并去除delivery-audit正文，以UTF-8规范换行内嵌，修改后必须重建才能更新DLL。全文每次经SHOpenWithDialog选择应用，取消保留概览、不写默认关联。AgentLocalFiles按程序集与文档／资产联合摘要释放内容包：包内逻辑路径固定为C-04-Devlog/A-UserGuide.md与C-04-Devlog/B-Devlog.md，图片资源指向各项目AB-Graphic下的PNG与SVG。WpsShared.Agent.Assets.xml记录当前文档的资源映射、大小及摘要；只导出本次请求的文档和资产，缺失／损坏缓存修复后才打开应用，保留可能在用的旧包。构建、增量缓存、文件盘点和图片门禁复用Website的document_assets收集函数，只把实际引用资源列为必要输入。
+概览取首个一级章节后的首段（跳过标题与空行，至空行或下一标题止）；构建按当前项目按一级章节标题分章（Excel-Iterate→excel、WordUpdater→word、XyCabin→site，其余仅允许登记过的共享章节），拼接B1/B2/B3，并在合成前整节剔除「本轮交付证据」。修改后必须重建才能更新DLL。全文每次经SHOpenWithDialog选择应用，取消保留概览、不写默认关联。AgentLocalFiles按程序集与文档／资产联合摘要释放内容包：包内逻辑路径固定为C-04-Devlog/A-UserGuide.md与C-04-Devlog/B-Devlog.md，图片资源指向各项目AB-Graphic下的PNG与SVG。WpsShared.Agent.Assets.xml记录当前文档的资源映射、大小及摘要；只导出本次请求的文档和资产，缺失／损坏缓存修复后才打开应用，保留可能在用的旧包。构建、增量缓存、文件盘点和图片门禁复用Website的document_assets收集函数，只把实际引用资源列为必要输入。
 
 开发预览的“全文”每次由AgentDocumentAccess发起口令验证，提示“请输入开发者的微信名称”；掩码TextBox仅在当前窗口中保存输入，产品只存校验摘要，不写输入日志、不持久化授权。错误可重试，取消／Esc／关闭／异常均不导出、不选应用；用户全文、概览和复制不验证。DeveloperPasswordForm通过HostDialogService的结果型隔离接口显示，登记agent.developerpassword及其预览、尺寸和退出清理；预览构造不验证、不导出。该验证保护入口，不加密已导出的MD。正文里的业务源码、姊妹项目与历史证据链接仍是工作区定位，离线内容包只随附文档配图及示意SVG。AgentDocumentCoreProbe为无窗体后台回归入口，不把后台结果登记为真实查看器或WPS验收。
 
@@ -284,11 +281,7 @@ EXTRA_TABS预声明选项卡；主toggle的get_pressed与附加tab的get_visible
 
 RequirementsForm使用Requirements.txt UTF-8原子保存并查外部修改；介绍Label独立。普通关闭保存/放弃/取消，宿主退出原子保存唯一unsaved草稿，下一次选择恢复；正式保存成功后清草稿失败不能误报保存失败。预览只用固定样例，不读写用户记录。
 
-<!-- scope:shared:end -->
-
-<!-- scope:excel:start -->
 # 二. Excel-Iterate 专属开发经验
-
 
 ## 1. 单元格、选区与公式
 
@@ -471,11 +464,7 @@ EliminationProbe 92 项锁定金额/比例解析、角色猜测、映射校验�
 - **拖柄加固 + 留白根除**：`WidthGrip.OnPaintBackground` 由空改为铺底色（双保险）；删除 `gripSource/gripTarget` 两个行拖柄；`Ui.Grip` 包按钮时清其底边距，前导 Label 上边距 8→6、非按钮输入框上下边距归零、hint 上下边距 8→2、来源/目标间隔行 8→2、两卡片纵向 Padding 8→4。**多轮压缩无效的真根因（新增 LayoutProbe 离线测量证实）**：AutoSize 行里放 `Dock=Fill` 的子控件时，TLP 读的是子控件「当前实际高度」而非期望高度（循环依赖），卡片渲染高 100px 而内容仅需 46/38px——改 `AutoSize=true + Dock=Top` 后卡片高度由内容决定（46/38px），留白彻底消失。`UiKit.cs` 共享，改后同步 C-02
 - **公式写入核对失败（G4）修复**：结果表跨表引用 `='差异表(2)'!I3` 写入后，宿主把相对引用规范化为 `$I$3` 回读，`NormalizeFormula` 不去 `$` 致逐字符比对失败。修复：NormalizeFormula 追加 `Replace("$","")`；核对失败消息附带期望/实际公式便于诊断；写入顺序改为**先写差异表、后写结果表**（引用目标先有数据）。`MergeHeadersHost.cs` 共享，改后同步 C-02
 
-<!-- scope:excel:end -->
-
-<!-- scope:word:start -->
 # 三. WordUpdater 专属开发经验
-
 
 ## 1. LINK字段与表格选区
 
@@ -525,11 +514,7 @@ LINK粘贴/更新可能留下隐藏et.exe。EtCleanup前记PID，快照不完整
 
 LinkMap/Update/LinkView/LinkViewForm等隔离探针保留映射、更新、列表身份与窗口回归；真实映射/字段内容/焦点/源占用与进程归属诊断另记，不以假对象或旧截图当当前宿主验收。
 
-<!-- scope:word:end -->
-
-<!-- scope:site:start -->
 # 四. XyCabin 专属开发经验
-
 
 ## 1. 从零网站与配置接线
 
@@ -573,5 +558,3 @@ SOUND默认正弦640Hz/70ms、gain0.40/max1.0，仅可信主动按钮click、100
 xy-home-audio version2将旧百分比除2仅迁移一次、支持小数，旧sound开关保留；用户静音/0/曲目优先，删曲回默认、畸形或禁存储不阻本次。加载试自动播放，suspended静默；若autoplay与play_on_first_interaction都开，首次可信普通导航/指南/主题click补一次，键盘可信click也可，模拟click/音频控件/搜索输入/音量面板排除。音效开关不阻补播，可信事件内先resume、再异步解码，复用未完resume避免多源。
 
 暂停/静音/背景0/换曲/pagehide以代次令牌取消未完播放和补播资格，不能由后续普通点击恢复；手动播放可重试，旧源/调度器释放，手动解码失败显示普通状态仍可用其他网页功能。AudioProbe是隔离DOM/AudioContext状态回归、不发声；真实效果依系统音量/压缩器/录音，不能将增益倍数承诺为听感倍数。
-
-<!-- scope:site:end -->

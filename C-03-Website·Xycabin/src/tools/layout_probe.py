@@ -18,6 +18,22 @@ CONFIGURE = {'C-01-ExcelIterate': 'C1-Exceliterate_Configure.py',
              'C-02-WordUpdater': 'C2-Wordupdater_Configure.py',
              'C-03-Website·Xycabin': 'C3-XycabinSite_Configure.py'}
 PROJECTS = {'C-01-ExcelIterate': 'Excel_Iterate', 'C-02-WordUpdater': 'WordUpdater', 'C-03-Website·Xycabin': None}
+AUDIT_HEAD = re.compile(r'^###\s+\(\d+\)\.\s*本轮交付证据\s*$')
+
+
+def audit_spans(text):
+    """Offsets of every delivery-evidence subsection, found by heading only."""
+    spans, offset, start = [], 0, None
+    for line in text.split('\n'):
+        if AUDIT_HEAD.match(line):
+            start = offset
+        elif start is not None and re.match(r'^#{1,2}\s', line):
+            spans.append((start, offset))
+            start = None
+        offset += len(line) + 1
+    if start is not None:
+        spans.append((start, offset))
+    return spans
 
 
 def verify(parent=ROOT.parent, source_only=False, folders=None, strict_evidence=False):
@@ -81,7 +97,7 @@ def verify(parent=ROOT.parent, source_only=False, folders=None, strict_evidence=
     count += len(DOCS)
     for doc in sorted(docs.glob('*.md')):
         text = doc.read_text(encoding='utf-8-sig')
-        audits = [m.span() for m in re.finditer(r'<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->', text, re.S)]
+        audits = audit_spans(text)
         for link in re.finditer(r'(?<!!)\[[^\]]*\]\(([^)]+)\)', text):
             target = link.group(1)
             target = unquote(target.split('#', 1)[0].strip('<>'))
@@ -118,9 +134,11 @@ def self_test():
         (base / DESIGN / 'README.txt').write_text('', encoding='utf-8')
         docs = parent / DEVLOG
         docs.mkdir()
-        for name in ('B0-Entry.md', 'B1-Project-Files.md', 'B2-DevExperience.md', 'B3-Uphold-Discipline.md'):
-            (docs / name).write_text('# 一. 标题\n', encoding='utf-8')
-        (docs / 'A-UserGuide.md').write_text('[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
+        (docs / 'B0-Entry.md').write_text('# 一. 入口\n', encoding='utf-8')
+        (docs / 'B1-Project-Files.md').write_text('**项目档案**\n\n最后更新：2026-10-18\n\n# 一. Agent及开发者接手概览\n概览。\n', encoding='utf-8')
+        (docs / 'B2-DevExperience.md').write_text('**经验**\n\n# 一. Word与Excel共享开发经验\n正文。\n', encoding='utf-8')
+        (docs / 'B3-Uphold-Discipline.md').write_text('**纪律**\n\n# 一. Word与Excel共享维护纪律\n正文。\n', encoding='utf-8')
+        (docs / 'A-UserGuide.md').write_text('**使用说明**\n\n概览。\n\n# 一. Excel-Iterate\n[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
         verify(parent, folders={'C-01-ExcelIterate'})
         (base / PROGRAM / 'Excel_Iterate_Setup.exe').unlink()
         verify(parent, source_only=True, folders={'C-01-ExcelIterate'})
@@ -154,15 +172,15 @@ def self_test():
             pass
         else:
             raise AssertionError('文档目录接受了缺失文件')
-        (docs / 'B3-Uphold-Discipline.md').write_text('# 一. 标题\n', encoding='utf-8')
-        (docs / 'A-UserGuide.md').write_text('[失效](missing.md)\n', encoding='utf-8')
+        (docs / 'B3-Uphold-Discipline.md').write_text('**纪律**\n\n# 一. Word与Excel共享维护纪律\n正文。\n', encoding='utf-8')
+        (docs / 'A-UserGuide.md').write_text('**使用说明**\n\n概览。\n\n# 一. Excel-Iterate\n[失效](missing.md)\n', encoding='utf-8')
         try:
             verify(parent, folders={'C-01-ExcelIterate'})
         except (OSError, ValueError):
             pass
         else:
             raise AssertionError('Accepted missing document link')
-        (docs / 'A-UserGuide.md').write_text('[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
+        (docs / 'A-UserGuide.md').write_text('**使用说明**\n\n概览。\n\n# 一. Excel-Iterate\n[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
         (base / 'AP1-程序').mkdir()
         try:
             verify(parent, folders={'C-01-ExcelIterate'})

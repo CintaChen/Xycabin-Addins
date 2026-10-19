@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 import uuid
-from document_assets import referenced_paths
+from document_assets import referenced_paths, strip_delivery_audit
 from configurators import CONFIGURE
 
 sys.dont_write_bytecode = True
@@ -80,7 +80,7 @@ def inputs(base, snapshot):
     for path in sorted(paths):
         if path.suffix.lower() == '.md':
             text = path.read_text(encoding='utf-8-sig')
-            text = re.sub(r'<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->', '', text, flags=re.S)
+            text = strip_delivery_audit(text)
             fingerprint = hashlib.sha256(text.encode('utf-8')).hexdigest()
         else:
             fingerprint = digest(path)

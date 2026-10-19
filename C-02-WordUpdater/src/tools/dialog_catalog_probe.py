@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 def verify_developer_entries(text):
     """Require maintained implementation entries in B2 rather than one table layout."""
-    text = re.sub(r'<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->', '', text, flags=re.S)
+    text = re.sub(r'(?ms)^###\s+\(\d+\)\.\s*本轮交付证据\s*\n.*?(?=^#{1,2}\s)', '', text)
     shared = '\n'.join(authored_lines(text))
     # Markdown editors may escape punctuation inside visible implementation names.
     # Remove ordinary text escapes only after fenced code has been excluded.
@@ -17,7 +17,7 @@ def verify_developer_entries(text):
     topic = re.search(r'^## \d+\. Agent-Evo、内嵌文档与网站\s*\n(.*?)(?=^#{1,2}\s|\Z)', shared, re.M | re.S)
     if topic is None:
         raise ValueError('B2-DevExperience.md 缺少Agent-Evo/内嵌文档/网站开发入口')
-    required = ('EXTRA_TABS', 'agent-overview', 'delivery-audit', 'WpsShared.Agent.Home.html', 'RequirementsForm')
+    required = ('EXTRA_TABS', '概览', '本轮交付证据', 'WpsShared.Agent.Home.html', 'RequirementsForm')
     missing = [token for token in required if token not in topic[1]]
     lifecycle = ('DialogCatalog', 'DialogSizing.Prepare', 'DialogPreviewFactory', 'DialogTree', 'ThisAddIn', 'DialogSizes.xml')
     missing.extend(token for token in lifecycle if token not in shared)
@@ -26,7 +26,7 @@ def verify_developer_entries(text):
 
 
 def self_test():
-    agent = ('EXTRA_TABS', 'agent-overview', 'delivery-audit', 'WpsShared.Agent.Home.html', 'RequirementsForm')
+    agent = ('EXTRA_TABS', '概览', '本轮交付证据', 'WpsShared.Agent.Home.html', 'RequirementsForm')
     lifecycle = ('DialogCatalog', 'DialogSizing.Prepare', 'DialogPreviewFactory', 'DialogTree', 'ThisAddIn', 'DialogSizes.xml')
     fixture = ('## 2. 弹窗接线\n' + ' '.join(lifecycle)
                + '\n## 6. Agent-Evo、内嵌文档与网站\n' + ' '.join(agent) + '\n')
@@ -36,7 +36,7 @@ def self_test():
     invalid = [fixture.replace(token, '', 1) for token in agent + lifecycle]
     invalid += [fixture.replace('## 6. Agent-Evo、内嵌文档与网站', '## 6. 其他经验'),
                 '```md\n' + fixture + '\n```\n',
-                '<!-- delivery-audit:start -->' + fixture + '<!-- delivery-audit:end -->']
+                '## 6. Agent-Evo、内嵌文档与网站\n\n### (2). 本轮交付证据\n' + ' '.join(agent) + '\n\n## 7. 其他\n']
     for example in invalid:
         try:
             verify_developer_entries(example)

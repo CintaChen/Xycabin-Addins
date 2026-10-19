@@ -15,25 +15,134 @@ DOCUMENTS = (('UserGuide', 'A-UserGuide.md'), ('Readme', 'B-Devlog.md'))
 SOURCES = {'guide': 'A-UserGuide.md', 'b1': 'B1-Project-Files.md',
            'b2': 'B2-DevExperience.md', 'b3': 'B3-Uphold-Discipline.md'}
 SCOPES = {'C-01-ExcelIterate': 'excel', 'C-02-WordUpdater': 'word', 'C-03-Website·Xycabin': 'site'}
-SCOPE_MARK = re.compile(r'<!--\s*scope:([a-z]+):(start|end)\s*-->')
-AUDIT_START, AUDIT_END = '<!-- delivery-audit:start -->', '<!-- delivery-audit:end -->'
+SHARED_TITLES = {
+    'B1-Project-Files.md': ('Agent及开发者接手概览',),
+    'B2-DevExperience.md': ('Word与Excel共享开发经验',),
+    'B3-Uphold-Discipline.md': ('Word与Excel共享维护纪律',),
+}
+SCOPE_WORDS = (('Excel-Iterate', 'excel'), ('WordUpdater', 'word'), ('XyCabin', 'site'))
+AUDIT_TITLE = re.compile(r'^###\s+\(\d+\)\.\s*本轮交付证据\s*$')
+FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})(.*)$')
+CHAPTER_NUMBER = re.compile(r'^[一二三四五六七八九十]+\.\s*')
 
 
-def select_scopes(text, allowed):
-    """Keep shared and requested project scopes; drop the other projects' chapters."""
-    allowed = set(allowed) | {'shared'}
-    out, stack = [], []
-    for line in text.splitlines():
-        mark = SCOPE_MARK.search(line)
-        if mark:
-            if mark.group(2) == 'start':
-                stack.append(mark.group(1))
-            elif stack:
-                stack.pop()
+def split_chapters(text):
+    """Split on level-one headings only; fences never open a chapter."""
+    preamble, chapters, current, fence = [], [], None, None
+    for line in text.split('\n'):
+        mark = FENCE.match(line)
+        if fence is not None:
+            if mark and mark.group(1)[0] == fence[0] and len(mark.group(1)) >= fence[1] and not mark.group(2).strip():
+                fence = None
+            (current[1] if current is not None else preamble).append(line)
             continue
-        if all(scope in allowed for scope in stack):
-            out.append(line)
+        if mark:
+            fence = (mark.group(1)[0], len(mark.group(1)))
+            (current[1] if current is not None else preamble).append(line)
+            continue
+        if line.startswith('# '):
+            if current is not None:
+                chapters.append(current)
+            current = [line[2:].strip(), []]
+            continue
+        (current[1] if current is not None else preamble).append(line)
+    if current is not None:
+        chapters.append(current)
+    return preamble, chapters
+
+
+def chapter_scope(title, document):
+    """Map a level-one chapter title to a product scope or a registered shared title."""
+    name = CHAPTER_NUMBER.sub('', title).strip()
+    hits = [scope for word, scope in SCOPE_WORDS if word in name]
+    if len(set(hits)) > 1:
+        raise ValueError(document + ': 一级章节标题同时匹配多个产品：' + name)
+    if hits:
+        return hits[0]
+    if name in SHARED_TITLES.get(document, ()):
+        return 'shared'
+    raise ValueError(document + ': 未知的一级章节标题：' + name)
+
+
+def select_chapters(text, allowed, document):
+    """Keep the preamble and the shared/current-product chapters, in document order."""
+    preamble, chapters = split_chapters(text)
+    out = list(preamble)
+    for title, lines in chapters:
+        if chapter_scope(title, document) in set(allowed) | {'shared'}:
+            out.append('# ' + title)
+            out.extend(lines)
     return '\n'.join(out)
+
+
+def strip_delivery_audit(text):
+    """Remove every '本轮交付证据' subsection before embedding or hashing."""
+    if '<!--' in text:
+        raise ValueError('文档不得包含 HTML 注释')
+    lines, out, fence = text.split('\n'), [], None
+    index, removed = 0, 0
+    while index < len(lines):
+        line = lines[index]
+        mark = FENCE.match(line)
+        if fence is not None:
+            out.append(line)
+            if mark and mark.group(1)[0] == fence[0] and len(mark.group(1)) >= fence[1] and not mark.group(2).strip():
+                fence = None
+            index += 1
+            continue
+        if mark:
+            fence = (mark.group(1)[0], len(mark.group(1)))
+            out.append(line)
+            index += 1
+            continue
+        if AUDIT_TITLE.match(line):
+            removed += 1
+            index += 1
+            while index < len(lines) and not re.match(r'^#{1,2}\s', lines[index]):
+                index += 1
+            continue
+        out.append(line)
+        index += 1
+    if removed > 3:
+        raise ValueError('「本轮交付证据」最多三处')
+    if not '\n'.join(out).strip():
+        raise ValueError('文档不得只包含交付证据')
+    return '\n'.join(out)
+
+
+def document_overview(text):
+    """First paragraph after the title/date preamble, or after the first chapter."""
+    lines = text.split('\n')
+    index = 0
+
+    def skip_blank():
+        nonlocal index
+        while index < len(lines) and not lines[index].strip():
+            index += 1
+
+    skip_blank()
+    if index < len(lines) and lines[index].strip().startswith('**') and lines[index].strip().endswith('**'):
+        index += 1
+        skip_blank()
+    if index < len(lines) and lines[index].strip().startswith('最后更新：'):
+        index += 1
+        skip_blank()
+    if index < len(lines) and not lines[index].startswith('#'):
+        paragraph = []
+        while index < len(lines) and lines[index].strip() and not lines[index].startswith('#'):
+            paragraph.append(lines[index].strip())
+            index += 1
+        if paragraph:
+            return '\n'.join(paragraph)
+    while index < len(lines) and (not lines[index].strip() or lines[index].startswith('#')):
+        index += 1
+    paragraph = []
+    while index < len(lines) and lines[index].strip() and not lines[index].startswith('#'):
+        paragraph.append(lines[index].strip())
+        index += 1
+    if not paragraph:
+        raise ValueError('文档概览为空')
+    return '\n'.join(paragraph)
 
 
 def strip_title(text):
@@ -72,20 +181,16 @@ def project_documents(project):
     def read(name):
         return (root / DEVLOG_DIR / name).read_text(encoding='utf-8-sig').replace('\r\n', '\n')
 
-    guide = rebase_assets(select_scopes(read(SOURCES['guide']), {key}), project, root)
-    parts = [select_scopes(read(SOURCES['b1']), {'shared', key})]
+    guide = rebase_assets(select_chapters(read(SOURCES['guide']), {key}, SOURCES['guide']), project, root)
+    parts = [select_chapters(read(SOURCES['b1']), {'shared', key}, SOURCES['b1'])]
     for source in ('b2', 'b3'):
-        parts.append(strip_title(select_scopes(read(SOURCES[source]), {'shared', key})))
+        parts.append(strip_title(select_chapters(read(SOURCES[source]), {'shared', key}, SOURCES[source])))
     readme = '\n\n'.join(part.strip('\n') for part in parts if part.strip())
     return {'UserGuide': guide, 'Readme': rebase_assets(readme, project, root)}
 
 
 def normalize_text(text):
-    if AUDIT_START in text or AUDIT_END in text:
-        if text.count(AUDIT_START) != 1 or text.count(AUDIT_END) != 1 or text.index(AUDIT_START) > text.index(AUDIT_END):
-            raise ValueError('交付审计标记必须唯一、有序')
-        text = re.sub(re.escape(AUDIT_START) + r'.*?' + re.escape(AUDIT_END), '', text, flags=re.S)
-    return text
+    return strip_delivery_audit(text)
 
 
 def document_text(path):
@@ -280,6 +385,7 @@ def collect(base):
     documents, by_resource = [], {}
     for name, filename in DOCUMENTS:
         text = normalize_text(texts[name])
+        document_overview(text)
         content = text.replace('\n', os.linesep).encode('utf-8')
         paths = {}
         for target in markdown_targets(text):
