@@ -54,6 +54,7 @@ def main():
         for directory in ('AA-Program','AB-Graphic'):
             shutil.copytree(ROOT/directory,website/directory)
         shutil.copy2(ROOT.parent/'verify_shared.py',stage/'verify_shared.py')
+        shutil.copy2(ROOT.parent/'verify_devlog.py',stage/'verify_devlog.py')
         shutil.copytree(ROOT.parent/'C-04-Devlog',stage/'C-04-Devlog')
         config=website/'AA-Program/C3-XycabinSite_Configure.py'
         text=config.read_text(encoding='utf-8')

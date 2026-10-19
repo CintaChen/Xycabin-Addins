@@ -47,6 +47,22 @@ def strip_title(text):
     return '\n'.join(lines)
 
 
+ASSET_REF = re.compile(r'\.\./(C-0[0-9][^/\s)>"]*)/AB-Graphic/([^)\s>"]+)')
+
+
+def rebase_assets(text, project, root):
+    """Prefer the current project's copy so a single add-in checkout stays complete."""
+    name = Path(project).name
+
+    def replace(match):
+        candidate = root / name / 'AB-Graphic' / unquote(match.group(2))
+        if candidate.is_file():
+            return '../' + name + '/AB-Graphic/' + match.group(2)
+        return match.group(0)
+
+    return ASSET_REF.sub(replace, text)
+
+
 def project_documents(project):
     """Compose the two embedded documents from the single C-04 source."""
     project = Path(project).resolve()
@@ -56,12 +72,12 @@ def project_documents(project):
     def read(name):
         return (root / DEVLOG_DIR / name).read_text(encoding='utf-8-sig').replace('\r\n', '\n')
 
-    guide = select_scopes(read(SOURCES['guide']), {key})
+    guide = rebase_assets(select_scopes(read(SOURCES['guide']), {key}), project, root)
     parts = [select_scopes(read(SOURCES['b1']), {'shared', key})]
     for source in ('b2', 'b3'):
         parts.append(strip_title(select_scopes(read(SOURCES[source]), {'shared', key})))
     readme = '\n\n'.join(part.strip('\n') for part in parts if part.strip())
-    return {'UserGuide': guide, 'Readme': readme}
+    return {'UserGuide': guide, 'Readme': rebase_assets(readme, project, root)}
 
 
 def normalize_text(text):
