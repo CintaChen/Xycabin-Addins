@@ -1,12 +1,12 @@
 **WordUpdater、Excel-Iterate 与 XyCabin · 使用说明**
 
-本文件按产品分三章：第一章 Excel-Iterate（WPS 表格），第二章 WordUpdater（WPS 文字），第三章 XyCabin（离线网站）。加载项的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。当前版本 0.9.9.1。
+本文件按产品分三章：第一章 Excel-Iterate（WPS 表格），第二章 WordUpdater（WPS 文字），第三章 XyCabin（离线网站）。加载项的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。当前版本 0.9.9.2。
 
 # 一. Excel-Iterate
 
 ## 1. 安装与启用
 
-　　当前版本 **0.9.9.1**。Excel-Iterate 为 WPS 表格提供引用追踪、公式处理、筛选、链接维护和文件操作。
+　　当前版本 **0.9.9.2**。Excel-Iterate 为 WPS 表格提供引用追踪、公式处理、筛选、链接维护和文件操作。
 
 ### (1). 安装 [Microsoft VSTO 运行库](https://www.microsoft.com/en-us/download/details.aspx?id=105890)
 
@@ -383,7 +383,7 @@
 
 ## 1. 安装与启用
 
-　　当前版本 **0.9.9.1**。WordUpdater 为 WPS 文字提供逐格链接 Excel、更新和查看链接，以及正文表格选择。
+　　当前版本 **0.9.9.2**。WordUpdater 为 WPS 文字提供逐格链接 Excel、更新和查看链接，以及正文表格选择。
 
 ### (1). 安装 [Microsoft VSTO 运行库](https://www.microsoft.com/en-us/download/details.aspx?id=105890)
 
@@ -588,7 +588,7 @@
 
 ### (2). 下载与版本
 
-　　当前两加载项为0.9.9.1。Excel文件OCR需联网、开通服务并填写密钥；百度支持PDF指定页，结果写入“OCR提取结果”工作表，阿里不支持PDF。网站不收集密钥，详细步骤见[Excel使用说明](A-UserGuide.md#一-excel-iterate)。两产品名称/排序保存后立即生效，格式/控件缩放/弹窗尺寸下次开窗生效，无须重启WPS。
+　　当前两加载项为0.9.9.2。Excel文件OCR需联网、开通服务并填写密钥；百度支持PDF指定页，结果写入“OCR提取结果”工作表，阿里不支持PDF。网站不收集密钥，详细步骤见[Excel使用说明](A-UserGuide.md#一-excel-iterate)。两产品名称/排序保存后立即生效，格式/控件缩放/弹窗尺寸下次开窗生效，无须重启WPS。
 
 　　选择 WordUpdater 或 Excel-Iterate，再点击“点我下载”；下载对象随当前项目切换。“版本拷贝”复制两项目的版本信息。
 
