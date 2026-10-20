@@ -60,10 +60,10 @@ Excel 专属正文
 Word 专属正文
 '''
 
-B3 = '''**维护纪律**
+B3 = '''**门禁**
 
-# 一. Word与Excel共享维护纪律
-共享纪律正文
+# 一. Word与Excel共享门禁
+共享门禁正文
 '''
 
 
@@ -79,7 +79,7 @@ def fixture(parent):
     (docs / 'A-UserGuide.md').write_text(GUIDE, encoding='utf-8-sig')
     (docs / 'B1-Project-Files.md').write_text(B1, encoding='utf-8')
     (docs / 'B2-DevExperience.md').write_text(B2, encoding='utf-8')
-    (docs / 'B3-Uphold-Discipline.md').write_text(B3, encoding='utf-8')
+    (docs / 'B3-Gate Control.md').write_text(B3, encoding='utf-8')
     (docs / 'B0-Entry.md').write_text('# 一. 入口\n', encoding='utf-8')
     (base / 'AA-Program/C1-Exceliterate_Configure.py').write_text('# fixture\n', encoding='utf-8')
     (base / 'AA-Program/一键重建并打包.bat').write_bytes(b'chcp 65001\r\nset PYTHONUTF8=1\r\nset PYTHONIOENCODING=utf-8\r\n')

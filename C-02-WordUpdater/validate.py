@@ -32,7 +32,7 @@ def main():
              (Path(sys.executable), [SITE_ROOT / 'src/tools/document_assets_probe.py', '--root', ROOT]),
              (Path(sys.executable), [SITE_ROOT / 'src/tools/site_probe.py', '--html', args.site_html])]
     # --skip-ui alone does not suppress forms opened by business/Agent probes.
-    background_tools = {'HostDialogProbe', 'FormulaProbe', 'FormulaInteractionProbe', 'Feature099Probe', 'TrackerProbe', 'ErrorSourceProbe', 'WorkbookToolsProbe', 'FileOperationsProbe', 'MergeHeadersProbe', 'EliminationProbe',
+    background_tools = {'HostDialogProbe', 'FormulaProbe', 'FormulaInteractionProbe', 'Feature099Probe', 'TrackerProbe', 'ErrorSourceProbe', 'WorkbookToolsProbe', 'FileOperationsProbe', 'MergeHeadersProbe', 'EliminationProbe', 'DisciplineProbe',
                         'LinkViewProbe', 'LinkMapProbe', 'UpdateProbe', 'LinkViewFormProbe', 'EtCleanupProbe', 'EtSelectionReaderProbe', 'ClipboardBoundaryFixture'}
     pending = []
     for tool in PROJECT['tools']:

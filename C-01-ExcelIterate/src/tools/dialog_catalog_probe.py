@@ -44,6 +44,7 @@ def self_test():
             continue
         raise AssertionError('开发入口缺失/只在代码或历史审计中时应拒绝')
 
+# rule=R-26
 def main():
  project=json.loads((ROOT/'project.json').read_text(encoding='utf-8-sig'))
  expected={'AgentDocumentForm','DeveloperPasswordForm','UiMessageForm','DialogSizesForm','CommandCustomizationForm','RequirementsForm'}

@@ -13,12 +13,12 @@ MANIFEST_RESOURCE = 'WpsShared.Agent.Assets.xml'
 DEVLOG_DIR = 'C-04-Devlog'
 DOCUMENTS = (('UserGuide', 'A-UserGuide.md'), ('Readme', 'B-Devlog.md'))
 SOURCES = {'guide': 'A-UserGuide.md', 'b1': 'B1-Project-Files.md',
-           'b2': 'B2-DevExperience.md', 'b3': 'B3-Uphold-Discipline.md'}
+           'b2': 'B2-DevExperience.md', 'b3': 'B3-Gate Control.md'}
 SCOPES = {'C-01-ExcelIterate': 'excel', 'C-02-WordUpdater': 'word', 'C-03-Website·Xycabin': 'site'}
 SHARED_TITLES = {
     'B1-Project-Files.md': ('Agent及开发者接手概览',),
     'B2-DevExperience.md': ('Word与Excel共享开发经验',),
-    'B3-Uphold-Discipline.md': ('Word与Excel共享维护纪律',),
+    'B3-Gate Control.md': ('Word与Excel共享门禁',),
 }
 SCOPE_WORDS = (('Excel-Iterate', 'excel'), ('WordUpdater', 'word'), ('XyCabin', 'site'))
 AUDIT_TITLE = re.compile(r'^###\s+\(\d+\)\.\s*本轮交付证据\s*$')

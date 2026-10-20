@@ -220,6 +220,7 @@ internal static class LiveProbeSafetyFixture
     }
 
     [STAThread]
+    // rule=R-29
     private static int Main()
     {
         root = Path.Combine(Path.GetTempPath(), "probe-safety-fixture-" + Guid.NewGuid().ToString("N"));

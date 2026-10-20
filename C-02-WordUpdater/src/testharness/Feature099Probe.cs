@@ -460,6 +460,7 @@ partial class Feature099Probe
             var cell=sheet.Cells[r,c];cell.Value2=r==3?new string('x',600):"原"+r+c;cell.WrapText=(r+c)%2==0;cell.HorizontalAlignment=7;cell.VerticalAlignment=9;cell.Font.Bold=false;cell.Font.Color=37;cell.Interior.Color=51;
         }}sheet.RowAt(3).Hidden=true;return sheet;
     }
+    // rule=R-28
     static void OutputFormatChecks() {
         var entries=new List<FileNameEntry>{new FileNameEntry{Name="短",Extension="png",Path="短路径",Feature="001"},new FileNameEntry{Name=new string('N',90),Extension="pdf",Path=new string('P',600),Feature="000123"}};
         foreach(bool zero in new[]{false,true})foreach(bool nullHeight in new[]{false,true}){

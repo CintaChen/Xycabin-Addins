@@ -31,8 +31,8 @@ SHARED_FILES = (
 )
 
 DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
-        'B2-DevExperience.md', 'B3-Uphold-Discipline.md'}
-SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享维护纪律')
+        'B2-DevExperience.md', 'B3-Gate Control.md'}
+SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享门禁')
 
 
 # rule=R-01

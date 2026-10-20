@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / 'src'))
 from document_assets import collect as collect_document_assets
 PROGRAM, DESIGN = 'AA-Program', 'AB-Graphic'
 DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
-        'B2-DevExperience.md', 'B3-Uphold-Discipline.md'}
+        'B2-DevExperience.md', 'B3-Gate Control.md'}
 DEVLOG = 'C-04-Devlog'
 CONFIGURE = {'C-01-ExcelIterate': 'C1-Exceliterate_Configure.py',
              'C-02-WordUpdater': 'C2-Wordupdater_Configure.py',
@@ -139,7 +139,7 @@ def self_test():
         (docs / 'B0-Entry.md').write_text('# 一. 入口\n', encoding='utf-8')
         (docs / 'B1-Project-Files.md').write_text('**项目档案**\n\n最后更新：2026-10-18\n\n# 一. Agent及开发者接手概览\n概览。\n', encoding='utf-8')
         (docs / 'B2-DevExperience.md').write_text('**经验**\n\n# 一. Word与Excel共享开发经验\n正文。\n', encoding='utf-8')
-        (docs / 'B3-Uphold-Discipline.md').write_text('**纪律**\n\n# 一. Word与Excel共享维护纪律\n正文。\n', encoding='utf-8')
+        (docs / 'B3-Gate Control.md').write_text('**门禁**\n\n# 一. Word与Excel共享门禁\n正文。\n', encoding='utf-8')
         (docs / 'A-UserGuide.md').write_text('**使用说明**\n\n概览。\n\n# 一. Excel-Iterate\n[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
         verify(parent, folders={'C-01-ExcelIterate'})
         (base / PROGRAM / 'Excel_Iterate_Setup.exe').unlink()
@@ -167,14 +167,14 @@ def self_test():
         else:
             raise AssertionError('输出目录接受了多余文件')
         (base / PROGRAM / 'extra.py').unlink()
-        (docs / 'B3-Uphold-Discipline.md').unlink()
+        (docs / 'B3-Gate Control.md').unlink()
         try:
             verify(parent, folders={'C-01-ExcelIterate'})
         except (OSError, ValueError):
             pass
         else:
             raise AssertionError('文档目录接受了缺失文件')
-        (docs / 'B3-Uphold-Discipline.md').write_text('**纪律**\n\n# 一. Word与Excel共享维护纪律\n正文。\n', encoding='utf-8')
+        (docs / 'B3-Gate Control.md').write_text('**门禁**\n\n# 一. Word与Excel共享门禁\n正文。\n', encoding='utf-8')
         (docs / 'A-UserGuide.md').write_text('**使用说明**\n\n概览。\n\n# 一. Excel-Iterate\n[失效](missing.md)\n', encoding='utf-8')
         try:
             verify(parent, folders={'C-01-ExcelIterate'})

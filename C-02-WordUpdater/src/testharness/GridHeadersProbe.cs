@@ -73,6 +73,7 @@ partial class Feature099Probe
         DialogFormatting.Apply(form,id,new CustomizationData());
         form.ClientSize=DialogCatalog.Find(id).Default;form.PerformLayout();
     }
+    // rule=R-27
     static void GridHeaderChecks()
     {
         int before=checks;DialogSizeStore.RootOverride=sandbox;DialogSizing.Initialize();
