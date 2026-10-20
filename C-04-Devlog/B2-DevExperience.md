@@ -210,7 +210,7 @@ RoundedButton不透明父色覆盖整区，禁系统默认按钮绘制，保留�
 
 搜索只改可见行，不改勾选；全选只作用当前结果。行Tag绑定原对象/列身份，排序后提交、恢复仍按身份，特殊自身行不混入业务计数。Rows.Add首行可能在Tag赋值前触发选中事件，填完显式同步明细/按钮；右键先选鼠标所指行。
 
-行高默认约34、表头约38，关闭EnableHeadersVisualStyles；添加行前设RowTemplate，句柄创建及格式应用后复核DPI。表头完整单行、居中且默认加粗，显式自定格式可关闭粗体；实际字体、字号、Padding和排序图标决定最小列宽与单行表头高度，不启用表头换行。短列AllCells、长列Tag存逻辑上限、末列Fill，均须先满足完整表头宽度；手动缩窄不低于该下限，窄窗横滚。文件提取名称另按正文30个“0”限宽，表头所需宽度优先，不能被局部策略或后续格式应用覆盖。DataGridViewColumn没有MaximumWidth。特殊行同时设普通/选中背景；全文提示用未受EndEllipsis限制的真实测量。规范与维护范围见[格式维护规范](B3-Gate Control.md#5-格式维护规范)。
+行高默认约34、表头约38，关闭EnableHeadersVisualStyles；添加行前设RowTemplate，句柄创建及格式应用后复核DPI。表头完整单行、居中且默认加粗，显式自定格式可关闭粗体；实际字体、字号、Padding和排序图标决定最小列宽与单行表头高度，不启用表头换行。短列AllCells、长列Tag存逻辑上限、末列Fill，均须先满足完整表头宽度；手动缩窄不低于该下限，窄窗横滚。文件提取名称另按正文30个“0”限宽，表头所需宽度优先，不能被局部策略或后续格式应用覆盖。DataGridViewColumn没有MaximumWidth。特殊行同时设普通/选中背景；全文提示用未受EndEllipsis限制的真实测量。规范与维护范围见\[格式维护规范\](B3-Gate Control.md#5-格式维护规范)。
 
 保留原生Ctrl+C，扩展快捷键采用Ctrl+Shift。Clipboard.SetDataObject(text,true)支持宿主退出后粘贴，保留业务已有占用重试。界面或日志显示失败不改变已提交业务事实；诊断与用户结果分流。
 
@@ -274,7 +274,7 @@ RibbonCustomization从默认XML登记稳定命令，根菜单转dynamicMenu；�
 
 EXTRA_TABS预声明选项卡；主toggle的get_pressed与附加tab的get_visible读同一Visible，onLoad登记Ribbon，点击修改/刷新/原子存AgentExtension.state，失败刷新回旧状态、保存失败如实提示。默认隐藏，显示后由用户选择；新增第二附加tab须独立状态/键/刷新集合，不能只追加配置。卸载清窗与引用。
 
-概览取首个一级章节后的首段（跳过标题与空行，至空行或下一标题止）；构建按当前项目按一级章节标题分章（Excel-Iterate→excel、WordUpdater→word、XyCabin→site，其余仅允许登记过的共享章节），拼接B1/B2/B3，并在合成前整节剔除「本轮交付证据」。修改后必须重建才能更新DLL。全文每次经SHOpenWithDialog选择应用，取消保留概览、不写默认关联。AgentLocalFiles按程序集与文档／资产联合摘要释放内容包：包内逻辑路径固定为C-04-Devlog/A-UserGuide.md与C-04-Devlog/B-Devlog.md，图片资源指向各项目AB-Graphic下的PNG与SVG。WpsShared.Agent.Assets.xml记录当前文档的资源映射、大小及摘要；只导出本次请求的文档和资产，缺失／损坏缓存修复后才打开应用，保留可能在用的旧包。构建、增量缓存、文件盘点和图片门禁复用Website的document_assets收集函数，只把实际引用资源列为必要输入。
+概览取首个一级章节后的首段（跳过标题与空行，至空行或下一标题止）；内嵌文档不再分章拼接，A-UserGuide 与 B2 各自整份内嵌，只去 BOM、统一换行，并在内嵌前整节剔除「本轮交付证据」，章节范围仍由文档门禁按一级章节标题核对。修改后必须重建才能更新DLL。全文每次经SHOpenWithDialog选择应用，取消保留概览、不写默认关联。AgentLocalFiles按程序集与文档／资产联合摘要释放内容包：包内逻辑路径固定为C-04-Devlog/A-UserGuide.md与C-04-Devlog/B2-DevExperience.md，图片按原文相对链接保留，指向各项目AB-Graphic下的PNG与SVG。WpsShared.Agent.Assets.xml记录当前文档的资源映射、大小及摘要；只导出本次请求的文档和资产，缺失／损坏缓存修复后才打开应用，保留可能在用的旧包。构建、增量缓存、文件盘点和图片门禁复用Website的document_assets收集函数，只把实际引用资源列为必要输入。
 
 开发预览的“全文”每次由AgentDocumentAccess发起口令验证，提示“请输入开发者的微信名称”；掩码TextBox仅在当前窗口中保存输入，产品只存校验摘要，不写输入日志、不持久化授权。错误可重试，取消／Esc／关闭／异常均不导出、不选应用；用户全文、概览和复制不验证。DeveloperPasswordForm通过HostDialogService的结果型隔离接口显示，登记agent.developerpassword及其预览、尺寸和退出清理；预览构造不验证、不导出。该验证保护入口，不加密已导出的MD。正文里的业务源码、姊妹项目与历史证据链接仍是工作区定位，离线内容包只随附文档配图及示意SVG。AgentDocumentCoreProbe为无窗体后台回归入口，不把后台结果登记为真实查看器或WPS验收。
 
@@ -413,7 +413,7 @@ Feature099Probe覆盖百度接口/Token、无位置隔离、阿里固定签名�
 
 ## 5. 合并抵消
 
-交互弹窗的宿主锁死根因与构建规范属 Word/Excel 共享门禁，见[弹窗维护规范](B3-Gate Control.md#2-弹窗维护规范)；本章只记 Excel 侧合并抵消的分层、会计模型与写入还原边界。
+交互弹窗的宿主锁死根因与构建规范属 Word/Excel 共享门禁，见\[弹窗维护规范\](B3-Gate Control.md#2-弹窗维护规范)；本章只记 Excel 侧合并抵消的分层、会计模型与写入还原边界。
 
 ### (1). 合并抵消的分层与会计模型
 

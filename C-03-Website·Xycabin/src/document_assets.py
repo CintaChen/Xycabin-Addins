@@ -11,9 +11,8 @@ from urllib.parse import unquote, urlsplit
 
 MANIFEST_RESOURCE = 'WpsShared.Agent.Assets.xml'
 DEVLOG_DIR = 'C-04-Devlog'
-DOCUMENTS = (('UserGuide', 'A-UserGuide.md'), ('Readme', 'B-Devlog.md'))
-SOURCES = {'guide': 'A-UserGuide.md', 'b1': 'B1-Project-Files.md',
-           'b2': 'B2-DevExperience.md', 'b3': 'B3-Gate Control.md'}
+DOCUMENTS = (('UserGuide', 'A-UserGuide.md'), ('DevExperience', 'B2-DevExperience.md'))
+SOURCES = {'guide': 'A-UserGuide.md', 'experience': 'B2-DevExperience.md'}
 SCOPES = {'C-01-ExcelIterate': 'excel', 'C-02-WordUpdater': 'word', 'C-03-Website·Xycabin': 'site'}
 SHARED_TITLES = {
     'B1-Project-Files.md': ('Agent及开发者接手概览',),
@@ -63,17 +62,6 @@ def chapter_scope(title, document):
     if name in SHARED_TITLES.get(document, ()):
         return 'shared'
     raise ValueError(document + ': 未知的一级章节标题：' + name)
-
-
-def select_chapters(text, allowed, document):
-    """Keep the preamble and the shared/current-product chapters, in document order."""
-    preamble, chapters = split_chapters(text)
-    out = list(preamble)
-    for title, lines in chapters:
-        if chapter_scope(title, document) in set(allowed) | {'shared'}:
-            out.append('# ' + title)
-            out.extend(lines)
-    return '\n'.join(out)
 
 
 # rule=R-10
@@ -148,48 +136,15 @@ def document_overview(text):
     return '\n'.join(paragraph)
 
 
-def strip_title(text):
-    lines = text.splitlines()
-    while lines and not lines[0].strip():
-        lines.pop(0)
-    if lines and lines[0].startswith('**') and lines[0].rstrip().endswith('**'):
-        lines.pop(0)
-    while lines and not lines[0].strip():
-        lines.pop(0)
-    return '\n'.join(lines)
-
-
-ASSET_REF = re.compile(r'\.\./(C-0[0-9][^/\s)>"]*)/AB-Graphic/([^)\s>"]+)')
-
-
-def rebase_assets(text, project, root):
-    """Prefer the current project's copy so a single add-in checkout stays complete."""
-    name = Path(project).name
-
-    def replace(match):
-        candidate = root / name / 'AB-Graphic' / unquote(match.group(2))
-        if candidate.is_file():
-            return '../' + name + '/AB-Graphic/' + match.group(2)
-        return match.group(0)
-
-    return ASSET_REF.sub(replace, text)
-
-
 def project_documents(project):
-    """Compose the two embedded documents from the single C-04 source."""
-    project = Path(project).resolve()
-    root = project.parent
-    key = SCOPES[project.name]
+    """Embed both documents whole; no chapter cropping, retitling or path rewriting."""
+    root = Path(project).resolve().parent
 
     def read(name):
         return (root / DEVLOG_DIR / name).read_text(encoding='utf-8-sig').replace('\r\n', '\n')
 
-    guide = rebase_assets(select_chapters(read(SOURCES['guide']), {key}, SOURCES['guide']), project, root)
-    parts = [select_chapters(read(SOURCES['b1']), {'shared', key}, SOURCES['b1'])]
-    for source in ('b2', 'b3'):
-        parts.append(strip_title(select_chapters(read(SOURCES[source]), {'shared', key}, SOURCES[source])))
-    readme = '\n\n'.join(part.strip('\n') for part in parts if part.strip())
-    return {'UserGuide': guide, 'Readme': rebase_assets(readme, project, root)}
+    return {'UserGuide': read(SOURCES['guide']),
+            'DevExperience': read(SOURCES['experience'])}
 
 
 def normalize_text(text):

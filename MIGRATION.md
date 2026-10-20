@@ -43,7 +43,7 @@
 
 | 项 | 旧值 | 新值 |
 |---|---|---|
-| 内嵌文档逻辑路径 | `AP3-说明/开发日志.md`、`AP3-说明/使用说明.md` | `C-04-Devlog/B-Devlog.md`、`C-04-Devlog/A-UserGuide.md` |
+| 内嵌文档逻辑路径 | `AP3-说明/开发日志.md`、`AP3-说明/使用说明.md` | `C-04-Devlog/B2-DevExperience.md`、`C-04-Devlog/A-UserGuide.md`（各自整份内嵌） |
 | 运行时导出目录 | `<用户目录>/AP3-说明/` | `<用户目录>/C-04-Devlog/` |
 | 文档图片资源路径 | `AP2-美工/<文件>`、`src/documentation/<文件>` | `<项目>/AB-Graphic/<文件>` |
 

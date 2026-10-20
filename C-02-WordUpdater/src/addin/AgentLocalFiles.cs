@@ -122,6 +122,16 @@ namespace Excel_Iterate
             using (XmlReader reader = XmlReader.Create(memory, settings)) document.Load(reader);
             return document;
         }
+        private static string DocumentPath(string name)
+        {
+            if (name == "UserGuide") return "C-04-Devlog/A-UserGuide.md";
+            if (name == "DevExperience") return "C-04-Devlog/B2-DevExperience.md";
+            return null;
+        }
+        private static bool IsDocumentPath(string path)
+        {
+            return path == DocumentPath("UserGuide") || path == DocumentPath("DevExperience");
+        }
         private static string CheckedPath(string path, bool document)
         {
             if (string.IsNullOrEmpty(path) || path.IndexOf('\\') >= 0 || path.IndexOf(':') >= 0 || Path.IsPathRooted(path))
@@ -131,7 +141,7 @@ namespace Excel_Iterate
                     throw new InvalidDataException("资源路径包含非法目录或文件名。");
             if (document)
             {
-                if (path != "C-04-Devlog/A-UserGuide.md" && path != "C-04-Devlog/B-Devlog.md") throw new InvalidDataException("文档路径不在允许位置。");
+                if (!IsDocumentPath(path)) throw new InvalidDataException("文档路径不在允许位置。");
             }
             else if (!(path.EndsWith(".png", StringComparison.Ordinal) || path.EndsWith(".svg", StringComparison.Ordinal))
                 || path.Split('/').Length != 3 || path.Split('/')[1] != "AB-Graphic")
@@ -204,7 +214,7 @@ namespace Excel_Iterate
             if (root == null || root.Name != "documentAssets" || root.NamespaceURI.Length != 0 || root.GetAttribute("version") != "1")
                 throw new InvalidDataException("文档资源索引版本不支持。");
             Attributes(root, "version");
-            string selected = guide ? "UserGuide" : "Readme";
+            string selected = guide ? "UserGuide" : "DevExperience";
             var names = new HashSet<string>(StringComparer.Ordinal);
             XmlElement chosen = null;
             foreach (XmlNode node in root.ChildNodes)
@@ -213,9 +223,9 @@ namespace Excel_Iterate
                 if (entry == null) { if (node.NodeType != XmlNodeType.Comment && node.NodeType != XmlNodeType.Whitespace) throw new InvalidDataException("资源索引含非文档内容。"); continue; }
                 Attributes(entry, "name", "resource", "path", "sha256");
                 string name = entry.GetAttribute("name");
-                if (entry.Name != "document" || entry.NamespaceURI.Length != 0 || (name != "Readme" && name != "UserGuide") || !names.Add(name))
+                if (entry.Name != "document" || entry.NamespaceURI.Length != 0 || (name != "DevExperience" && name != "UserGuide") || !names.Add(name))
                     throw new InvalidDataException("资源索引文档名称无效或重复。");
-                string expectedPath = name == "Readme" ? "C-04-Devlog/B-Devlog.md" : "C-04-Devlog/A-UserGuide.md";
+                string expectedPath = DocumentPath(name);
                 if (CheckedPath(entry.GetAttribute("path"), true) != expectedPath || entry.GetAttribute("resource") != "WpsShared.Agent." + name + ".md")
                     throw new InvalidDataException("文档资源身份不符。");
                 CheckedHash(entry.GetAttribute("sha256"));
@@ -326,7 +336,7 @@ namespace Excel_Iterate
                 // The full digest commits only after all selected document/assets exist.
                 AtomicDocumentFile(root, marker, Encoding.ASCII.GetBytes(digest));
             }
-            return Path.Combine(directory, "C-04-Devlog", guide ? "A-UserGuide.md" : "B-Devlog.md");
+            return Path.Combine(directory, "C-04-Devlog", guide ? "A-UserGuide.md" : "B2-DevExperience.md");
         }
         internal static void OpenDocument(IntPtr owner, string path)
         {

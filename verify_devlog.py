@@ -528,6 +528,12 @@ def self_test():
     else:
         raise AssertionError('unknown chapter accepted')
     try:
+        rules.chapter_scope('一. Excel-Iterate 与 WordUpdater', 'B2-DevExperience.md')
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('ambiguous chapter accepted')
+    try:
         rules.document_overview('# 一. 甲\n\n## 1. 乙\n')
     except ValueError:
         pass
@@ -537,7 +543,7 @@ def self_test():
         path = Path(temporary) / 'B2-DevExperience.md'
         path.write_text('# 一. Word与Excel共享开发经验\n## 1. 乙\n# 二. Excel-Iterate 专属\n# 三. WordUpdater 专属\n# 四. XyCabin 专属\n', encoding='utf-8')
         assert verify_file(path) == []
-    print('VerifyDevlog self-test: 20 PASS, 0 FAIL', flush=True)
+    print('VerifyDevlog self-test: 21 PASS, 0 FAIL', flush=True)
 
 
 def main():

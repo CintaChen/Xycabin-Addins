@@ -34,6 +34,31 @@ internal static class AgentExtensionProbe
     private static IEnumerable<Control> Controls(Control parent)
     { foreach (Control c in parent.Controls) { yield return c; foreach (Control child in Controls(c)) yield return child; } }
 
+    private static string ExpectedOverview(string markdown, bool guide)
+    {
+        string[] lines = markdown.Replace("\r\n", "\n").Split('\n');
+        int index = 0;
+        if (guide)
+        {
+            while (index < lines.Length && lines[index].Trim().Length == 0) index++;
+            if (index < lines.Length && lines[index].Trim().StartsWith("**") && lines[index].Trim().EndsWith("**")) index++;
+            while (index < lines.Length && lines[index].Trim().Length == 0) index++;
+        }
+        else
+        {
+            while (index < lines.Length && !lines[index].StartsWith("# ")) index++;
+            while (index < lines.Length && (lines[index].Trim().Length == 0 || lines[index].TrimStart().StartsWith("#"))) index++;
+        }
+        var text = new StringBuilder();
+        while (index < lines.Length && lines[index].Trim().Length > 0 && !lines[index].TrimStart().StartsWith("#"))
+        {
+            if (text.Length > 0) text.Append('\n');
+            text.Append(lines[index].Trim());
+            index++;
+        }
+        return text.ToString();
+    }
+
     private static string FirstBodyLine(string markdown)
     {
         foreach (string line in markdown.Replace("\r\n", "\n").Split('\n'))
@@ -179,14 +204,14 @@ internal static class AgentExtensionProbe
             {
                 string full = (string)docs.GetMethod("Read", All).Invoke(null, new object[] { guide });
                 string project = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(args[0])));
-                string expected = File.ReadAllText(Path.Combine(project, "build", guide ? "ComposedUserGuide.md" : "ComposedReadme.md"), Encoding.UTF8);
+                string expected = File.ReadAllText(Path.Combine(project, "build", guide ? "EmbeddedUserGuide.md" : "EmbeddedDevExperience.md"), Encoding.UTF8);
                 
                 // Match the compiler's universal-newline UTF-8 input normalization.
                 expected = expected.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
-                Check(full == expected, "normalized embedded document matches this project excluding delivery evidence");
+                Check(full == expected, "normalized embedded document matches the whole C-04 source");
                 string overview = (string)docs.GetMethod("Overview", All).Invoke(null, new object[] { full });
-                // Only the developer log promises the Agent extension wording; the user guide overview is its own install section.
-                Check((guide || overview.Contains("Agent扩展")) && overview.Length < full.Length, "overview extracted from the first chapter");
+                // The overview comes from this document alone: the B2 first chapter body, or the guide preamble.
+                Check(overview == ExpectedOverview(full, guide) && overview.Length < full.Length, "overview extracted from the first chapter");
                 using (Form form = (Form)Activator.CreateInstance(formType, All, null, new object[] { guide }, null))
                 {
                     Check(!form.Modal && form.ClientSize == new Size(920, 680), "nonmodal initial reader size");
@@ -211,7 +236,7 @@ internal static class AgentExtensionProbe
                     }
                     Check(selectedFiles[0] == selectedFiles[1] && File.Exists(selectedFiles[0]), "stable export persists after application choice");
                     Check(File.ReadAllText(selectedFiles[0], Encoding.UTF8) == full && Path.GetExtension(selectedFiles[0]) == ".md", "UTF8 Markdown exported verbatim");
-                    Check(Path.GetFileName(selectedFiles[0]) == (guide ? "A-UserGuide.md" : "B-Devlog.md") && selectedFiles[0].Contains(asm.GetName().Name), "document and project separated export");
+                    Check(Path.GetFileName(selectedFiles[0]) == (guide ? "A-UserGuide.md" : "B2-DevExperience.md") && selectedFiles[0].Contains(asm.GetName().Name), "document and project separated export");
                     Check((string)formType.GetProperty("CurrentSource", All).GetValue(form, null) == overview, "full click retains overview");
                     string failure = null;
                     formType.GetField("ReportError", All).SetValue(form, new Action<string>(delegate(string text) { failure = text; }));
@@ -225,7 +250,7 @@ internal static class AgentExtensionProbe
                     Check(failure != null && !form.IsDisposed, "export failure keeps reader available");
                     files.GetField("CacheRoot", All).SetValue(null, exportRoot);
                     RichTextBox box = null; foreach (Control c in Controls(form)) if (c is RichTextBox) box = (RichTextBox)c;
-                    Check(box != null && box.ReadOnly && box.Text.Contains("Agent-Evo") && box.ScrollBars == RichTextBoxScrollBars.Both, "Chinese readable scroll and selectable copy");
+                    Check(box != null && box.ReadOnly && box.Text.Contains(FirstBodyLine(overview)) && box.ScrollBars == RichTextBoxScrollBars.Both, "Chinese readable scroll and selectable copy");
                     box.Select(0, Math.Min(30, box.TextLength)); Check(box.SelectedText.Length > 0, "text selection");
                     Call(form, "SetView", false); Check(box.Text.Length > 0, "return to overview");
                     Check(authorizations == (guide ? 0 : 5), "overview never authorizes; developer has no cached authorization");

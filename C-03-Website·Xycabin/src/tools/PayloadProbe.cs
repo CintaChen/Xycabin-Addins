@@ -48,7 +48,7 @@ internal static class PayloadProbe
             XmlElement doc = child as XmlElement;
             if (doc == null || doc.Name != "document" || doc.Attributes.Count != 4) throw new Exception("Invalid document asset manifest document");
             string name = doc.GetAttribute("name"), resource = doc.GetAttribute("resource");
-            string filename = name == "Readme" ? "B-Devlog.md" : name == "UserGuide" ? "A-UserGuide.md" : null;
+            string filename = name == "DevExperience" ? "B2-DevExperience.md" : name == "UserGuide" ? "A-UserGuide.md" : null;
             if (filename == null || !documents.Add(name) || resource != "WpsShared.Agent." + name + ".md"
                 || doc.GetAttribute("path") != "C-04-Devlog/" + filename
                 || !Regex.IsMatch(doc.GetAttribute("sha256"), "^[0-9a-f]{64}$")
@@ -116,17 +116,17 @@ internal static class PayloadProbe
             if (dll.GetName().Version.ToString() != version) throw new Exception("DLL version mismatch");
             VerifyDocumentAssets(root, dll, Path.GetFullPath(args[5]));
             // Check embedded documents without opening the Agent reader windows.
-            foreach (string document in new string[] { "Readme", "UserGuide" })
+            foreach (string document in new string[] { "DevExperience", "UserGuide" })
                 using (Stream input = dll.GetManifestResourceStream("WpsShared.Agent." + document + ".md"))
                 {
                     if (input == null) throw new Exception("Embedded document missing: " + document);
-                    string filename = document == "Readme" ? "ComposedReadme.md" : "ComposedUserGuide.md";
+                    string filename = document == "DevExperience" ? "EmbeddedDevExperience.md" : "EmbeddedUserGuide.md";
                     string expected = File.ReadAllText(Path.Combine(root, "build", filename), Encoding.UTF8);
                     
                     expected = expected.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
                     using (var reader = new StreamReader(input, Encoding.UTF8))
                         if (reader.ReadToEnd() != expected) throw new Exception("Embedded document differs from current source: " + filename);
-                    Console.WriteLine("PASS: normalized embedded " + filename + " (binary audit excluded)");
+                    Console.WriteLine("PASS: normalized embedded " + filename + " (whole source document)");
                 }
             using (Stream input = dll.GetManifestResourceStream("WpsShared.Agent.Home.html"))
             using (var buffer = new MemoryStream())

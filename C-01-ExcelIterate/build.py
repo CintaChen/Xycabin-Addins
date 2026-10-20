@@ -46,7 +46,7 @@ def document_resources(site_html=None):
         except ValueError as error:
             raise ValueError(filename + ": " + str(error)) from error
         # Embed normalized UTF-8, including files copied from a BOM/CRLF editor.
-        target = BUILD / ("Composed" + resource + ".md")
+        target = BUILD / ("Embedded" + resource + ".md")
         target.write_bytes(document['content'])
         resources.append('/resource:' + str(target) + ',WpsShared.Agent.' + resource + '.md')
     manifest = BUILD / 'AgentAssets.xml'
@@ -98,8 +98,8 @@ def main():
             + ['/r:' + str(LIB / n) for n in vsto]
             + [SRC / 'addin' / f for f in PROJECT['sources']])
     finally:
-        # Composed documents stay in build/ as the exact inputs of this compilation; they are
-        # generated from C-04-Devlog on every build, never edited by hand.
+        # Embedded documents stay in build/ as the exact inputs of this compilation; they are
+        # whole normalized copies of C-04-Devlog, regenerated on every build, never edited by hand.
         # Cleanup runs on failure too, so an aborted build never leaves them behind for the layout gate.
         for name in ('AgentAssets.xml',):
             (BUILD / name).unlink(missing_ok=True)

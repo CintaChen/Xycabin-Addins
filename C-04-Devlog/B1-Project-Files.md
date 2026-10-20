@@ -1,20 +1,20 @@
 **三项目档案与版本**
 
-最后更新：2026-10-20 ｜ 当前版本：**0.9.9.2** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-20 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
-本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、门禁五类。加载项主选项卡的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。版本 0.9.9.2，构建不安装或操作用户 WPS。
+本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、门禁五类。加载项主选项卡的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。版本 0.9.9.3，构建不安装或操作用户 WPS。
 
 ## 1. 目录与阅读顺序
 
-| 文档                                                 | 内容                               |
-| -------------------------------------------------- | -------------------------------- |
-| [B0-Entry.md](B0-Entry.md)                         | 入口与阅读顺序、项目关系、交付边界                |
-| [A-UserGuide.md](A-UserGuide.md)                   | 三产品使用说明                          |
-| B1-Project-Files.md                                | 本章与三个项目档案：定位、版本摘要、命令按钮、源码地图、当前状态 |
-| [B2-DevExperience.md](B2-DevExperience.md)         | 共享开发经验与三个专属经验                    |
-| [B3-Gate Control.md](B3-Gate Control.md) | 共享门禁与网站门禁                    |
+| 文档                                         | 内容                               |
+| ------------------------------------------ | -------------------------------- |
+| [B0-Entry.md](B0-Entry.md)                 | 入口与阅读顺序、项目关系、交付边界                |
+| [A-UserGuide.md](A-UserGuide.md)           | 三产品使用说明                          |
+| B1-Project-Files.md                        | 本章与三个项目档案：定位、版本摘要、命令按钮、源码地图、当前状态 |
+| [B2-DevExperience.md](B2-DevExperience.md) | 共享开发经验与三个专属经验                    |
+| \[B3-Gate Control.md\](B3-Gate Control.md) | 共享门禁与网站门禁                        |
 
 ## 2. 项目与交付物
 
@@ -38,7 +38,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ## 2. 版本摘要
 
-版本来源与归并规则见[门禁](B3-Gate Control.md#1-文档编号与经验更新)，本次标记为0.9.9.2并沿用原固定发布者。
+版本来源与归并规则见\[门禁\](B3-Gate Control.md#1-文档编号与经验更新)，本次标记为0.9.9.3并沿用原固定发布者。
 
 | 版本      | 重要变更                                                                                                                                                                                                 |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,7 +48,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.8.0 | 1. 新增文件整理与清单改名、链接清单保存替换，支持取消还原与确认清理；2. 改善筛选与反馈；3. Agent-Evo提供离线文档及树形尺寸设置；4. XyCabin提供离线下载、音乐和独立音量。                                                                                                   |
 | 0.9.9.0 | 1. 文件整理、清单命名及多前缀OCR，按行断链、整簿恢复与编辑保护；2. 六列预览、布局回缩，即时配置及控件缩放，表头单行居中；3. 追踪引用新增显示错误来源：沿引用链定位错误源头格，可跳转标黄；4. 审计工具箱新增合并抵消：往来按单位对冲、坏账按比例冲回，收入成本逐行算未实现利润，列映射+分录预览+备份还原；5. 修复追踪弹窗锁死宿主：去除工具窗样式并对齐链接助手，根治抢焦点/失激活。 |
 | 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。                                      |
-| 0.9.9.2 | 1. 文档收敛为 C-04-Devlog 五份（B0 入口、A 使用说明、B1 档案、B2 经验、B3 门禁），项目内不留副本；2. 目录重构为 AA-Program/AB-Graphic，配置器更名 C1；3. 内嵌文档改按 C-04-Devlog 新路径读取，Agent-Evo 概览按章节标题与首段生成；4. 业务功能无变更。 |
+| 0.9.9.2 | 1. 文档收敛为 C-04-Devlog 五份（B0 入口、A 使用说明、B1 档案、B2 经验、B3 门禁），项目内不留副本；2. 目录重构为 AA-Program/AB-Graphic，配置器更名 C1；3. 内嵌文档改按 C-04-Devlog 新路径读取，Agent-Evo 概览按章节标题与首段生成；4. 业务功能无变更。                               |
+| 0.9.9.3 | 1. 开发预览“全文”改为打开整份 B2-DevExperience.md，用户预览改为打开整份 A-UserGuide.md；2. 两份文档各自整份内嵌，不再分章裁剪、拼接或改写图片路径，导出文件名同源；3. 加载项业务功能与门禁规则不变。 |
 
 
 ## 3. 当前命令按钮概览
@@ -100,14 +101,14 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月20日发布 0.9.9.2：文档收敛为 C-04-Devlog 五份，三个项目目录改为 AA-Program/AB-Graphic，内嵌文档改按新路径读取，Agent-Evo 概览改由章节标题与首段生成；Excel 业务功能未变，随联合交付重新打包并重签。
+10月20日发布 0.9.9.3：开发预览“全文”改为打开整份 B2-DevExperience.md、用户预览改为打开整份 A-UserGuide.md，两份文档各自整份内嵌、不再分章裁剪或改写图片路径，导出文件名与源文件同名，任意机器安装后均可打开；Excel 业务功能未变，随联合交付重新打包并重签。
 
-| 检查    | 结果                                                                                                                                                             |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,929,600 字节，版本 0.9.9.2                                                   |
-| 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log) |
-| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                   |
-| 文档门禁  | verify_devlog 五份 PASS 且 23 门禁摘要齐全；verify_shared 61 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；DisciplineProbe 27、AgentDocumentCoreProbe 123、DialogSizesProbe 95 全 PASS |
+| 检查    | 结果                                                                                                                                                                          |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,784,192 字节，版本 0.9.9.3                                                                |
+| 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log)              |
+| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                                |
+| 文档门禁  | verify_devlog 五份 PASS；verify_shared 61 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；DisciplineProbe 27、AgentDocumentCoreProbe 113、DialogSizesProbe 95 全 PASS |
 
 # 三. WordUpdater 项目档案
 
@@ -119,17 +120,18 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ## 2. 版本摘要
 
-版本来源与归并规则见[门禁](B3-Gate Control.md#1-文档编号与经验更新)，本次标记为0.9.9.2并沿用原固定发布者。
+版本来源与归并规则见\[门禁\](B3-Gate Control.md#1-文档编号与经验更新)，本次标记为0.9.9.3并沿用原固定发布者。
 
-| 版本      | 重要变更                                                                                                                           |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| 0.9.5.0 | 1. 首次提供WPS文字加载项，支持链接Excel数据；2. 采用VSTO构建，提供单文件安装包。                                                                              |
-| 0.9.6.0 | 1. 完善Excel链接、数据更新与查看功能；2. 统一窗口和图标；3. 增加运行库检查与固定证书签名，提升安装可靠性。                                                                   |
-| 0.9.7.0 | 1. 按操作流程整理链接菜单，区分操作与反馈入口；2. 新增Agent-Evo选项卡；3. 支持离线阅读开发、使用文档及访问网站。                                                              |
-| 0.9.8.0 | 1. 完善链接建立、更新和查看；2. Agent-Evo提供离线开发/用户预览、全文应用选择和树形尺寸设置；3. XyCabin统一指南、离线下载、音乐和独立音量；4. 规范交付、文档与清理流程。                             |
-| 0.9.9.0 | 1. Agent-Evo同步排序、改名及控件缩放；2. 名称排序即时、格式尺寸下次开窗生效；3. 独立STA预览、窗口快照和需求记录；4. 通用确认隔离并完善Owner校验；5. 开发全文口令验证及离线配图缓存；6. 网格表头完整单行、居中且默认加粗。 |
-| 0.9.9.1 | 1. 随联合交付重新打包，同步版本号与内嵌文档；2. WordUpdater 自身功能无变更。                                                                                |
+| 版本      | 重要变更                                                                                                                                      |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.9.5.0 | 1. 首次提供WPS文字加载项，支持链接Excel数据；2. 采用VSTO构建，提供单文件安装包。                                                                                         |
+| 0.9.6.0 | 1. 完善Excel链接、数据更新与查看功能；2. 统一窗口和图标；3. 增加运行库检查与固定证书签名，提升安装可靠性。                                                                              |
+| 0.9.7.0 | 1. 按操作流程整理链接菜单，区分操作与反馈入口；2. 新增Agent-Evo选项卡；3. 支持离线阅读开发、使用文档及访问网站。                                                                         |
+| 0.9.8.0 | 1. 完善链接建立、更新和查看；2. Agent-Evo提供离线开发/用户预览、全文应用选择和树形尺寸设置；3. XyCabin统一指南、离线下载、音乐和独立音量；4. 规范交付、文档与清理流程。                                        |
+| 0.9.9.0 | 1. Agent-Evo同步排序、改名及控件缩放；2. 名称排序即时、格式尺寸下次开窗生效；3. 独立STA预览、窗口快照和需求记录；4. 通用确认隔离并完善Owner校验；5. 开发全文口令验证及离线配图缓存；6. 网格表头完整单行、居中且默认加粗。            |
+| 0.9.9.1 | 1. 随联合交付重新打包，同步版本号与内嵌文档；2. WordUpdater 自身功能无变更。                                                                                           |
 | 0.9.9.2 | 1. 查看链接窗体去除工具窗样式，修复 WPS 文字宿主单元格无法键入与功能区子菜单失效；2. 文档收敛为 C-04-Devlog 五份，内嵌文档与 Agent-Evo 概览同步新路径与新规则；3. 目录重构为 AA-Program/AB-Graphic，配置器更名 C2。 |
+| 0.9.9.3 | 1. 开发预览“全文”改为打开整份 B2-DevExperience.md，用户预览改为打开整份 A-UserGuide.md；2. 两份文档各自整份内嵌，不再分章裁剪、拼接或改写图片路径，导出文件名同源；3. 加载项业务功能与门禁规则不变。 |
 
 ## 3. 当前命令按钮概览
 
@@ -173,14 +175,14 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月20日发布 0.9.9.2：查看链接窗体去除工具窗样式，修复 WPS 文字宿主单元格无法键入与功能区子菜单失效；同步文档收敛、目录重构与 Agent-Evo 概览新规则。
+10月20日发布 0.9.9.3：开发预览“全文”改为打开整份 B2-DevExperience.md、用户预览改为打开整份 A-UserGuide.md，两份文档各自整份内嵌、导出文件名与源文件同名；WordUpdater 自身业务功能无变更，随联合交付重新打包并重签。
 
 | 检查    | 结果                                                                                                                                                      |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，3,280,896 字节，版本 0.9.9.2                                                  |
+| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，3,198,976 字节，版本 0.9.9.3                                                  |
 | 构建与验证 | [WordUpdater-validation.log](../C-03-Website·Xycabin/build/WordUpdater-validation.log)、[payload](../C-03-Website·Xycabin/build/WordUpdater-payload.log) |
 | 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                            |
-| 文档门禁  | LinkViewFormProbe 55、Feature099Probe 2366、HostDialogProbe 11、AgentDocumentCoreProbe 123、DialogSizesProbe 57、LiveProbeSafetyFixture 42 全 PASS             |
+| 文档门禁  | LinkViewFormProbe 55、Feature099Probe 2366、HostDialogProbe 11、AgentDocumentCoreProbe 113、DialogSizesProbe 57、LiveProbeSafetyFixture 42 全 PASS            |
 
 # 四. XyCabin 项目档案
 
@@ -211,16 +213,16 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (1). 当前实现与待验收
 
-本次日志收为四章，网站门禁和前端经验分开，目录在概览外；移除外部历史范例依赖，纠正“相同HTML资源”与“相同DLL”、构建摘要验证与浏览器长度验证的层次。加载项保持0.9.9.2及原发布者，指南依据两使用说明同步。
+本次加载项内嵌文档改为整份导出：开发预览打开整份 B2-DevExperience.md，用户预览打开整份 A-UserGuide.md，不再分章裁剪、拼接或改写图片路径，导出文件名与源文件同名。加载项升至0.9.9.3并沿用原发布者；网站随联合交付重新生成，下载页携带 0.9.9.3 两包，站点版本摘要与 B1 版本表逐字一致，指南依据两使用说明同步。
 
 源码与正式产物内容指纹控制增量；两包、独立页和交付记录统一事务发布。后台前端/下载/音频替身不发声、不真实下载，不能代替file页面、听感、浏览器许可或安装效果。当前交付摘要在审计区，方法不重复历史流水。
 
 ### (2). 本轮交付证据
 
-10月20日发布 0.9.9.2：网站按新版本号重新生成，下载页携带 0.9.9.2 两包，站点版本摘要与 B1 版本表逐字一致；目录与文档重构后重新生成。
+10月20日发布 0.9.9.3：网站按新版本号重新生成，下载页携带 0.9.9.3 两包，站点版本摘要与 B1 版本表逐字一致；加载项内嵌文档改为整份导出，两个 DLL 网页同步重新打包。
 
 | 检查   | 结果                                                                                                                                                                    |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，10,837,039 字节                                                                                         |
+| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，10,534,559 字节                                                                                         |
 | 站点验证 | [site-validation.log](../C-03-Website·Xycabin/build/site-validation.log)、[site-downloads-validation.log](../C-03-Website·Xycabin/build/site-downloads-validation.log) |
 | 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                          |

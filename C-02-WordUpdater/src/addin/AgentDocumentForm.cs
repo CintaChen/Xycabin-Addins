@@ -17,7 +17,7 @@ namespace Excel_Iterate
     {
         internal static string Read(bool userGuide)
         {
-            string name = userGuide ? "WpsShared.Agent.UserGuide.md" : "WpsShared.Agent.Readme.md";
+            string name = userGuide ? "WpsShared.Agent.UserGuide.md" : "WpsShared.Agent.DevExperience.md";
             using (Stream stream = typeof(Connect).Assembly.GetManifestResourceStream(name))
             {
                 if (stream == null) throw new FileNotFoundException("缺少内嵌文档 " + name);
