@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Sign VSTO manifests with the certificate pinned in AP1-程序/Configure_program.py.
+"""Sign VSTO manifests with the certificate pinned in AA-Program 配置器.
 
 Signing never creates a certificate or uses build-cache state to select a key.
 Both SHA-256 signatures must pass the mandatory read-only verification gate.
@@ -37,7 +37,7 @@ def ensure_certificate():
         raise ValueError("SIGNING_CERT_THUMBPRINT 必须是字符串")
     thumb = configured.strip().upper()
     if not re.fullmatch(r"[0-9A-F]{40}", thumb):
-        raise ValueError("Configure_program.py 的 SIGNING_CERT_THUMBPRINT 必须是 40 位证书指纹")
+        raise ValueError("AA-Program 配置器的 SIGNING_CERT_THUMBPRINT 必须是 40 位证书指纹")
     rc, output = run([TOOLS["SignCmi"], "--check-certificate", thumb, CERT_SUBJECT])
     print(output.strip(), flush=True)
     if rc != 0 or "CERTIFICATE_OK " + thumb not in output.splitlines():
@@ -45,13 +45,14 @@ def ensure_certificate():
     return thumb
 
 
+# rule=R-19
 def main():
     missing = [name for name, path in TOOLS.items() if not os.path.isfile(path)]
     if missing:
         print("FAIL: 缺少必需工具 " + ", ".join(missing) + "；先运行 python build.py")
         return 1
 
-    step("1. 检查 Configure_program.py 固定的签名证书")
+    step("1. 检查 配置器脚本 固定的签名证书")
     thumb = ensure_certificate()
     for title, args in [
         ("2. 生成两份清单", [PY, os.path.join(ROOT, "gen_manifest.py")]),

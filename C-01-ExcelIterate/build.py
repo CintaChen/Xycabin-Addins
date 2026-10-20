@@ -9,7 +9,7 @@ from project_support import ROOT, SRC, BUILD, LIB, CSC, COMMON_REF, PROJECT, DEF
 
 sys.path.insert(0, str(SITE_ROOT / "src"))
 from build_cache import compile_cached
-from document_assets import collect as collect_document_assets, manifest_bytes, MANIFEST_RESOURCE
+from document_assets import collect as collect_document_assets, document_overview, manifest_bytes, MANIFEST_RESOURCE
 MODE = "full"
 
 
@@ -41,11 +41,12 @@ def document_resources(site_html=None):
     for document in bundle['documents']:
         filename, resource = document['path'], document['name']
         text = document['content'].decode('utf-8')
-        start, end = "<!-- agent-overview:start -->", "<!-- agent-overview:end -->"
-        if text.count(start) != 1 or text.count(end) != 1 or text.index(start) >= text.index(end) or not text.split(start)[1].split(end)[0].strip():
-            raise ValueError(filename + ": 概览标记必须唯一、有序且非空")
+        try:
+            document_overview(text)
+        except ValueError as error:
+            raise ValueError(filename + ": " + str(error)) from error
         # Embed normalized UTF-8, including files copied from a BOM/CRLF editor.
-        target = BUILD / ("Agent" + resource + ".md")
+        target = BUILD / ("Composed" + resource + ".md")
         target.write_bytes(document['content'])
         resources.append('/resource:' + str(target) + ',WpsShared.Agent.' + resource + '.md')
     manifest = BUILD / 'AgentAssets.xml'
@@ -104,9 +105,10 @@ def main():
             + ['/r:' + str(LIB / n) for n in vsto]
             + [SRC / 'addin' / f for f in PROJECT['sources']])
     finally:
-        # Normalized document resources are intermediate compiler inputs, never maintenance copies.
+        # Composed documents stay in build/ as the exact inputs of this compilation; they are
+        # generated from C-04-Devlog on every build, never edited by hand.
         # Cleanup runs on failure too, so an aborted build never leaves them behind for the layout gate.
-        for name in ('AgentReadme.md', 'AgentUserGuide.md', 'AgentAssets.xml'):
+        for name in ('AgentAssets.xml',):
             (BUILD / name).unlink(missing_ok=True)
     # Only these two dependencies are distributed; host libraries remain GAC references.
     for name in ('Microsoft.Office.Tools.Common.v4.0.Utilities.dll', 'Interop.Microsoft.Office.Core.dll'):

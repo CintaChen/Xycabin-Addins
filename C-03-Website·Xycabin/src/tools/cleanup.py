@@ -6,6 +6,7 @@ from pathlib import Path
 sys.dont_write_bytecode=True
 from file_inventory import ROOT, INPUT, PRODUCT, EVIDENCE, HISTORY, UNKNOWN, scan, inventory, apply, assert_target
 
+# rule=R-21
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  mode=parser.add_mutually_exclusive_group(required=True)

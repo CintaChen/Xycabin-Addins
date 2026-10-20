@@ -179,14 +179,14 @@ internal static class AgentExtensionProbe
             {
                 string full = (string)docs.GetMethod("Read", All).Invoke(null, new object[] { guide });
                 string project = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(args[0])));
-                string expected = File.ReadAllText(Path.Combine(project, "AP3-说明", guide ? "使用说明.md" : "开发日志.md"), Encoding.UTF8);
-                expected = Regex.Replace(expected, "<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->", "", RegexOptions.Singleline);
+                string expected = File.ReadAllText(Path.Combine(project, "build", guide ? "ComposedUserGuide.md" : "ComposedReadme.md"), Encoding.UTF8);
+                
                 // Match the compiler's universal-newline UTF-8 input normalization.
                 expected = expected.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
-                Check(full == expected, "normalized embedded document matches this project excluding binary audit");
+                Check(full == expected, "normalized embedded document matches this project excluding delivery evidence");
                 string overview = (string)docs.GetMethod("Overview", All).Invoke(null, new object[] { full });
                 // Only the developer log promises the Agent extension wording; the user guide overview is its own install section.
-                Check((guide || overview.Contains("Agent扩展")) && overview.Length < full.Length, "overview extracted from markers");
+                Check((guide || overview.Contains("Agent扩展")) && overview.Length < full.Length, "overview extracted from the first chapter");
                 using (Form form = (Form)Activator.CreateInstance(formType, All, null, new object[] { guide }, null))
                 {
                     Check(!form.Modal && form.ClientSize == new Size(920, 680), "nonmodal initial reader size");
@@ -211,7 +211,7 @@ internal static class AgentExtensionProbe
                     }
                     Check(selectedFiles[0] == selectedFiles[1] && File.Exists(selectedFiles[0]), "stable export persists after application choice");
                     Check(File.ReadAllText(selectedFiles[0], Encoding.UTF8) == full && Path.GetExtension(selectedFiles[0]) == ".md", "UTF8 Markdown exported verbatim");
-                    Check(Path.GetFileName(selectedFiles[0]) == (guide ? "使用说明.md" : "开发日志.md") && selectedFiles[0].Contains(asm.GetName().Name), "document and project separated export");
+                    Check(Path.GetFileName(selectedFiles[0]) == (guide ? "A-UserGuide.md" : "B-Devlog.md") && selectedFiles[0].Contains(asm.GetName().Name), "document and project separated export");
                     Check((string)formType.GetProperty("CurrentSource", All).GetValue(form, null) == overview, "full click retains overview");
                     string failure = null;
                     formType.GetField("ReportError", All).SetValue(form, new Action<string>(delegate(string text) { failure = text; }));
@@ -238,8 +238,8 @@ internal static class AgentExtensionProbe
                     Check(form.CancelButton != null && ((Control)form.CancelButton).Text == "关闭", "Esc closes reader");
                 }
             }
-            foreach (string bad in new string[] { "missing", "<!-- agent-overview:start --><!-- agent-overview:end -->", "<!-- agent-overview:start -->x<!-- agent-overview:end --><!-- agent-overview:start -->" })
-            { bool rejectedDoc = false; try { docs.GetMethod("Overview", All).Invoke(null, new object[] { bad }); } catch (TargetInvocationException) { rejectedDoc = true; } Check(rejectedDoc, "invalid overview markers"); }
+            foreach (string bad in new string[] { "", "**标题**\n", "# 一. 甲\n", "# 一. 甲\n\n## 1. 乙\n" })
+            { bool rejectedDoc = false; try { docs.GetMethod("Overview", All).Invoke(null, new object[] { bad }); } catch (TargetInvocationException) { rejectedDoc = true; } Check(rejectedDoc, "empty overview rejected"); }
             CheckPasswordForm(asm);
             Type windows = asm.GetType(prefix + "AgentDocumentWindows", true);
             Form opened = (Form)windows.GetMethod("Open", All).Invoke(null, new object[] { false });
@@ -286,7 +286,7 @@ internal static class AgentExtensionProbe
             files.GetField("BrowserLauncher", All).SetValue(null, new Action<string>(delegate(string pathToHome) { home = pathToHome; }));
             connectType.GetMethod("OnAgentHome").Invoke(connect, new object[] { null });
             string projectRoot = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(args[0])));
-            string websitePath = args.Length > 1 ? Path.GetFullPath(args[1]) : Path.Combine(Directory.GetParent(projectRoot).FullName, "C-03-Website·Xycabin", "AP1-程序", "XyCabin.html");
+            string websitePath = args.Length > 1 ? Path.GetFullPath(args[1]) : Path.Combine(Directory.GetParent(projectRoot).FullName, "C-03-Website·Xycabin", "AA-Program", "XyCabin.html");
             Check(home != null && File.ReadAllText(home, Encoding.UTF8) == CorePage(File.ReadAllText(websitePath, Encoding.UTF8)), "home callback opens complete embedded site");
             Check(home.Contains(Path.Combine("Xy", "AgentEvo", "Home")) && Path.GetFileName(home) == "index.html", "home independent of install and shadow-cache paths");
             connectType.GetMethod("OnAgentHome").Invoke(connect, new object[] { null });

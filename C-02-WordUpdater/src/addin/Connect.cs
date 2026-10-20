@@ -116,7 +116,7 @@ namespace WordUpdater
 
         // ------------------------ IRibbonExtensibility ------------------------
 
-        // Ribbon XML 由 Configure_program.py 依据脚本顶部的「按钮配置区」生成，
+        // Ribbon XML 由 配置器脚本 依据脚本顶部的「按钮配置区」生成，
         // 输出到 src/addin/Ribbon.g.cs —— 改标题/提示/顺序请改配置后重跑脚本，
         // 不要手改本文件（回归：本类只负责把回调转发给具体功能）。
         public string GetCustomUI(string RibbonID)
@@ -134,7 +134,7 @@ namespace WordUpdater
         // 文档的回调代理按会话间歇性读不出 Id，靠 id 分发会把所有按钮认成同一个，
         // 图标全白/全一样）。本地与网络盘文档下表现一致。
         //
-        // 新增按钮 = Configure_program.py 加条目 + 这里加一行包装（配置器会校验，漏加当场报错）。
+        // 新增按钮 = 配置器脚本 加条目 + 这里加一行包装（配置器会校验，漏加当场报错）。
 
         public IPictureDisp GetImage_btnUpdateLinks(object control) { return GetButtonImageCore("btnUpdateLinks"); }
         public IPictureDisp GetImage_btnLinkToExcel(object control) { return GetButtonImageCore("btnLinkToExcel"); }
@@ -598,7 +598,7 @@ namespace WordUpdater
                         string tpl = RibbonConfig.GetResultText("OnLinkToExcel");
                         if (tpl != null)
                         {
-                            // 用户在 Configure_program.py 里自定义了完成文案
+                            // 用户在 配置器脚本 里自定义了完成文案
                             StringBuilder t = new StringBuilder();
                             t.Append(FillPasteTemplate(tpl, r));
                             if (r.Failures.Count > 0)
@@ -720,7 +720,7 @@ namespace WordUpdater
                         string tpl = RibbonConfig.GetResultText("OnUpdateLinks");
                         if (tpl != null)
                         {
-                            // 用户在 Configure_program.py 里自定义了完成文案
+                            // 用户在 配置器脚本 里自定义了完成文案
                             sb.Append(FillUpdateTemplate(tpl, r));
                         }
                         else

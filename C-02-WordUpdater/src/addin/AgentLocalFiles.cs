@@ -131,11 +131,11 @@ namespace Excel_Iterate
                     throw new InvalidDataException("资源路径包含非法目录或文件名。");
             if (document)
             {
-                if (path != "AP3-说明/开发日志.md" && path != "AP3-说明/使用说明.md") throw new InvalidDataException("文档路径不在允许位置。");
+                if (path != "C-04-Devlog/A-UserGuide.md" && path != "C-04-Devlog/B-Devlog.md") throw new InvalidDataException("文档路径不在允许位置。");
             }
-            else if (!(path.StartsWith("AP2-美工/", StringComparison.Ordinal) && path.EndsWith(".png", StringComparison.Ordinal))
-                && !(path.StartsWith("src/documentation/", StringComparison.Ordinal) && path.EndsWith(".svg", StringComparison.Ordinal)))
-                throw new InvalidDataException("仅允许AP2 PNG与documentation SVG资源。");
+            else if (!(path.EndsWith(".png", StringComparison.Ordinal) || path.EndsWith(".svg", StringComparison.Ordinal))
+                || path.Split('/').Length != 3 || path.Split('/')[1] != "AB-Graphic")
+                throw new InvalidDataException("仅允许各项目AB-Graphic下的PNG与SVG资源。");
             return path;
         }
         private static byte[] ResourceBytes(Func<string, byte[]> read, string resource, string hash)
@@ -191,7 +191,7 @@ namespace Excel_Iterate
                 if (Uri.TryCreate(target, UriKind.Absolute, out uri) && (uri.Scheme == "http" || uri.Scheme == "https")) continue;
                 target = Uri.UnescapeDataString(target);
                 if (!target.EndsWith(".png", StringComparison.OrdinalIgnoreCase) && !target.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)) continue;
-                string relative = target.StartsWith("../", StringComparison.Ordinal) ? target.Substring(3) : "AP3-说明/" + target;
+                string relative = target.StartsWith("../", StringComparison.Ordinal) ? target.Substring(3) : "C-04-Devlog/" + target;
                 relative = CheckedPath(relative, false);
                 if (!paths.Contains(relative)) throw new InvalidDataException("文档引用缺少对应资产 " + relative);
             }
@@ -215,7 +215,7 @@ namespace Excel_Iterate
                 string name = entry.GetAttribute("name");
                 if (entry.Name != "document" || entry.NamespaceURI.Length != 0 || (name != "Readme" && name != "UserGuide") || !names.Add(name))
                     throw new InvalidDataException("资源索引文档名称无效或重复。");
-                string expectedPath = name == "Readme" ? "AP3-说明/开发日志.md" : "AP3-说明/使用说明.md";
+                string expectedPath = name == "Readme" ? "C-04-Devlog/B-Devlog.md" : "C-04-Devlog/A-UserGuide.md";
                 if (CheckedPath(entry.GetAttribute("path"), true) != expectedPath || entry.GetAttribute("resource") != "WpsShared.Agent." + name + ".md")
                     throw new InvalidDataException("文档资源身份不符。");
                 CheckedHash(entry.GetAttribute("sha256"));
@@ -326,7 +326,7 @@ namespace Excel_Iterate
                 // The full digest commits only after all selected document/assets exist.
                 AtomicDocumentFile(root, marker, Encoding.ASCII.GetBytes(digest));
             }
-            return Path.Combine(directory, "AP3-说明", guide ? "使用说明.md" : "开发日志.md");
+            return Path.Combine(directory, "C-04-Devlog", guide ? "A-UserGuide.md" : "B-Devlog.md");
         }
         internal static void OpenDocument(IntPtr owner, string path)
         {

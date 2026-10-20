@@ -15,8 +15,6 @@ namespace Excel_Iterate
 {
     internal static class AgentDocumentation
     {
-        internal const string Start = "<!-- agent-overview:start -->";
-        internal const string End = "<!-- agent-overview:end -->";
         internal static string Read(bool userGuide)
         {
             string name = userGuide ? "WpsShared.Agent.UserGuide.md" : "WpsShared.Agent.Readme.md";
@@ -26,14 +24,53 @@ namespace Excel_Iterate
                 using (var reader = new StreamReader(stream, Encoding.UTF8, true)) return reader.ReadToEnd();
             }
         }
+        private static void SkipBlank(string[] lines, ref int index)
+        {
+            while (index < lines.Length && lines[index].Trim().Length == 0) index++;
+        }
+        private static string Paragraph(string[] lines, ref int index)
+        {
+            var text = new StringBuilder();
+            while (index < lines.Length)
+            {
+                string line = lines[index].Trim();
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal)) break;
+                if (text.Length > 0) text.Append('\n');
+                text.Append(line);
+                index++;
+            }
+            return text.ToString().Trim();
+        }
         internal static string Overview(string source)
         {
-            int start = source.IndexOf(Start, StringComparison.Ordinal), end = source.IndexOf(End, StringComparison.Ordinal);
-            if (start < 0 || end <= start || source.LastIndexOf(Start, StringComparison.Ordinal) != start || source.LastIndexOf(End, StringComparison.Ordinal) != end)
-                throw new InvalidDataException("文档概览标记缺失或重复");
-            string text = source.Substring(start + Start.Length, end - start - Start.Length).Trim();
-            if (text.Length == 0) throw new InvalidDataException("文档概览为空");
-            return text;
+            // The overview is the first paragraph after the document title/date, or
+            // after the first level-one chapter. No invisible markers are required.
+            string[] lines = (source ?? "").Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            int index = 0;
+            SkipBlank(lines, ref index);
+            if (index < lines.Length)
+            {
+                string first = lines[index].Trim();
+                if (first.StartsWith("**", StringComparison.Ordinal) && first.EndsWith("**", StringComparison.Ordinal))
+                {
+                    index++;
+                    SkipBlank(lines, ref index);
+                }
+            }
+            if (index < lines.Length && lines[index].Trim().StartsWith("最后更新：", StringComparison.Ordinal))
+            {
+                index++;
+                SkipBlank(lines, ref index);
+            }
+            if (index < lines.Length && !lines[index].TrimStart().StartsWith("#", StringComparison.Ordinal))
+            {
+                string text = Paragraph(lines, ref index);
+                if (text.Length > 0) return text;
+            }
+            while (index < lines.Length && (lines[index].Trim().Length == 0 || lines[index].TrimStart().StartsWith("#", StringComparison.Ordinal))) index++;
+            string result = Paragraph(lines, ref index);
+            if (result.Length == 0) throw new InvalidDataException("文档概览为空");
+            return result;
         }
     }
 

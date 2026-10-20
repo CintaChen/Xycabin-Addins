@@ -8,7 +8,8 @@ using System.Text.RegularExpressions;
 using Excel_Iterate;
 
 // =====================================================================
-// 纪律守卫探针（DisciplineProbe）：把开发日志第四章「共享维护纪律」的
+// rule=R-25
+// 门禁守卫探针（DisciplineProbe）：把开发日志第四章「共享门禁」的
 // 「格式维护规范」与「弹窗维护规范」固化为源码扫描断言，纳入后台回归。
 //
 // 守卫内容：

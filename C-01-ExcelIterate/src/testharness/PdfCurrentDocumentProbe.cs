@@ -121,7 +121,7 @@ internal static class PdfCurrentDocumentProbe
     {
         try
         {
-            assembly = Assembly.LoadFrom(Path.GetFullPath(args[0])); ns = assembly.GetName().Name == "WordUpdater" ? "WordUpdater" : "Excel_Iterate";
+            assembly = Assembly.LoadFrom(Path.GetFullPath(args[0])); ns = assembly.GetType("WordUpdater.PdfToolsForm", false) != null ? "WordUpdater" : "Excel_Iterate";
             string output = Path.GetFullPath(args[1]); Directory.CreateDirectory(output); Offline(output);
             if (args.Length > 2 && args[2] == "--live") Live(output);
             Console.WriteLine("PASS: " + ns + " current-document guards/exports, " + checks + " checks"); return 0;

@@ -1,9 +1,9 @@
-图标放置与规格说明（本文件由 Configure_program.py 自动生成）
+图标放置与规格说明（本文件由 AA-Program 配置器自动生成）
 ================================================================
 
 【放哪里】
-  把图片文件直接丢进本目录（项目根 icons\），
-  然后在 Configure_program.py 的配置区里，把对应按钮的 icon 写成文件名即可，例如：
+  把图片文件直接丢进本目录（AB-Graphic），
+  然后在 AA-Program 配置器的配置区里，把对应按钮的 icon 写成文件名即可，例如：
 
       "icon": "update.png",
 
@@ -30,12 +30,12 @@
   所以图片是在编译前被转成 base64 常量写进 src/addin/Ribbon.g.cs 的，随 DLL 一起走。
 
 【流程】
-  1. 改 Configure_program.py 的配置区（标题 / 提示 / 图标 / 网址）
-  2. python Configure_program.py
+  1. 改 AA-Program 配置器的配置区（标题 / 提示 / 图标 / 网址）
+  2. python AA-Program 下的配置器
   3. python build.py
   4. python resign.py            （生成清单 + SHA-256 双签名，自动完成）
   5. python build_installer.py
-  6. 完全退出 WPS 后运行 AP1-程序目录中的本项目 Setup.exe 重装，重启 WPS 生效。
+  6. 完全退出 WPS 后运行 AA-Program目录中的本项目 Setup.exe 重装，重启 WPS 生效。
 
 【不要】
   不要手改 src/addin/Ribbon.g.cs —— 每次跑脚本都会被整文件覆盖。

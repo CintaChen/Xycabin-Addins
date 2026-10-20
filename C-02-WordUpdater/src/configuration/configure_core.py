@@ -13,7 +13,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 def _find_project_root(start):
     """从本文件所在目录往上找项目根：能同时看到 build.py 和 src\\addin 的那一层。
 
-    这样脚本放在项目根还是「AP1-程序」文件夹里都能跑，不会把文件写到错误的地方。
+    这样脚本放在项目根还是「AA-Program」文件夹里都能跑，不会把文件写到错误的地方。
     """
     d = start
     for _ in range(5):
@@ -528,10 +528,10 @@ def api_platforms():
 
 
 API_PLATFORMS_HEADER = """// =====================================================================
-// 本文件由 Configure_program.py 自动生成，请勿手改。
+// 本文件由 AA-Program 配置器自动生成，请勿手改。
 //
-//   改「跳转到API平台」弹窗的选项与网址 -> 编辑 Configure_program.py 顶部的
-//   API_PLATFORMS 配置区，然后重跑：python Configure_program.py
+//   改「跳转到API平台」弹窗的选项与网址 -> 编辑 AA-Program 配置器顶部的
+//   API_PLATFORMS 配置区，然后重跑：python AA-Program 下的配置器
 //
 //   每项 = (显示名, 网址)；网址为空字符串表示占位项（灰色、不可点击）。
 //
@@ -613,6 +613,7 @@ def _line_eol(line):
     return ""
 
 
+# rule=R-16
 def get_version():
     """返回四段式版本号，如 "0.9.5.0"（VSTO 清单与程序集都用这个）。
 
@@ -761,12 +762,12 @@ def build_xml(groups, tab):
     return "\n".join(lines)
 
 
-ICON_README = """图标放置与规格说明（本文件由 Configure_program.py 自动生成）
+ICON_README = """图标放置与规格说明（本文件由 AA-Program 配置器自动生成）
 ================================================================
 
 【放哪里】
-  把图片文件直接丢进本目录（项目根 icons\\），
-  然后在 Configure_program.py 的配置区里，把对应按钮的 icon 写成文件名即可，例如：
+  把图片文件直接丢进本目录（AB-Graphic），
+  然后在 AA-Program 配置器的配置区里，把对应按钮的 icon 写成文件名即可，例如：
 
       "icon": "update.png",
 
@@ -793,12 +794,12 @@ ICON_README = """图标放置与规格说明（本文件由 Configure_program.py
   所以图片是在编译前被转成 base64 常量写进 src/addin/Ribbon.g.cs 的，随 DLL 一起走。
 
 【流程】
-  1. 改 Configure_program.py 的配置区（标题 / 提示 / 图标 / 网址）
-  2. python Configure_program.py
+  1. 改 AA-Program 配置器的配置区（标题 / 提示 / 图标 / 网址）
+  2. python AA-Program 下的配置器
   3. python build.py
   4. python resign.py            （生成清单 + SHA-256 双签名，自动完成）
   5. python build_installer.py
-  6. 完全退出 WPS 后运行 AP1-程序目录中的本项目 Setup.exe 重装，重启 WPS 生效。
+  6. 完全退出 WPS 后运行 AA-Program目录中的本项目 Setup.exe 重装，重启 WPS 生效。
 
 【不要】
   不要手改 src/addin/Ribbon.g.cs —— 每次跑脚本都会被整文件覆盖。
@@ -806,10 +807,10 @@ ICON_README = """图标放置与规格说明（本文件由 Configure_program.py
 
 
 HEADER = """// =====================================================================
-// 本文件由 Configure_program.py 自动生成，请勿手改。
+// 本文件由 AA-Program 配置器自动生成，请勿手改。
 //
-//   改标题 / 提示文案 / 图标 / 跳转网址 -> 编辑 Configure_program.py 顶部的
-//    「按钮配置区」，然后重跑：python Configure_program.py
+//   改标题 / 提示文案 / 图标 / 跳转网址 -> 编辑 AA-Program 配置器顶部的
+//    「按钮配置区」，然后重跑：python AA-Program 下的配置器
 //
 //   负责向 Connect.cs 提供四样东西：
 //     RibbonXml        功能区 XML（选项卡 / 分组 / 按钮 / 提示文案）
@@ -1005,9 +1006,9 @@ namespace %(namespace)s
 
 
 INSTALLER_TEXT_HEADER = """// =====================================================================
-// 本文件由 Configure_program.py 自动生成，请勿手改。
+// 本文件由 AA-Program 配置器自动生成，请勿手改。
 //
-//   改安装器顶部色带的功能说明 / 底部版权行 -> 编辑 Configure_program.py
+//   改安装器顶部色带的功能说明 / 底部版权行 -> 编辑 配置器脚本
 //   的「安装程序界面配置区」，然后重跑配置脚本并重新打包安装器。
 //
 // 生成时间：%(stamp)s

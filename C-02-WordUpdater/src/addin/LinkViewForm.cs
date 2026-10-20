@@ -63,7 +63,10 @@ namespace WordUpdater
         {
             Text = "查看链接";
             DialogSizing.Prepare(this, "word.links", "view", Ui.Blue);
-            ShowInTaskbar = false; MinimizeBox = false; MaximizeBox = true;
+            // 窗口样式与 Excel 链接助手/追踪/合并抵消对齐：不设 ShowInTaskbar、
+            // MinimizeBox——tool window 样式（WS_EX_TOOLWINDOW）在 WPS 宿主线程会
+            // 抢焦点/失激活，表现为宿主单元格无法输入、功能区子菜单点不开（R-25）。
+            MaximizeBox = true;
             TableLayoutPanel root = new TableLayoutPanel();
             root.Dock = DockStyle.Fill; root.Padding = new Padding(16); root.ColumnCount = 1; root.RowCount = 3;
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));

@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Configure_program.py —— 「WordUpdater」按钮集中配置生成器
+C2-Wordupdater_Configure.py —— 「WordUpdater」按钮集中配置生成器
 
 一、完整流程（就三步）
 ==============================================================================
 
   ① 在本文件顶部「按钮配置区」改好内容，然后运行本脚本
-         python AP1-程序\\Configure_program.py
+         python AA-Program\\C2-Wordupdater_Configure.py
      想换自定义图标的话，把图丢进项目根的 icons\\ 目录（可选）。
      注意：这一步只是"改配置 + 生成源码"，做完 WPS 里不会有任何变化。
 
-  ② 双击 AP1-程序\\一键重建并打包.bat
+  ② 双击 AA-Program\\一键重建并打包.bat
      编译 DLL、给两份清单签名、重新打包安装器，全自动。
      它自己也会跑一次第 ① 步，所以第 ① 步其实是可选的 —— 先单独跑的
      好处是能立刻发现配置写没写错。批处理完成后提示你自行保存文档并完全退出 WPS，
@@ -18,7 +18,7 @@ Configure_program.py —— 「WordUpdater」按钮集中配置生成器
 
   ③ 让它在 WPS 里生效（这步手动执行）
        1) 保存文档并完全退出 WPS 文字，避免已加载的 DLL 占用安装目录
-       2) 运行 AP1-程序\\WordUpdater_Setup.exe，点「安装」；安装目录会回填上次的位置
+       2) 运行 AA-Program\\WordUpdater_Setup.exe，点「安装」；安装目录会回填上次的位置
        3) 安装器先检查 VSTO Runtime；缺少运行时时停止并显示解决说明，
           安装官方运行时后重新打开安装器，不以写入白名单替代运行时安装
        4) 安装器在本次安装过程中调用「Microsoft Office 自定义项安装程序」
@@ -71,7 +71,7 @@ TAB_INSERT_BEFORE_MSO = None
 TAB_ID_MSO = None
 
 # --- 自定义图标目录（相对项目根；改标点的话连带把图搬过去）---
-ICON_DIR = "icons"
+ICON_DIR = "AB-Graphic"
 
 # --- 图片透明区域的合成底色 ---
 #   WPS 功能区按钮只接收 HBITMAP，不支持真透明通道；带透明像素的 PNG 会先把
@@ -357,7 +357,7 @@ INSTALLER_FEATURE_TEXT = (
     "「更新/查看链接」批量更新、总览全文链接并定位；"
     "「其他」全选表格、问题反馈等。"
 )
-INSTALLER_VERSION = "0.9.9.1"
+INSTALLER_VERSION = "0.9.9.2"
 
 # --- 固定签名证书（证书指纹，不含私钥）---
 # 常规重建复用此证书；证书或私钥不可用就停止，不按主题猜选，也不自动创建。

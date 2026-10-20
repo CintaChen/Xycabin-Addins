@@ -30,11 +30,12 @@ class Structure(HTMLParser):
         self.stack.pop()
 
 
+# rule=R-22
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--html', type=Path, default=ROOT / 'AP1-程序/XyCabin.html')
+    parser.add_argument('--html', type=Path, default=ROOT / 'AA-Program/XyCabin.html')
     args = parser.parse_args()
-    config = vars(load(ROOT / "AP1-程序/Configure_Site.py"))
+    config = vars(load(ROOT / "AA-Program/C3-XycabinSite_Configure.py"))
     source = render(config, ROOT)
     structure = Structure(); structure.feed(source); assert not structure.stack
     audio_source = (ROOT / 'src/site_audio.js').read_text(encoding='utf-8')
@@ -52,8 +53,12 @@ def main():
         if not project_root.is_dir():
             print('SKIP: 单加载项环境未携带另一项目日志：' + folder, flush=True)
             continue
-        devlog = (project_root / 'AP3-说明/开发日志.md').read_text(encoding='utf-8-sig')
-        history = dict(re.findall(r'^\|\s*(\d+\.\d+\.\d+\.\d+)\s*\|\s*(.*?)\s*\|\s*$', devlog, re.M))
+        devlog = (ROOT.parent / 'C-04-Devlog/B1-Project-Files.md').read_text(encoding='utf-8-sig')
+        chapter = {'word': 'WordUpdater 项目档案', 'excel': 'Excel-Iterate 项目档案'}[product['id']]
+        sections = re.split(r'(?m)^# ', devlog)
+        block = next((s for s in sections if s.split('\n', 1)[0].strip().endswith(chapter)), None)
+        assert block is not None, 'Website/devlog chapter missing: ' + product['id']
+        history = dict(re.findall(r'^\|\s*(\d+\.\d+\.\d+\.\d+)\s*\|\s*(.*?)\s*\|\s*$', block, re.M))
         assert set(history) == {v['version'] for v in product['versions']}, 'Website/devlog version sets differ'
         for item in product['versions']:
             summary = item['summary']
@@ -179,7 +184,7 @@ def main():
         finally:
             custom_path.unlink()
     else:
-        print("SKIP: AudioProbe需要Node.js；配置与单文件检查已执行，音频逻辑另行验收")
+        print("SKIP: 缺少 Node.js；audio_probe/download_probe 未执行，音频与下载逻辑另行验收（记入门禁摘要）")
     print("SiteProbe: central source, project histories, sound/feedback/HTTPS customization, default theme, escaping, version sources and current preview PASS")
 
 

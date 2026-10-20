@@ -17,7 +17,7 @@ internal static class PdfToolsProbe
             Application.EnableVisualStyles();
             Assembly assembly = Assembly.LoadFrom(Path.GetFullPath(args[0]));
             string output = Path.GetFullPath(args[1]); Directory.CreateDirectory(output);
-            string ns = assembly.GetName().Name == "WordUpdater" ? "WordUpdater" : "Excel_Iterate";
+            string ns = assembly.GetType("WordUpdater.PdfToolsForm", false) != null ? "WordUpdater" : "Excel_Iterate";
             Type factory = assembly.GetType(ns + ".DialogPreviewFactory", true);
             foreach (string mode in new[] { "current", "convert", "watermark", "split", "merge" })
             {

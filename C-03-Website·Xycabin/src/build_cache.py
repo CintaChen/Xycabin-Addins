@@ -11,7 +11,8 @@ import subprocess
 import sys
 import time
 import uuid
-from document_assets import referenced_paths
+from document_assets import referenced_paths, strip_delivery_audit
+from configurators import CONFIGURE
 
 sys.dont_write_bytecode = True
 SITE = Path(__file__).resolve().parents[1]
@@ -67,18 +68,19 @@ def environment():
 def inputs(base, snapshot):
     base = Path(base).resolve()
     paths = set(base.glob('*.py')) | {base / 'project.json'}
-    for directory in ('src', 'lib', 'icons', 'AP3-说明'):
+    for directory in ('src', 'lib', 'AB-Graphic'):
         paths.update(p for p in (base / directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
-    paths.add(base / 'AP1-程序/Configure_program.py')
+    paths.update(p for p in (base.parent / 'C-04-Devlog').rglob('*.md') if p.is_file())
+    paths.add(base / 'AA-Program' / CONFIGURE[base.name])
     paths.update(referenced_paths(base))
     paths.add(base.parent / 'verify_shared.py')
     paths.update(p for p in (SITE / 'src').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
-    paths.add(SITE / 'AP1-程序/Configure_Site.py')
+    paths.add(SITE / 'AA-Program/C3-XycabinSite_Configure.py')
     values = []
     for path in sorted(paths):
         if path.suffix.lower() == '.md':
             text = path.read_text(encoding='utf-8-sig')
-            text = re.sub(r'<!-- delivery-audit:start -->.*?<!-- delivery-audit:end -->', '', text, flags=re.S)
+            text = strip_delivery_audit(text)
             fingerprint = hashlib.sha256(text.encode('utf-8')).hexdigest()
         else:
             fingerprint = digest(path)
@@ -86,6 +88,20 @@ def inputs(base, snapshot):
     from site_core import embedded_snapshot
     page = embedded_snapshot(Path(snapshot).read_text(encoding='utf-8'))
     return key({'schema': 1, 'inputs': values, 'site': hashlib.sha256(page.encode('utf-8')).hexdigest(), 'environment': environment()})
+
+
+def input_fingerprint(root, addin_roots):
+    """Raw-byte fingerprint of the embedded document surface; detects mid-build edits."""
+    root = Path(root).resolve()
+    paths = set((root.parent / 'C-04-Devlog').glob('*.md'))
+    paths.add(root.parent / 'verify_shared.py')
+    for base in addin_roots:
+        base = Path(base).resolve()
+        for item in referenced_paths(base):
+            path = Path(item)
+            paths.update([path if path.is_absolute() else base / path])
+    values = [(str(path.relative_to(root.parent)), digest(path)) for path in sorted(paths)]
+    return key({'schema': 1, 'fingerprint': values})
 
 
 def atomic_json(path, data):

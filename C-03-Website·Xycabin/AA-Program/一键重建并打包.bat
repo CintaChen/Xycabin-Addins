@@ -24,6 +24,8 @@ set "WPS_BUILD_MODE=incremental"
 :run
 "%WPS_TASK_PYTHON%" rebuild.py --background --mode %WPS_BUILD_MODE%
 if errorlevel 1 goto fail
+"%WPS_TASK_PYTHON%" validate.py --background --mode %WPS_BUILD_MODE%
+if errorlevel 1 goto validatefail
 echo.
 chcp 65001 >nul
 "%WPS_TASK_PYTHON%" -c "print('\u540e\u53f0\u9a8c\u8bc1\u5df2\u5b8c\u6210\uff1b\u524d\u53f0\u7a97\u53e3\u4e0e\u771f\u5b9e WPS \u64cd\u4f5c\u8bf7\u53e6\u884c\u9a8c\u6536\u3002'); print('\u4e24\u4e2a\u5b89\u88c5\u5305\u5df2\u540c\u6b65\u66f4\u65b0\u3002\u8bf7\u4fdd\u5b58\u6587\u4ef6\u3001\u5b8c\u5168\u9000\u51fa WPS \u540e\u5206\u522b\u91cd\u88c5\u3002')"
@@ -33,5 +35,11 @@ exit /b 0
 echo.
 chcp 65001 >nul
 "%WPS_TASK_PYTHON%" -c "print('\u7edf\u4e00\u6784\u5efa\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u4e0a\u65b9\u9519\u8bef\u53ca\u65e5\u5fd7\u3002\u672a\u5b8c\u6210\u7684\u6784\u5efa\u4e0d\u4f1a\u66ff\u6362\u6b63\u5f0f\u5b89\u88c5\u5305\u3002')"
+pause
+exit /b 1
+:validatefail
+echo.
+chcp 65001 >nul
+"%WPS_TASK_PYTHON%" -c "print('\u6536\u5c3e\u9a8c\u8bc1\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u4e0a\u65b9\u9519\u8bef\u53ca\u65e5\u5fd7\u3002\u5b89\u88c5\u5305\u5df2\u751f\u6210\u4f46\u672a\u901a\u8fc7\u72ec\u7acb\u56de\u5f52\uff0c\u8bf7\u4fee\u590d\u540e\u91cd\u8dd1\u3002')"
 pause
 exit /b 1

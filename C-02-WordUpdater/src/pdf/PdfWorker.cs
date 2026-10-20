@@ -166,7 +166,8 @@ internal static class PdfWorker
         if (File.Exists(marker)) throw new SourceOpenException("批次已暂停：请先保存并关闭来源文件，再重试：" + path);
         try { using (var input = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None)) { } }
         catch (IOException) { throw new SourceOpenException("批次已暂停：来源文件正在打开或被占用，请保存并关闭后重试：" + path); }
-        foreach (string id in new[] { "KWPS.Application", "WPS.Application", "Word.Application", "KET.Application", "et.Application", "Excel.Application" })
+        bool sourceWord = new[] { ".doc", ".docx", ".rtf", ".odt", ".wps" }.Contains(Path.GetExtension(path).ToLowerInvariant());
+        foreach (string id in sourceWord ? new[] { "KWPS.Application", "WPS.Application", "Word.Application" } : new[] { "KET.Application", "et.Application", "Excel.Application" })
         {
             object app = null, items = null;
             try
@@ -180,6 +181,11 @@ internal static class PdfWorker
                     try { if (string.Equals(Convert.ToString(((dynamic)item).FullName), path, StringComparison.OrdinalIgnoreCase)) throw new SourceOpenException("批次已暂停：请保存并关闭来源文件，再重试：" + path); }
                     finally { Release(item); }
                 }
+            }
+            catch (COMException error)
+            {
+                if (error.ErrorCode != unchecked((int)0x80010001) && error.ErrorCode != unchecked((int)0x8001010A)) throw;
+                throw new SourceOpenException("批次已暂停：宿主忙或存在待处理对话框，无法确认来源占用状态。请处理宿主提示后重试（" + id + "）：" + path);
             }
             finally { Release(items); Release(app); }
         }

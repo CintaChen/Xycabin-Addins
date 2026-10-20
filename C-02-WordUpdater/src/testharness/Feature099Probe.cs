@@ -428,7 +428,7 @@ partial class Feature099Probe
             Check(controls.OfType<WidthGrip>().Count()==9,"every editable input carries a width grip");
             var jump=controls.OfType<RoundedButton>().Single(b=>b.Name=="apiPlatformJump");
             Check(jump.Text=="跳转到API平台"&&jump.Font.Bold,"api platform entry point in the OCR row");
-            Check(ApiPlatforms.Names.SequenceEqual(new[]{"百度智能云","阿里云平台","未来计划"})&&ApiPlatforms.Urls[0].StartsWith("https://cloud.baidu.com/product-s/")&&ApiPlatforms.Urls[2]=="","platform options and placeholder come from Configure_program");
+            Check(ApiPlatforms.Names.SequenceEqual(new[]{"百度智能云","阿里云平台","未来计划"})&&ApiPlatforms.Urls[0].StartsWith("https://cloud.baidu.com/product-s/")&&ApiPlatforms.Urls[2]=="","platform options and placeholder come from the AA-Program configurator");
             using(var chooser=new ApiPlatformDialog()) {
                 var buttons=DialogFormatting.Walk(chooser).OfType<RoundedButton>().ToList();
                 Check(buttons.Count==4&&buttons[0].Text=="百度智能云"&&buttons[0].Enabled&&buttons[1].Enabled,"configured platforms open in the chooser");
@@ -460,6 +460,7 @@ partial class Feature099Probe
             var cell=sheet.Cells[r,c];cell.Value2=r==3?new string('x',600):"原"+r+c;cell.WrapText=(r+c)%2==0;cell.HorizontalAlignment=7;cell.VerticalAlignment=9;cell.Font.Bold=false;cell.Font.Color=37;cell.Interior.Color=51;
         }}sheet.RowAt(3).Hidden=true;return sheet;
     }
+    // rule=R-28
     static void OutputFormatChecks() {
         var entries=new List<FileNameEntry>{new FileNameEntry{Name="短",Extension="png",Path="短路径",Feature="001"},new FileNameEntry{Name=new string('N',90),Extension="pdf",Path=new string('P',600),Feature="000123"}};
         foreach(bool zero in new[]{false,true})foreach(bool nullHeight in new[]{false,true}){

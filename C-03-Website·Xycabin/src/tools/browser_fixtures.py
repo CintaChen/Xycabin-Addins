@@ -28,7 +28,7 @@ window.print=function(){document.documentElement.setAttribute('data-qa-print',do
 addEventListener('DOMContentLoaded',function(){var burst=document.createElement('button');burst.id='qa-burst';burst.textContent='QA 连续操作';burst.addEventListener('click',function(){for(var i=0;i<20;i++)document.getElementById('theme-toggle').click()});document.body.appendChild(burst)});
 })();
 </script>'''
-config=vars(load(ROOT/'AP1-程序/Configure_Site.py'))
+config=vars(load(ROOT/'AA-Program/C3-XycabinSite_Configure.py'))
 for mode in ('native','storage','invalid','light','failure','unsupported','manual','fallback'):
     selected=config
     if mode=='fallback':

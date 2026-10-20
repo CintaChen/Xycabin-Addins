@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace WordUpdater.Tools
@@ -80,12 +81,50 @@ namespace WordUpdater.Tools
 
         // ------------------------------- 主流程 -------------------------------
 
+        // rule=R-25
+        private static void CheckDialogStyleRedLines(ref int failed)
+        {
+            try
+            {
+                string dir = AppDomain.CurrentDomain.BaseDirectory;
+                string addin = null;
+                for (int i = 0; i < 6 && dir != null; i++)
+                {
+                    string candidate = Path.Combine(dir, "src", "addin");
+                    if (Directory.Exists(candidate)) { addin = candidate; break; }
+                    dir = Path.GetDirectoryName(dir);
+                }
+                if (addin == null) { Console.WriteLine("[跳过] 找不到 src/addin，弹窗样式红线未扫描"); return; }
+                string file = Path.Combine(addin, "LinkViewForm.cs");
+                Check(ref failed, "LinkViewForm.cs 存在", File.Exists(file));
+                if (!File.Exists(file)) return;
+                var code = new StringBuilder();
+                foreach (string line in File.ReadAllLines(file))
+                {
+                    string t = line.TrimStart();
+                    if (t.StartsWith("//") || t.StartsWith("*") || t.StartsWith("/*")) continue;
+                    code.AppendLine(line);
+                }
+                string text = code.ToString();
+                Check(ref failed, "LinkViewForm 无 TopMost=true 赋值",
+                    !Regex.IsMatch(text, @"^\s*(?:this\.)?TopMost\s*=\s*true\s*;", RegexOptions.Multiline));
+                Check(ref failed, "LinkViewForm 无工具窗样式赋值",
+                    !Regex.IsMatch(text, @"^\s*(?:this\.)?(ShowInTaskbar|MinimizeBox)\s*=\s*false\s*;", RegexOptions.Multiline));
+            }
+            catch (Exception ex)
+            {
+                Check(ref failed, "弹窗样式红线扫描可执行", false);
+                Console.WriteLine("[样式扫描异常] " + ex.Message);
+            }
+        }
+
         [STAThread]
         public static int Main(string[] args)
         {
             try { Console.OutputEncoding = Encoding.UTF8; }
             catch { }
             int failed = 0;
+            CheckDialogStyleRedLines(ref failed);
 
             string token = Guid.NewGuid().ToString("N");
             string f1 = Path.Combine(Path.GetTempPath(), "FormProbe_" + token + "_源一.xlsx");

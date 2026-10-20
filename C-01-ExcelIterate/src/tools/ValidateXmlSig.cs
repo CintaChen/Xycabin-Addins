@@ -119,7 +119,7 @@ internal static class ValidateXmlSig
         {
             Require(rsa != null, "An RSA certificate is required.");
             Require(thumb == null || string.Equals(cert.Thumbprint, thumb, StringComparison.OrdinalIgnoreCase),
-                "Signing certificate differs from Configure_program.py.");
+                "Signing certificate differs from 配置器脚本.");
             DateTime now = DateTime.UtcNow;
             Require(now >= cert.NotBefore.ToUniversalTime() && now <= cert.NotAfter.ToUniversalTime(), "Signing certificate is outside its validity period.");
             XmlElement publisher = (XmlElement)doc.DocumentElement.SelectSingleNode("asmv2:publisherIdentity", ns);
