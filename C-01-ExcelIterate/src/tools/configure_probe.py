@@ -51,6 +51,19 @@ def main():
     boxes = document.findall('.//{*}box')
     check(not boxes, 'current small controls are direct group children')
     check([group[1] for group in groups] == (['数据','操作','反馈'] if any(item['id']=='menuOneClickFormula' for item in model) else ['链接','操作','反馈']) + ['扩展','详情','操作'], 'primary and Agent-Evo detail/operation groups')
+    # Product-level PDF navigation contract, independent of display names/customization.
+    file_menu = document.find('.//{*}menu[@id="menuFileOperations"]')
+    check(file_menu is not None, 'file operations entrance exists')
+    pdf_menu = file_menu.find('{*}menu[@id="menuFileConversion"]')
+    check(pdf_menu is not None and [node.get('id') for node in pdf_menu] ==
+          ['btnCurrentPdf', 'btnConvertPdf', 'btnWatermarkPdf', 'btnSplitPdf', 'btnMergePdf'], 'five PDF entries in conversion subtree')
+    batch_menu = file_menu.find('{*}menu[@id="menuBatchProcessing"]')
+    if any(item['id'] == 'menuOneClickFormula' for item in model):
+        check(batch_menu is not None and [node.get('id') for node in batch_menu] ==
+              ['btnOrganizeFiles', 'btnRenameFiles', 'btnFileNames'], 'original three batch command identities preserved')
+        check([node.get('id') for node in file_menu] == ['menuBatchProcessing', 'menuFileConversion'], 'Excel two-subtree navigation')
+    else:
+        check(batch_menu is None and [node.get('id') for node in file_menu] == ['menuFileConversion'], 'Word contains PDF tools without Excel batch features')
     # 首个分组前三个是小图标，之后新增的根层项用大图标；数量随功能增减，不锁死条目个数。
     sizes = [item['size'] for item in groups[0][2]]
     check(sizes[:3] == ['normal']*3 and all(size == 'large' for size in sizes[3:]), 'native small rows then large roots')

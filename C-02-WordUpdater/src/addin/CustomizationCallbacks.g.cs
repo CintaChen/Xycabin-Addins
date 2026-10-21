@@ -7,6 +7,14 @@ namespace WordUpdater
         public string GetLabel_btnLinkToExcel(object control) { return RibbonCustomization.Label("btnLinkToExcel"); }
         public string GetLabel_btnViewLinks(object control) { return RibbonCustomization.Label("btnViewLinks"); }
         public string GetLabel_btnSelectAllTables(object control) { return RibbonCustomization.Label("btnSelectAllTables"); }
+        public string GetLabel_menuFileOperations(object control) { return RibbonCustomization.Label("menuFileOperations"); }
+        public string GetContent_menuFileOperations(object control) { return RibbonCustomization.Content("menuFileOperations"); }
+        public string GetLabel_menuFileConversion(object control) { return RibbonCustomization.Label("menuFileConversion"); }
+        public string GetLabel_btnCurrentPdf(object control) { return RibbonCustomization.Label("btnCurrentPdf"); }
+        public string GetLabel_btnConvertPdf(object control) { return RibbonCustomization.Label("btnConvertPdf"); }
+        public string GetLabel_btnWatermarkPdf(object control) { return RibbonCustomization.Label("btnWatermarkPdf"); }
+        public string GetLabel_btnSplitPdf(object control) { return RibbonCustomization.Label("btnSplitPdf"); }
+        public string GetLabel_btnMergePdf(object control) { return RibbonCustomization.Label("btnMergePdf"); }
         public string GetLabel_btnFeedback(object control) { return RibbonCustomization.Label("btnFeedback"); }
         public string GetLabel_btnAgentExtension(object control) { return RibbonCustomization.Label("btnAgentExtension"); }
         public string GetLabel_menuAgentApi(object control) { return RibbonCustomization.Label("menuAgentApi"); }

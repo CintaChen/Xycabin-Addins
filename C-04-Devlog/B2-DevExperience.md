@@ -238,6 +238,22 @@ DialogSizes.xml按程序集隔离，禁止DTD、版本/范围校验、锁内摘�
 
 格式编辑器独立STA，ThreadLocal集合管理窗口/字体；隐藏源Form只初始化一次，停在隐藏父容器，画布仅显示不透明选择Overlay。刷新执行Apply→布局→捕获→矩形同步，不Show/Focus/反复挂接。DrawToBitmap只取源，RichTextBox用EM_FORMATRANGE补绘并释放资源，隐藏TextBox/ComboBox按真实文字/样式补绘、密码遮罩；命中与补绘共用裁剪后的同次快照。不能用空白捕获宣称用户可见。
 
+### (4). PDF 当前文档与后台进程
+
+PDF 功能共享 Connect.Pdf、PdfToolsForm、PdfCurrentDocument 及 src/pdf 下固定版本引擎，使用 WPS_WORD 条件编译区分宿主。Excel 的“文件操作”分“批量处理”和“文件转换与 PDF 工具”；Word 只增加后者。原批量按钮 ID 保留，新窗口登记 file.pdf.current/convert/watermark/split/merge，按真实菜单进入尺寸及格式预览。
+
+当前文档入口在宿主 STA 捕获文档及 Excel 工作表/选区，核对 ActiveWindow 所属进程；保存与导出仍在原线程执行，后台只接收临时 PDF 路径。点击执行时先选择输出目录，再验证原文档身份、路径、只读状态、活动目标及选区有效性，再由宿主 Save。首次保存使用宿主原生保存界面；Saved 为假、路径未落盘、取消或异常均停止。成功后 Excel 按整簿/原工作表/原连续选区导出；选区导出忽略已有打印区域以限定选区，不改原表打印设置。Word 先整篇导出，再按页码范围提取为单个结果；不支持选中文字导出。窗口关闭释放自取 COM 引用，不释放借用 Application。
+
+普通批量只枚举来源对应的 Word 或 Excel 宿主，避免无关宿主阻塞；RPC_E_CALL_REJECTED 或 RPC_E_SERVERCALL_RETRYLATER 转为可读暂停结果，保留失败关闭策略，不自动关闭用户窗口。
+
+普通批量在任何输出前预检 Office 来源占用；已打开/被占用时返回暂停并要求保存关闭后重试。混合转换后合并在自建临时目录转换全部输入，全部成功才发布一个 PDF；失败或取消清理中间产物，不输出缺页结果。每次执行都选择输出目录，同名自动编号。文字水印支持 RGB 颜色和居中/平铺。PDF 请求及结果 XML 禁止 DTD，不上传文件。
+
+src/pdf/build_trial.py 仅生成独立诊断验证包：使用编译接口夹具、排除 ThisAddIn，启动器附加已打开的对应宿主以验证当前文档功能。它不是 VSTO 安装器，也不能证明真实加载项菜单、安装签名和焦点验收通过。正式 build.py 继续要求真实 Microsoft 引用和原固定证书，不替换发布身份。测试入口为 PdfToolsProbe 与 PdfCurrentDocumentProbe；后者 --live 先核对自取 Application 的 HWND/PID 不属于原有进程，且文档集合为空，才在该独立实例创建测试文档；归属不明则跳过，不操作用户文档。
+
+清单签名校验兼容性：不同 .NET Framework 维护版本的 SignedCmiManifest2 私有校验方法可能只有命名空间参数，也可能增加哈希算法枚举参数。ValidateXmlSig 按实际方法签名调用，仍检查身份、许可证摘要及两段 SHA-256 签名；无兼容签名时失败退出，不跳过校验。本机测试副本用独立安装标识和测试证书构建，不修改本源码的原发布身份或固定证书。
+
+已知问题 PDF-001（待复现、未修复）：用户反馈 XLSX 行列较多或文本较长时，导出可能出现跨页拆分、换行或内容显示不完整。尚无最小复现文件，不能认定存在实际内容丢失。当前沿用宿主打印/分页设置，未实现自动适配一页宽、打印预览或重复表头设置；后续需结合具体文件和宿主版本验证。
+
 ## 5. 四种拖动及配置生效
 
 ### (1). 输入与按钮拖宽：WidthGrip

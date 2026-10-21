@@ -119,3 +119,5 @@ MPL-2.0 是**文件级** copyleft 许可证，其边界与常见许可证不同�
 ## 问题反馈
 
 请通过本仓库的 Issues 提交缺陷报告或功能建议。提交时请说明 WPS Office 版本、Windows 版本，以及可复现的操作步骤。
+
+PDF 工具适配 0.9.9.3：使用与已知问题 PDF-001 见 [统一使用说明](C-04-Devlog/A-UserGuide.md)，实现边界见 [共享开发经验](C-04-Devlog/B2-DevExperience.md)。PDF-001 待复现、未修复。
