@@ -44,7 +44,10 @@
     "FormatEditorThread.cs",
     "CustomizationSaving.cs",
     "UiDiagnostics.cs",
-    "HostDialogService.cs"
+    "HostDialogService.cs",
+    "Connect.Pdf.cs",
+    "PdfToolsForm.cs",
+    "PdfCurrentDocument.cs"
   ],
   "tools": [
     {
@@ -153,6 +156,29 @@
         "lib/Interop.Microsoft.Office.Core.dll"
       ],
       "offline": true
+    },
+    {
+      "name": "PdfToolsProbe",
+      "source": "src/testharness/PdfToolsProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "Microsoft.CSharp.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "PdfCurrentDocumentProbe",
+      "source": "src/testharness/PdfCurrentDocumentProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "Microsoft.CSharp.dll"
+      ],
+      "offline": false
     }
-  ]
+  ],
+  "pdf_worker": true
 }

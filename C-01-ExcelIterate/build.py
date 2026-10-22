@@ -92,9 +92,16 @@ def main():
             'Microsoft.VisualStudio.Tools.Applications.Runtime.dll', 'Microsoft.Office.Tools.dll',
             'Interop.Microsoft.Office.Core.dll', 'Microsoft.Office.Tools.Common.dll']
     target = BUILD / (PROJECT['assembly'] + '.dll')
+    pdf_resources = []
+    if PROJECT.get('pdf_worker'):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('_pdf_worker_build', SRC / 'pdf/build_worker.py')
+        pdf_builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pdf_builder)
+        pdf_resources = ['/resource:' + str(pdf_builder.build()) + ',WpsShared.PdfWorker.zip']
     try:
         run([CSC, '/nologo', '/target:library', '/platform:anycpu', '/optimize+', '/codepage:65001', '/out:' + str(target)]
-            + DEFINES + COMMON_REF + document_resources(args.site_html) + ['/r:System.Windows.Forms.dll']
+            + DEFINES + COMMON_REF + pdf_resources + document_resources(args.site_html) + ['/r:System.Windows.Forms.dll']
             + ['/r:' + str(LIB / n) for n in vsto]
             + [SRC / 'addin' / f for f in PROJECT['sources']])
     finally:

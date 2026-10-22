@@ -15,7 +15,7 @@
 //   网络盘文档的回调代理读不出 control.Id，靠名字才能认对按钮。
 //   新增按钮时记得在 Connect.cs 加对应的一行包装方法（本脚本会校验）。
 //
-// 生成时间：2026-10-20 22:39:35
+// 生成时间：2026-10-21 15:01:35
 // =====================================================================
 using System;
 using System.Collections.Generic;
@@ -65,6 +65,15 @@ namespace WordUpdater
         </group>
         <group id=""grpAction"" label=""操作"">
           <button id=""btnSelectAllTables"" label=""全选表格"" size=""large"" getImage=""GetImage_btnSelectAllTables"" screentip=""选中本文档中的全部表格（正文不受影响）"" supertip=""自动滚动到每个表格并按住 Ctrl 逐个框选，效果等同手工 Ctrl 多选：选区里只有表格、不含正文。&#13;&#10;&#13;&#10;选中后即可用功能区的表格工具 / 字体等命令对所有表格统一调整。"" onAction=""OnSelectAllTables"" />
+          <menu id=""menuFileOperations"" label=""文件操作"" size=""large"" getImage=""GetImage_menuFileOperations"" itemSize=""normal"">
+            <menu id=""menuFileConversion"" label=""文件转换与 PDF 工具"" getImage=""GetImage_menuFileConversion"" itemSize=""normal"">
+              <button id=""btnCurrentPdf"" label=""当前文档转 PDF"" getImage=""GetImage_btnCurrentPdf"" supertip=""先保存当前文档，再按选择的范围导出为新的 PDF。"" onAction=""OnCurrentPdf"" />
+              <button id=""btnConvertPdf"" label=""批量文件转 PDF"" getImage=""GetImage_btnConvertPdf"" supertip=""将 Word、Excel 和图片批量转换为 PDF。"" onAction=""OnConvertPdf"" />
+              <button id=""btnWatermarkPdf"" label=""PDF 添加水印"" getImage=""GetImage_btnWatermarkPdf"" supertip=""为每一页添加文字水印，可调整不透明度、字号和角度。"" onAction=""OnWatermarkPdf"" />
+              <button id=""btnSplitPdf"" label=""PDF 拆分"" getImage=""GetImage_btnSplitPdf"" supertip=""按页或指定页码范围拆分 PDF。"" onAction=""OnSplitPdf"" />
+              <button id=""btnMergePdf"" label=""PDF 合并"" getImage=""GetImage_btnMergePdf"" supertip=""按可调整的列表顺序合并多个 PDF。"" onAction=""OnMergePdf"" />
+            </menu>
+          </menu>
         </group>
         <group id=""grpFeedback"" label=""反馈"">
           <button id=""btnFeedback"" label=""问题反馈"" size=""large"" getImage=""GetImage_btnFeedback"" screentip=""有BUG或新增功能请发送邮箱至2783935558@qq.com，我会尽快回复（或许）。"" supertip=""点此打开 QQ 邮箱网页版，登录后即可撰写反馈邮件。"" onAction=""OnOpenUrl_btnFeedback"" />
@@ -210,6 +219,13 @@ namespace WordUpdater
             d["btnLinkToExcel"] = 16;
             d["btnViewLinks"] = 16;
             d["btnSelectAllTables"] = 32;
+            d["menuFileOperations"] = 32;
+            d["menuFileConversion"] = 16;
+            d["btnCurrentPdf"] = 16;
+            d["btnConvertPdf"] = 16;
+            d["btnWatermarkPdf"] = 16;
+            d["btnSplitPdf"] = 16;
+            d["btnMergePdf"] = 16;
             d["btnFeedback"] = 32;
             d["btnAgentExtension"] = 32;
             d["menuAgentApi"] = 32;
@@ -250,6 +266,13 @@ namespace WordUpdater
             d["btnLinkToExcel"] = BuiltinPaste;
             d["btnViewLinks"] = BuiltinView;
             d["btnSelectAllTables"] = BuiltinTable;
+            d["menuFileOperations"] = BuiltinDocument;
+            d["menuFileConversion"] = BuiltinDocument;
+            d["btnCurrentPdf"] = BuiltinDocument;
+            d["btnConvertPdf"] = BuiltinDocument;
+            d["btnWatermarkPdf"] = BuiltinDocument;
+            d["btnSplitPdf"] = BuiltinDocument;
+            d["btnMergePdf"] = BuiltinDocument;
             d["btnFeedback"] = BuiltinMail;
             d["btnAgentExtension"] = BuiltinAgent;
             d["menuAgentApi"] = BuiltinWeb;

@@ -5,6 +5,20 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 SHARED_FILES = (
+    'src/pdf/build_trial.py',
+    'src/tools/PdfTrialLauncher.cs',
+    'src/testharness/PdfToolsProbe.cs',
+    'src/testharness/PdfCurrentDocumentProbe.cs',
+
+    'src/addin/Connect.Pdf.cs',
+    'src/addin/PdfToolsForm.cs',
+    'src/addin/PdfCurrentDocument.cs',
+    'src/pdf/PdfWorker.cs',
+    'src/pdf/PdfWorker.exe.config',
+    'src/pdf/build_worker.py',
+    'src/pdf/packages.lock.json',
+    'src/pdf/THIRD-PARTY-NOTICES.txt',
+
     'src/tools/AgentDocumentCoreProbe.cs', 'src/tools/GripProbe.cs', 'src/tools/LiveProbeSafety.cs', 'src/testharness/LiveProbeSafetyFixture.cs',
     'src/addin/CustomizationRestart.cs', 'src/shared/RestartProtocol.cs', 'src/tools/RestartHelper.cs',
     'src/tools/window_thread_probe.py', 'src/testharness/HostDialogProbe.cs', 'src/addin/HostDialogService.cs', 'src/addin/UiDiagnostics.cs', 'src/addin/CustomizationSaving.cs', 'src/addin/FormatSession.cs', 'src/addin/FormatEditorThread.cs',

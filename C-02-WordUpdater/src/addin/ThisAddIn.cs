@@ -53,6 +53,7 @@ namespace WordUpdater
             Connect.CloseViewForm();          // 关掉还开着的「查看链接」非模态窗
             Connect.ClearPendingFlash();      // 还原还没到期的标黄，别把黄色留在文档里
             LiveCustomization.Stop();
+            Connect.ClosePdfTools();
             Connect.HostApplication = null;
             base.OnShutdown();
         }

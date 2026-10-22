@@ -1,6 +1,6 @@
 **三项目档案与版本**
 
-最后更新：2026-10-20 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-21 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 

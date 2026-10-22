@@ -205,6 +205,7 @@ BUTTONS = [
         "url": None,
         "hidden": False,
     },
+    {'type': 'menu', 'id': 'menuFileOperations', 'label': '文件操作', 'group': ('grpAction', '操作'), 'size': 'large', 'builtin_icon': 'document', 'children': [{'type': 'menu', 'id': 'menuFileConversion', 'label': '文件转换与 PDF 工具', 'builtin_icon': 'document', 'children': [{'id': 'btnCurrentPdf', 'label': '当前文档转 PDF', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnCurrentPdf', 'supertip': '先保存当前文档，再按选择的范围导出为新的 PDF。'}, {'id': 'btnConvertPdf', 'label': '批量文件转 PDF', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnConvertPdf', 'supertip': '将 Word、Excel 和图片批量转换为 PDF。'}, {'id': 'btnWatermarkPdf', 'label': 'PDF 添加水印', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnWatermarkPdf', 'supertip': '为每一页添加文字水印，可调整不透明度、字号和角度。'}, {'id': 'btnSplitPdf', 'label': 'PDF 拆分', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnSplitPdf', 'supertip': '按页或指定页码范围拆分 PDF。'}, {'id': 'btnMergePdf', 'label': 'PDF 合并', 'builtin_icon': 'document', 'action': 'feature', 'callback': 'OnMergePdf', 'supertip': '按可调整的列表顺序合并多个 PDF。'}]}]},
     {
         "id": "btnFeedback",
         "group": ("grpFeedback", "反馈"),
