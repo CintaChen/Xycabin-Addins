@@ -234,7 +234,8 @@ namespace WpsShared.Tools
             Assert(group.ChildNodes.Count == rowIds.Length, "Native small rows");
             string[] rowSizes = Id.AssemblyName == "Excel_Iterate" ? new string[] { "normal", "normal", "normal", "large" } : new string[] { "normal", "normal", "normal" };
             for (int i = 0; i < rowIds.Length; i++) { XmlElement row = (XmlElement)group.ChildNodes[i]; Assert(row.GetAttribute("id") == rowIds[i] && row.GetAttribute("size") == rowSizes[i], "Native row " + rowIds[i]); }
-            for (int i = 1; i < 3; i++) { Assert(groups[i].ChildNodes.Count == (Id.AssemblyName == "Excel_Iterate" && i == 1 ? 4 : 1), "Action/feedback root counts"); foreach (XmlElement item in groups[i].ChildNodes) Assert(item.GetAttribute("size") == "large", "Large action/feedback root"); }
+            int[] rootCounts = Id.AssemblyName == "Excel_Iterate" ? new int[] { 4, 1 } : new int[] { 2, 1 };
+            for (int i = 1; i < 3; i++) { Assert(groups[i].ChildNodes.Count == rootCounts[i - 1], "Action/feedback root counts"); foreach (XmlElement item in groups[i].ChildNodes) Assert(item.GetAttribute("size") == "large", "Large action/feedback root"); }
             if (Id.AssemblyName != "Excel_Iterate") Assert(((XmlElement)group.ChildNodes[1]).GetAttribute("label") == "链接Excel", "Word new label");
             foreach (XmlElement menu in document.SelectNodes("//r:menu", ns))
             {
@@ -243,6 +244,20 @@ namespace WpsShared.Tools
                 foreach (XmlElement child in menu.ChildNodes)
                     Assert((child.LocalName == "menu" || child.LocalName == "button") && !child.HasAttribute("size"), "Unsized nested control");
             }
+            // PDF 工具接入后「文件操作」改为两层：Excel 含批量处理 + 文件转换，Word 只有文件转换。
+            bool excelHost = Id.AssemblyName == "Excel_Iterate";
+            XmlElement files=(XmlElement)document.SelectSingleNode("//r:menu[@id='menuFileOperations']",ns);
+            Assert(files.GetAttribute("label")=="文件操作"&&((XmlElement)files.ParentNode).GetAttribute("id")=="grpAction"&&files.ChildNodes.Count==(excelHost?2:1),"File operations large menu");
+            if(excelHost)
+            {
+                XmlElement batch=(XmlElement)files.ChildNodes[0];
+                Assert(batch.GetAttribute("id")=="menuBatchProcessing"&&batch.GetAttribute("label")=="批量处理"&&batch.ChildNodes.Count==3,"Batch processing submenu");
+                Assert(((XmlElement)batch.ChildNodes[0]).GetAttribute("onAction")=="OnOrganizeFiles"&&((XmlElement)batch.ChildNodes[1]).GetAttribute("onAction")=="OnRenameFiles"&&((XmlElement)batch.ChildNodes[2]).GetAttribute("onAction")=="OnFileNames","File operation callback order");
+            }
+            XmlElement convert=(XmlElement)files.LastChild;
+            Assert(convert.GetAttribute("id")=="menuFileConversion"&&convert.GetAttribute("label")=="文件转换与 PDF 工具"&&convert.ChildNodes.Count==5,"PDF conversion submenu");
+            string[] pdfActions={"OnCurrentPdf","OnConvertPdf","OnWatermarkPdf","OnSplitPdf","OnMergePdf"};
+            for(int i=0;i<pdfActions.Length;i++) Assert(((XmlElement)convert.ChildNodes[i]).GetAttribute("onAction")==pdfActions[i],"PDF conversion callback order");
             if (Id.AssemblyName == "Excel_Iterate")
             {
                 XmlElement root = (XmlElement)document.SelectSingleNode("//r:menu[@id='menuOneClickFormula']", ns);
@@ -282,11 +297,12 @@ namespace WpsShared.Tools
                 }
                 XmlElement filter = (XmlElement)document.SelectSingleNode("//r:menu[@id='menuFilterEnhanced']", ns);
                 Assert(filter.ChildNodes.Count == 2 && ((XmlElement)filter.FirstChild).GetAttribute("onAction") == "OnFilterColumns" && ((XmlElement)filter.LastChild).GetAttribute("onAction") == "OnQuickAdvancedFilter", "Column filter leaf");
-                XmlElement files=(XmlElement)document.SelectSingleNode("//r:menu[@id='menuFileOperations']",ns);
-                Assert(files.GetAttribute("label")=="文件操作"&&((XmlElement)files.ParentNode).GetAttribute("id")=="grpAction"&&files.ChildNodes.Count==3,"File operations large menu");
-                Assert(((XmlElement)files.ChildNodes[0]).GetAttribute("onAction")=="OnOrganizeFiles"&&((XmlElement)files.ChildNodes[1]).GetAttribute("onAction")=="OnRenameFiles"&&((XmlElement)files.ChildNodes[2]).GetAttribute("onAction")=="OnFileNames","File operation callback order");
             }
-            else Assert(document.SelectNodes("//r:tabs/r:tab[1]//r:menu", ns).Count == 0, "Word primary tab retains existing buttons");
+            else
+            {
+                XmlElement action=(XmlElement)groups[1];
+                Assert(action.ChildNodes.Count==2&&((XmlElement)action.ChildNodes[0]).GetAttribute("id")=="btnSelectAllTables"&&((XmlElement)action.ChildNodes[1]).GetAttribute("id")=="menuFileOperations","Word action group keeps select-all and file operations");
+            }
             Console.WriteLine("Native Ribbon tree and unsized nested attributes passed");
         }
 
