@@ -1,6 +1,6 @@
 **三项目档案与版本**
 
-最后更新：2026-10-21 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-24 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
@@ -49,7 +49,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.9.0 | 1. 文件整理、清单命名及多前缀OCR，按行断链、整簿恢复与编辑保护；2. 六列预览、布局回缩，即时配置及控件缩放，表头单行居中；3. 追踪引用新增显示错误来源：沿引用链定位错误源头格，可跳转标黄；4. 审计工具箱新增合并抵消：往来按单位对冲、坏账按比例冲回，收入成本逐行算未实现利润，列映射+分录预览+备份还原；5. 修复追踪弹窗锁死宿主：去除工具窗样式并对齐链接助手，根治抢焦点/失激活。 |
 | 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。                                      |
 | 0.9.9.2 | 1. 文档收敛为 C-04-Devlog 五份（B0 入口、A 使用说明、B1 档案、B2 经验、B3 门禁），项目内不留副本；2. 目录重构为 AA-Program/AB-Graphic，配置器更名 C1；3. 内嵌文档改按 C-04-Devlog 新路径读取，Agent-Evo 概览按章节标题与首段生成；4. 业务功能无变更。                               |
-| 0.9.9.3 | 1. 开发预览“全文”改为打开整份 B2-DevExperience.md，用户预览改为打开整份 A-UserGuide.md；2. 两份文档各自整份内嵌，不再分章裁剪、拼接或改写图片路径，导出文件名同源；3. 加载项业务功能与门禁规则不变。 |
+| 0.9.9.3 | 1. 开发预览“全文”改为打开整份 B2-DevExperience.md，用户预览改为打开整份 A-UserGuide.md；2. 两份文档各自整份内嵌，不再分章裁剪、拼接或改写图片路径，导出文件名同源；3. 加载项业务功能与门禁规则不变。                                                                            |
 
 
 ## 3. 当前命令按钮概览
@@ -103,11 +103,11 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 10月20日发布 0.9.9.3：开发预览“全文”改为打开整份 B2-DevExperience.md、用户预览改为打开整份 A-UserGuide.md，两份文档各自整份内嵌、不再分章裁剪或改写图片路径，导出文件名与源文件同名，任意机器安装后均可打开；Excel 业务功能未变，随联合交付重新打包并重签。
 
-| 检查    | 结果                                                                                                                                                                          |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,784,192 字节，版本 0.9.9.3                                                                |
-| 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log)              |
-| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                                |
+| 检查    | 结果                                                                                                                                                              |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,784,192 字节，版本 0.9.9.3                                                    |
+| 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log)  |
+| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                    |
 | 文档门禁  | verify_devlog 五份 PASS；verify_shared 61 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；DisciplineProbe 27、AgentDocumentCoreProbe 113、DialogSizesProbe 95 全 PASS |
 
 # 三. WordUpdater 项目档案
@@ -131,7 +131,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.9.0 | 1. Agent-Evo同步排序、改名及控件缩放；2. 名称排序即时、格式尺寸下次开窗生效；3. 独立STA预览、窗口快照和需求记录；4. 通用确认隔离并完善Owner校验；5. 开发全文口令验证及离线配图缓存；6. 网格表头完整单行、居中且默认加粗。            |
 | 0.9.9.1 | 1. 随联合交付重新打包，同步版本号与内嵌文档；2. WordUpdater 自身功能无变更。                                                                                           |
 | 0.9.9.2 | 1. 查看链接窗体去除工具窗样式，修复 WPS 文字宿主单元格无法键入与功能区子菜单失效；2. 文档收敛为 C-04-Devlog 五份，内嵌文档与 Agent-Evo 概览同步新路径与新规则；3. 目录重构为 AA-Program/AB-Graphic，配置器更名 C2。 |
-| 0.9.9.3 | 1. 开发预览“全文”改为打开整份 B2-DevExperience.md，用户预览改为打开整份 A-UserGuide.md；2. 两份文档各自整份内嵌，不再分章裁剪、拼接或改写图片路径，导出文件名同源；3. 加载项业务功能与门禁规则不变。 |
+| 0.9.9.3 | 1. 开发/用户全文分别整份内嵌B2与A-UserGuide，导出文件名同源；2. 链接Excel仅校验所选规则矩形，允许选区外合并、拆分或嵌套；3. 保留实际目标Cell并在写入前复核，修复合并表头误拒与物理列号错位；4. 根据来源路径定位已打开的工作簿，兼容隐藏表格实例并恢复Ctrl多区域明细。 |
 
 ## 3. 当前命令按钮概览
 
@@ -140,7 +140,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 命令按钮    | 选项卡与分组         | 子选项                                                                                                         | 功能摘要                                       | 实现来源                                                                                                                                               |
 | ------- | -------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 更新链接    | WordUpdater·链接 | —                                                                                                           | 一键批量更新所选范围内的全部链接                           | OnUpdateLinks（Connect.cs:236）→ UpdateEngine.cs                                                                                                     |
-| 链接Excel | WordUpdater·链接 | —                                                                                                           | 把复制的单元格区域逐格链接到你选中的表格区域                     | OnLinkToExcel（Connect.cs:498）→ LinkPasteEngine.cs                                                                                                  |
+| 链接Excel | WordUpdater·链接 | —                                                                                                           | 按所选规则矩形逐格链接，允许选区外合并；按来源路径定位工作簿并读取Ctrl多选 | OnLinkToExcel（Connect.cs:498）→ LinkPasteEngine.cs + LinkPasteGeometry.cs + EtSelectionReader.cs                                                                            |
 | 查看链接    | WordUpdater·链接 | —                                                                                                           | 查看本文档引用了哪些Excel文件及其工作表/区域                  | OnViewLinks（Connect.cs:319）→ LinkViewForm.cs + LinkViewEngine.cs                                                                                   |
 | 全选表格    | WordUpdater·操作 | —                                                                                                           | 选中本文档中的全部表格（正文不受影响）                        | OnSelectAllTables（Connect.cs:396）→ TableSelectEngine.cs                                                                                            |
 | 问题反馈    | WordUpdater·反馈 | —                                                                                                           | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版）                | OnOpenUrl_btnFeedback（Connect.cs:170）                                                                                                              |
@@ -171,18 +171,27 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 本次将文档整理为五部分，共享方法与门禁分开，删重复流水和外部历史范例依赖；保留宿主独有算法/恢复边界，修正控件与四种拖动术语、窗口过度因果和内嵌网页一致性表述。已审阅Excel专属合并、OCR与文件批次，只同步界面/维护方法，不移植工作表业务。
 
+本轮修复“链接Excel”被选区外合并单元格阻止的问题：取消整表 Uniform/行列数拦截，按实际选中 Cell 与父表 XML 中对应单元格建立网格位置，选区自身仍须无合并、无嵌套且形成规则矩形；写入前复核同一批目标 Cell。离线失败回归与实机合并表头四格、左侧合并右侧四格已通过，字段引用、显示值、后续更新和选区外内容/格式均已核对。最终构建、签名与安装包证据见本轮交付证据；安装与真实按钮点击单独验收。
+
+后续Ctrl多选反馈经新样本复现：默认Application实际指向Workbooks.Count=0的隐藏ET，来源工作簿在另一实例且只登记文件ROT；旧代码找到隐藏Application后漏查文件登记，窗口回读仍无来源。现无论是否已发现Application，都精确检查剪贴板来源路径对应的ROT登记，核对Workbook.FullName后通过Workbook.Application定位实际实例，再读全局/窗口选区；路径、表名、目标格数、精确外边界及不重叠约束继续生效，歧义拒绝。新CtrlSelectionLiveProbe由正常文件关联打开两个样本的临时副本，保留隐藏实例并存条件，覆盖第1/4行和第1/3行各6格到合并表头下2×3；原件不改动。安装与真实按钮点击仍单独记录。
+
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
 
 ### (2). 本轮交付证据
 
-10月20日发布 0.9.9.3：开发预览“全文”改为打开整份 B2-DevExperience.md、用户预览改为打开整份 A-UserGuide.md，两份文档各自整份内嵌、导出文件名与源文件同名；WordUpdater 自身业务功能无变更，随联合交付重新打包并重签。
+10月24日本轮用用户新提供的两个样本副本复现并修复Ctrl来源实例漏查：上一版已安装文件摘要与前次交付一致，真实按钮仍报源12、目标6；默认COM Application为空的隐藏实例，而实际来源仅通过工作簿文件ROT可取得。修复后无论是否已有Application候选，都核对来源文件登记并取得真实Workbook.Application。沿用0.9.9.3、原证书及产品身份，仅重建WordUpdater；项目档案、开发经验、使用说明与Word内嵌网站正文在构建前固定，构建后只回填本审计节。
 
 | 检查    | 结果                                                                                                                                                      |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，3,198,976 字节，版本 0.9.9.3                                                  |
-| 构建与验证 | [WordUpdater-validation.log](../C-03-Website·Xycabin/build/WordUpdater-validation.log)、[payload](../C-03-Website·Xycabin/build/WordUpdater-payload.log) |
-| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                            |
-| 文档门禁  | LinkViewFormProbe 55、Feature099Probe 2366、HostDialogProbe 11、AgentDocumentCoreProbe 113、DialogSizesProbe 57、LiveProbeSafetyFixture 42 全 PASS            |
+| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,231,168字节，版本0.9.9.3，SHA-256前缀6698D525；[最终摘要](../C-02-WordUpdater/build/source-instance-delivery.json)记录安装包、DLL、两清单完整摘要与验收状态 |
+| 真实失败 | [source-instance-user-failure.json](../C-02-WordUpdater/build/source-instance-user-failure.json)：保留实际按钮12/6失败事件、安装DLL与旧交付一致的证据、样本摘要及根因排除过程；用户来源路径脱敏 |
+| 失败回归 | [source-instance-red.log](../C-02-WordUpdater/build/source-instance-red.log)与[旧DLL复验](../C-02-WordUpdater/build/source-instance-red-confirm.log)：正常关联打开样本副本，默认实例0簿、真实实例1簿且选中6格；旧读取器来源候选0，完整引擎稳定返回SizeMismatch源12、目标6、写入0 |
+| 离线检查 | [background-validation.log](../C-02-WordUpdater/build/background-validation.log)：映射67 PASS、读取及引用80 PASS、剪贴板边界19 PASS；新增来源工作簿归一、隐藏候选已存在、双反斜杠/错路径/接口失败及借用引用释放检查，保留原陈旧/错簿/错表/重叠/歧义与局部选区回归 |
+| 新样本实机COM | [source-instance-live.log](../C-02-WordUpdater/build/source-instance-live.log)：正式DLL54项PASS；第1/4行及第1/3行分别形成6条LINK并全部刷新，逐格引用与显示值、后续更新、合并表头内容/格式和表格结构均通过，两个原件摘要未变；工具源码[CtrlSelectionLiveProbe.cs](../C-02-WordUpdater/src/testharness/CtrlSelectionLiveProbe.cs) |
+| 既有实机回归 | [source-instance-live-regression.log](../C-02-WordUpdater/build/source-instance-live-regression.log)：正式DLL原112项全部PASS，涵盖整表、局部四格、Ctrl H1/H3、第2/4行8格、合并表头、左侧合并错列及更新；不以默认实例内创建样本代替本轮跨实例用例 |
+| 构建及后台 | [source-instance-build.log](../C-02-WordUpdater/build/source-instance-build.log)完整构建/重签/打包PASS；[source-instance-validation-run.log](../C-02-WordUpdater/build/source-instance-validation-run.log)完整22项后台任务PASS；使用validate.py --background --mode full --site-html build/site-embedded.snapshot.html |
+| 签名与载荷 | [source-instance-package.log](../C-02-WordUpdater/build/source-instance-package.log)：两清单SHA-256双签名、固定发布者、安装器五载荷、两份完整文档、14份图片与内嵌HTML全部PASS；交付记录核对构建前后的非审计正文摘要一致 |
+| 验收边界 | 本轮新包未自动安装，安装后真实功能区按钮点击、键入焦点及弹窗外观待人工验收；正常文件关联打开副本后的实机COM通过，不冒充已完成新包按钮点击。仅更新Word内嵌快照和安装包，Excel安装包及网站联合正式产物未更新；前轮证据继续保留 |
 
 # 四. XyCabin 项目档案
 

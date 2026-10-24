@@ -489,17 +489,27 @@ EliminationProbe 92 项锁定金额/比例解析、角色猜测、映射校验�
 
 LinkPasteEngine优先在原文档文末临时区PasteSpecial读取WPS生成的LINK代码，删临区并恢复选区；该类型原文档探测失败后回退自建并激活临时文档，finally按不保存关闭，不能保证无新标签闪现。DataType依文本2/RTF1/OLE0，每种先命名再位置参数。Fields.Add逐格重建并沿用剪贴板表名前缀：WPS LINK用R1C1，写A1可能Update成功但结果空，须内容核对。字段形状例如 `LINK Excel.Sheet.12 "C:\路径\Book.xlsx" "Sheet1!R1C1:R4C4" \t \a`。
 
-源按Areas顺序、区域先行后列，目标所选矩形先行后列，格数严格相等、不扩大整表；Selection.Cells失败再Range.Cells，核RowIndex/ColumnIndex、包围盒和去重数。跨表/越界/合并拆分/嵌套/超过500格预检拒绝；清内容用End-1保留单元格结束符。
+源按Areas顺序、区域先行后列，目标所选矩形先行后列，格数严格相等、不扩大整表；Selection.Cells失败再Range.Cells，任何单格读取失败都停止，不能跳过后缩小选区。仅校验所选单元格的归属、实际边界、物理唯一性与网格矩形；选区外合并、拆分、嵌套和整表Rows/Columns不可读不阻止链接。选区内合并/嵌套、缺格、列边界错位、跨表/越界、超过500格预检拒绝；清内容用End-1保留单元格结束符。
+
+WPS单格Range.WordOpenXML会重建网格并丢失gridSpan，不能用单格XML证明未合并；读取父表Range.WordOpenXML，仅定位用户实际选中的w:tc并判断其gridSpan/vMerge/hMerge及嵌套，不扫描其他单元格作整表拒绝。WPS横向合并后的ColumnIndex是该行物理单元格序号，须累加前面单元格的gridSpan换算成网格列；否则选区左侧合并会造成误拒或错列。内部入口返回排序后的实际Cell，公开ResolveTargetRect签名保留；剪贴板探测后重新验证同一批Cell，逐格即时获取Range，不再用Table.Cell/Rows.Cells兜底猜目标。
+
+WordUpdater同版本修复也要同步B1对应版本摘要与网站配置PRODUCTS中word的版本摘要、使用边界，否则site_probe会因网站/档案摘要不一致而拒绝交付。先固定正文，再重建Word内嵌网站快照与安装包；单项目交付只更新Word安装包，网站联合正式页面与Excel安装包保持原交付，最终证据在B1审计节回填。
 
 ### (2). Ctrl多区域来源与边界
 
-剪贴板可能只有包围盒；只有解析一片且格数不等于目标，才回读仍打开ET的Selection.Areas，核FullName/表名/所有片段在包围盒内；失败沿原剪贴板规则，不扩目标。若包围盒格数恰好等目标不会回读，可能按包围盒链接，需核映射或分块复制。真机多选先Range.Select再Copy，单Copy不改变Selection。
+剪贴板可能只有包围盒；只有解析一片且格数不等于目标，才回读仍打开ET的多区域明细。先读Application.Selection；在WPS文字功能区回调内，该属性可能为空或不可用，此时遍历已打开Workbooks的Windows，优先读RangeSelection，不可用再读窗口Selection，保留全部纯数据候选，不能只尝试全局选区一次便返回。全过程不Activate/Select、不新建或关闭来源宿主。
+
+候选必须工作簿FullName、表名匹配，格数等于目标，各片在剪贴板包围盒内且互不重叠，整体外边界与包围盒完全一致；跳过错误格数后继续找下一窗口，多个不同但同样可用的选区拒绝猜测。全部失败时保留原剪贴板模板及数量拒绝，不扩大目标。若包围盒格数恰好等目标仍不触发回读，需核映射或分块复制。真机多选先Range.Select再Copy，单Copy不改变Selection。
+
+“WPS表格无可用选区”只能证明发现的实例没有选区，不能直接归因为文字回调限制。新样本实测默认KET/Excel.Application指向Workbooks.Count=0的隐藏ET，而正常打开的来源在另一实例，文件ROT仍可取得真实Workbook.Application。只补窗口回读会继续失败；不得因已找到一个Application就跳过来源文件登记。
+
+回归必须覆盖实例发现过程：若先通过默认Application创建来源，测试会把来源放在旧代码本来就能找到的实例内，从而漏掉真实故障。CtrlSelectionLiveProbe经LiveProbeSafety复制输入文件，通过正常文件关联打开副本并从文件ROT取得测试源，断言默认实例仍为空；再调用完整LinkPasteEngine验证第1/4行与第1/3行各6条LINK、显示值、更新、合并表头内容/格式与原件摘要。旧DLL在此条件下稳定报源12、目标6，区别于LinkPasteTest的112项正常路径与空Selection注入回归。实际按钮、实机COM和假对象证据分开记录。
 
 预检拒绝与写入失败分开报告；UndoRecord及一次Ctrl+Z效果依宿主，不能承诺所有环境整批撤销，写入前保存用户文档。这些几何与LINK字段规则不能套用Excel Range事务。
 
 ### (3). 正文顶层表格
 
-Selection.Information(12)判断表内，Table.Uniform=false先拒绝，直接Columns.Count可能抛错；cell.Range.Tables.Count>1识别嵌套。先核Range边界再读Cells，越表时WPS曾返Cells.Count=-1。
+Selection.Information(12)判断表内；Table.Uniform与整表Columns.Count不能作为局部选区合法性的门槛，整表尺寸仅作可选参考。先核选区与表格的Range边界再读Cells，越表时WPS曾返Cells.Count=-1；cell.Range.Tables.Count>1及所选w:tc内的子表格识别选区内嵌套。父表XML无法解析或必要属性无法读取时明确失败，所有目标验证完成后才清除内容。LinkMapProbe保留修复前失败回归并覆盖写入前坐标变化、物理重复、结构变化和Range偏移漂移；LinkPasteTest以LiveProbeSafety自建文档验证合并表头下四格、左侧合并右侧四格的实际选区、字段引用、显示值、更新和选区外内容/格式。离线通过、实机COM与真实按钮点击分别记录。
 
 全选表格仅正文顶层，不含页眉页脚/嵌套：清旧EditableRanges→逐表Editors.Add(-1)→SelectAllEditableRanges(-1)→删临时标记，保留多段选区。表单保护2提前拒绝，异常也清标记并恢复ScreenUpdating。
 
@@ -523,7 +533,9 @@ FlashHighlighter存原HighlightColorIndex、黄色7；通常用Result，ShowCode
 
 LINK代码反斜杠可能双写，FullName单写；比较折连续反斜杠保留UNC前缀，File.Exists成功不能证明原字符串相等。默认关联打开失败可Explorer选中供用户处理，不改关联。
 
-GetActiveObject只有一个实例可能为隐藏ET，枚举ROT逐个核ProgID/CLSID/簿完整路径/表名/Selection能力，不能用不相关实例来源。EtSelectionReader只读取已运行实例；候选Application、ROT枚举和选区/Areas/表/簿等引用按每次取得登记，逆序逐次ReleaseComObject，重复候选、异常与提前返回同样释放。不使用FinalReleaseComObject，不启动、Quit或关闭宿主。EtSelectionReaderProbe通过反射验证实际读选区、引用登记/去重与异常释放路径，使用假引用，不枚举原生ROT或附加WPS。
+GetActiveObject只有一个实例可能为隐藏ET。EtSelectionReader每次枚举ROT时同时匹配已注册Application的CLSID及剪贴板来源的完整路径；无论已发现多少Application，都不能漏掉来源工作簿登记。只绑定匹配的Application或来源文件，不再无差别绑定其他ROT对象；来源Workbook.FullName须再次精确核对，然后取其Application，不把Workbook当成Application读取Selection。文件名相同而路径不同、路径缺失、FullName或Application读取失败均不加入候选；LINK双反斜杠与ROT路径共用NormPath，保留UNC前缀。
+
+读取器仅附加已运行实例；来源Workbook由当次ROT条目作用域释放，取得的Application转交外层候选作用域，其他ROT枚举、Workbooks/Windows、选区/Areas/表/簿引用按每次取得登记，逆序逐次ReleaseComObject，重复发现、异常与提前返回同样释放。不使用FinalReleaseComObject，不启动、Activate、Quit或关闭宿主。EtSelectionReaderProbe以假引用覆盖来源工作簿归一、隐藏实例已发现、别名去重、错路径/接口失败及全局/窗口读取与引用平衡；不枚举原生ROT或附加WPS。
 
 ### (2). 隐藏ET诊断与进程归属
 
