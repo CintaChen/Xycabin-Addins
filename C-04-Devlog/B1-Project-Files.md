@@ -101,14 +101,14 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月20日发布 0.9.9.3：开发预览“全文”改为打开整份 B2-DevExperience.md、用户预览改为打开整份 A-UserGuide.md，两份文档各自整份内嵌、不再分章裁剪或改写图片路径，导出文件名与源文件同名，任意机器安装后均可打开；Excel 业务功能未变，随联合交付重新打包并重签。
+10月24日联合交付 0.9.9.3：Excel 业务代码未变，仅随联合交付重新打包并重签；内嵌的使用说明与开发经验随 Word 侧 Ctrl 多选修复同步更新，用户预览与开发预览仍分别打开整份 A-UserGuide.md 与 B2-DevExperience.md。安装包因文档正文变化由 3,784,192 增至 4,813,312 字节。
 
 | 检查    | 结果                                                                                                                                                              |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，3,784,192 字节，版本 0.9.9.3                                                    |
+| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,813,312 字节，版本 0.9.9.3，SHA-256 前缀 10DF9117                                                    |
 | 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log)  |
 | 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                    |
-| 文档门禁  | verify_devlog 五份 PASS；verify_shared 61 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；DisciplineProbe 27、AgentDocumentCoreProbe 113、DialogSizesProbe 95 全 PASS |
+| 文档门禁  | verify_devlog 五份 PASS；verify_shared 73 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；DisciplineProbe 28、AgentDocumentCoreProbe 113、DialogSizesProbe 105 全 PASS |
 
 # 三. WordUpdater 项目档案
 
@@ -179,11 +179,11 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月24日本轮用用户新提供的两个样本副本复现并修复Ctrl来源实例漏查：上一版已安装文件摘要与前次交付一致，真实按钮仍报源12、目标6；默认COM Application为空的隐藏实例，而实际来源仅通过工作簿文件ROT可取得。修复后无论是否已有Application候选，都核对来源文件登记并取得真实Workbook.Application。沿用0.9.9.3、原证书及产品身份，仅重建WordUpdater；项目档案、开发经验、使用说明与Word内嵌网站正文在构建前固定，构建后只回填本审计节。
+10月24日本轮用用户新提供的两个样本副本复现并修复Ctrl来源实例漏查：上一版已安装文件摘要与前次交付一致，真实按钮仍报源12、目标6；默认COM Application为空的隐藏实例，而实际来源仅通过工作簿文件ROT可取得。修复后无论是否已有Application候选，都核对来源文件登记并取得真实Workbook.Application。沿用0.9.9.3、原证书及产品身份；最终交付按用户要求做联合重建，两个安装包与网站正式产物一并更新，Word 包因重新签名与打包导致摘要变化，已在最终摘要与本表中同步；项目档案、开发经验、使用说明与Word内嵌网站正文在构建前固定，构建后只回填本审计节。
 
 | 检查    | 结果                                                                                                                                                      |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,231,168字节，版本0.9.9.3，SHA-256前缀6698D525；[最终摘要](../C-02-WordUpdater/build/source-instance-delivery.json)记录安装包、DLL、两清单完整摘要与验收状态 |
+| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,231,168字节，版本0.9.9.3，SHA-256前缀6DC0E1A8；[最终摘要](../C-02-WordUpdater/build/source-instance-delivery.json)记录安装包、DLL、两清单完整摘要与验收状态 |
 | 真实失败 | [source-instance-user-failure.json](../C-02-WordUpdater/build/source-instance-user-failure.json)：保留实际按钮12/6失败事件、安装DLL与旧交付一致的证据、样本摘要及根因排除过程；用户来源路径脱敏 |
 | 失败回归 | [source-instance-red.log](../C-02-WordUpdater/build/source-instance-red.log)与[旧DLL复验](../C-02-WordUpdater/build/source-instance-red-confirm.log)：正常关联打开样本副本，默认实例0簿、真实实例1簿且选中6格；旧读取器来源候选0，完整引擎稳定返回SizeMismatch源12、目标6、写入0 |
 | 离线检查 | [background-validation.log](../C-02-WordUpdater/build/background-validation.log)：映射67 PASS、读取及引用80 PASS、剪贴板边界19 PASS；新增来源工作簿归一、隐藏候选已存在、双反斜杠/错路径/接口失败及借用引用释放检查，保留原陈旧/错簿/错表/重叠/歧义与局部选区回归 |
@@ -191,7 +191,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 既有实机回归 | [source-instance-live-regression.log](../C-02-WordUpdater/build/source-instance-live-regression.log)：正式DLL原112项全部PASS，涵盖整表、局部四格、Ctrl H1/H3、第2/4行8格、合并表头、左侧合并错列及更新；不以默认实例内创建样本代替本轮跨实例用例 |
 | 构建及后台 | [source-instance-build.log](../C-02-WordUpdater/build/source-instance-build.log)完整构建/重签/打包PASS；[source-instance-validation-run.log](../C-02-WordUpdater/build/source-instance-validation-run.log)完整22项后台任务PASS；使用validate.py --background --mode full --site-html build/site-embedded.snapshot.html |
 | 签名与载荷 | [source-instance-package.log](../C-02-WordUpdater/build/source-instance-package.log)：两清单SHA-256双签名、固定发布者、安装器五载荷、两份完整文档、14份图片与内嵌HTML全部PASS；交付记录核对构建前后的非审计正文摘要一致 |
-| 验收边界 | 本轮新包未自动安装，安装后真实功能区按钮点击、键入焦点及弹窗外观待人工验收；正常文件关联打开副本后的实机COM通过，不冒充已完成新包按钮点击。仅更新Word内嵌快照和安装包，Excel安装包及网站联合正式产物未更新；前轮证据继续保留 |
+| 验收边界 | 本轮新包未自动安装，安装后真实功能区按钮点击、键入焦点及弹窗外观待人工验收；正常文件关联打开副本后的实机COM通过，不冒充已完成新包按钮点击。本轮按用户要求联合交付，两个安装包与网站正式产物均已更新并同步为当前摘要 |
 
 # 四. XyCabin 项目档案
 
