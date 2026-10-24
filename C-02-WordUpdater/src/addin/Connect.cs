@@ -546,7 +546,7 @@ namespace WordUpdater
                 case LinkPasteStatus.NotInTable:
                     return "光标未位于表格内。\r\n\r\n请先点击到要链接的文档表格中，再点击「链接Excel」。";
                 case LinkPasteStatus.TableNotUniform:
-                    return "目标表格包含合并或拆分的单元格（或嵌套了其他表格），无法与源区域一一对应。\r\n\r\n请使用规则的 N 行 × M 列表格后再试。";
+                    return "所选区域包含合并单元格、嵌套表格或不规则结构，无法与源区域逐格对应。\r\n\r\n请在同一张表格内选择由独立单元格组成的规则矩形区域后重试。";
                 case LinkPasteStatus.TableTooLarge:
                     return string.Format("选中的区域共 {0} 行 × {1} 列 = {2} 个单元格，超出单次支持上限（{3} 个）。\r\n请缩小选中的范围后重试。",
                         r.TargetRows, r.TargetCols, r.TargetCells, LinkPasteEngine.MaxCells);
@@ -581,8 +581,8 @@ namespace WordUpdater
                     return "没有选中任何表格单元格。\r\n\r\n请先在表格里拖选出要链接的矩形区域"
                         + "（要链接整张表格，就把整张表都选上），再点击「链接Excel」。";
                 case LinkPasteStatus.SelectionNotRect:
-                    return "选中的不是一个规则的矩形区域。\r\n\r\n" + (r.ErrorMessage ?? "")
-                        + "\r\n\r\n请从左上到右下拖选一块连续的矩形单元格区域后重试。";
+                    return "所选区域包含合并单元格、嵌套表格或不规则结构，无法逐格对应。\r\n\r\n" + (r.ErrorMessage ?? "")
+                        + "\r\n\r\n请重新选择由独立单元格组成、列边界对齐的连续矩形区域后重试。";
                 case LinkPasteStatus.SelectionOutOfTable:
                     return "选区超出了表格范围。\r\n\r\n" + (r.ErrorMessage ?? "")
                         + "\r\n\r\n请只在同一张表格内部拖选矩形区域（不要拖到表格外的正文，也不要跨表）。";

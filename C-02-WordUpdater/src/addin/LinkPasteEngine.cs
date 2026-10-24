@@ -10,8 +10,8 @@ namespace WordUpdater
     // 「链接Excel」引擎 —— 纯逻辑、无 UI，便于自动化测试与宿主复用。
     //
     // 功能：用户在 WPS 表格中复制一块连续单元格区域（如 A1:D4），在
-    // WPS 文字中将光标置于行列数相同的表格内，本引擎按行优先顺序把
-    // 目标表格的每个单元格与源区域对应单元格以“粘贴为链接”的方式绑定。
+    // WPS 文字中选中同样格数的规则矩形，本引擎按行优先顺序把
+    // 选中单元格与源区域对应单元格以“粘贴为链接”的方式绑定。
     //
     // 实现思路（关键：不自行猜测链接字段格式，而是让 WPS 自己生成）：
     //   1. 新建一个临时文档，对剪贴板做 Selection.PasteSpecial(Link:=true)
@@ -20,7 +20,7 @@ namespace WordUpdater
     //   2. 读取该字段的代码（LINK ... "工作簿" "Sheet1!R1C1:R4C4" ... 或
     //      DDE/DDEAUTO ...），解析出 类名/服务名、工作簿路径或 DDE 主题、
     //      工作表、源区域行列范围、尾部开关；
-    //   3. 全部校验通过后（表格规则、无合并、行列一致、源文件存在），
+    //   3. 全部校验通过后（选区规则、无合并、格数一致、源文件存在），
     //      以同一份 类名/路径/开关 逐格重建链接字段，仅把引用部分换成
     //      对应的单一源单元格 —— 与手工“选择性粘贴→粘贴链接”产生的
     //      字段完全同构，因此天然沿用现有「更新链接」按钮的批量更新机制；
@@ -31,7 +31,7 @@ namespace WordUpdater
     {
         NoDocument,       // 没有打开的文档
         NotInTable,       // 光标未位于表格内
-        TableNotUniform,  // 目标表格含合并/拆分单元格或嵌套表格
+        TableNotUniform,  // 保留原状态值；仅表示所选目标结构不能逐格对应
         TableTooLarge,    // 目标表格单元格数超上限
         ClipboardInvalid, // 剪贴板内容不是可链接的单元格区域
         MultiArea,        // 复制了多个不连续区域（已支持，仅作解析标记）
@@ -118,6 +118,7 @@ namespace WordUpdater
             object oldAlerts = null;
             object oldScreen = null;
             bool stateSaved = false;
+            List<LinkTargetCell> targets = null;
 
             try
             {
@@ -160,46 +161,21 @@ namespace WordUpdater
                     return r;
                 }
 
-                // ---------- 3. 表格规则性：合并/拆分/嵌套一律拒绝 ----------
-                bool uniform = false;
-                try { uniform = Convert.ToBoolean(table.Uniform); }
-                catch { uniform = false; }
-                if (!uniform)
-                {
-                    r.Status = LinkPasteStatus.TableNotUniform;
-                    return r;
-                }
+                // ---------- 3. 整表尺寸仅作参考，目标合法性只由选中单元格决定 ----------
+                try { r.TableRows = (int)table.Rows.Count; } catch { }
+                try { r.TableCols = (int)table.Columns.Count; } catch { }
 
-                int rows = 0, cols = 0;
-                try { rows = (int)table.Rows.Count; cols = (int)table.Columns.Count; }
-                catch { }
-                if (rows <= 0 || cols <= 0)
-                {
-                    r.Status = LinkPasteStatus.TableNotUniform;
-                    return r;
-                }
-                r.TableRows = rows;
-                r.TableCols = cols;
-
-                // ---------- 3b. 目标 = 用户选中的单元格矩形 ----------
+                // ---------- 3b. 目标 = 用户选中的实际单元格矩形 ----------
                 // 只认选区、不做任何扩展与兜底：想贴整张表，就得先把整张表选上。
-                // 目标以「行列号」保存（后续剪贴板探测会在文末做「粘贴→读取→删除」，
-                // Range 位置会漂移，行列号不会）。
+                // 保存实际 Cell 和网格位置；写入时重新读取 Range，不使用漂移的字符偏移。
                 LinkTargetRect rect = null;
                 string rectDetail = null;
                 TargetRectStatus rstat =
-                    LinkPasteGeometry.ResolveTargetRect(sel, table, out rect, out rectDetail);
+                    LinkPasteGeometry.ResolveTargetCells(sel, table, out rect, out targets, out rectDetail);
                 if (rstat != TargetRectStatus.Ok)
                 {
                     r.ErrorMessage = rectDetail;
-                    if (rstat == TargetRectStatus.NoCells)
-                        r.Status = LinkPasteStatus.SelectionEmpty;
-                    else if (rstat == TargetRectStatus.NotRect)
-                        r.Status = LinkPasteStatus.SelectionNotRect;
-                    else if (rstat == TargetRectStatus.OutOfTable || rstat == TargetRectStatus.MultiTable)
-                        r.Status = LinkPasteStatus.SelectionOutOfTable;
-                    else
-                        r.Status = LinkPasteStatus.Error;
+                    r.Status = TargetStatus(rstat);
                     return r;
                 }
                 r.TargetRow1 = rect.Row1;
@@ -298,7 +274,7 @@ namespace WordUpdater
                     && t.Areas[0].Count != (long)rect.CellCount)
                 {
                     string why;
-                    if (TryApplyEtSelection(t, out why))
+                    if (TryApplyEtSelection(t, rect.CellCount, out why))
                     {
                         rawCount = t.RawCount;
                         r.SourceDesc = t.Describe();
@@ -323,15 +299,14 @@ namespace WordUpdater
                     return r;
                 }
                 List<LinkSourceCell> srcCells = ExpandSource(t);
-                List<LinkCellPos> dstCells = LinkPasteGeometry.FlattenTarget(rect);
-                if (srcCells.Count != dstCells.Count)
+                if (srcCells.Count != targets.Count)
                 {
                     r.Status = LinkPasteStatus.SizeMismatch;
                     Connect.Log(string.Format("链接Excel：数量不匹配 源={0} 目标={1}",
-                        srcCells.Count, dstCells.Count));
+                        srcCells.Count, targets.Count));
                     return r;
                 }
-                Connect.Log("链接Excel：目标=" + rect.ToString() + "（" + dstCells.Count +
+                Connect.Log("链接Excel：目标=" + rect.ToString() + "（" + targets.Count +
                     " 格），源序列=" + srcCells.Count + " 格");
 
                 // ---------- 8. 源文件存在性 ----------
@@ -342,7 +317,14 @@ namespace WordUpdater
                     return r;
                 }
 
-                // ---------- 9. 写入（任何失败均回滚，不产生残缺链接） ----------
+                // ---------- 9. 写入前复核原选区，不依赖整表 Cell/Rows 索引重新猜目标 ----------
+                rstat = LinkPasteGeometry.RevalidateTargets(table, targets, out rectDetail);
+                if (rstat != TargetRectStatus.Ok)
+                {
+                    r.Status = TargetStatus(rstat);
+                    r.ErrorMessage = rectDetail;
+                    return r;
+                }
                 object undoRec = null;
                 try
                 {
@@ -355,33 +337,12 @@ namespace WordUpdater
                 List<object> inserted = new List<object>();
                 try
                 {
-                    // 9a. 预检：先把目标矩形里每一格都取到，任何异常都在动内容之前抛出
-                    List<object> targets = new List<object>();
-                    for (int k = 0; k < dstCells.Count; k++)
-                    {
-                        int tr = dstCells[k].Row;
-                        int tc = dstCells[k].Col;
-                        dynamic cell = GetCell(table, tr, tc);
-                        if (cell == null)
-                            throw new PasteAbortException(LinkPasteStatus.TableNotUniform,
-                                string.Format("无法定位目标第 {0} 行第 {1} 列的单元格（表格可能含合并单元格）。",
-                                    tr, tc));
-
-                        int nested = 0;
-                        try { nested = (int)cell.Range.Tables.Count; }
-                        catch { }
-                        if (nested > 1)
-                            throw new PasteAbortException(LinkPasteStatus.TableNotUniform,
-                                "目标表格内嵌套了其他表格，无法一一对应。");
-                        targets.Add(cell);
-                    }
-
-                    // 9b. 写入：源序列 ↔ 目标序列 按位一一对应
+                    // 写入：源序列 ↔ 已验证的实际选中单元格，按行优先一一对应。
                     for (int k = 0; k < targets.Count; k++)
                     {
-                        dynamic cell = targets[k];
-                        int tr = dstCells[k].Row;
-                        int tc = dstCells[k].Col;
+                        dynamic cell = targets[k].Cell;
+                        int tr = targets[k].Row;
+                        int tc = targets[k].GridColumn;
 
                         // 目标格内容范围 = 单元格范围去掉结尾的单元格结束符
                         dynamic cr = cell.Range;
@@ -479,6 +440,7 @@ namespace WordUpdater
             }
             finally
             {
+                LinkPasteGeometry.ReleaseTargets(targets);
                 if (stateSaved)
                 {
                     try { app.DisplayAlerts = oldAlerts; }
@@ -908,25 +870,54 @@ namespace WordUpdater
         /// 三重校验（工作簿 / 工作表 / 落在包围盒内）全部通过才替换 t.Areas，
         /// 否则一律保持原样静默降级 —— 失败是常态，不是错误。
         /// </summary>
-        private static bool TryApplyEtSelection(SourceTemplate t, out string why)
+        private static bool TryApplyEtSelection(SourceTemplate t, int targetCount, out string why)
         {
             why = null;
 
-            // 本机可能同时跑着多个 ET 实例（含隐藏的 et.exe），逐个试、取第一个对得上的
+            // 来源工作簿可能只登记文件ROT，而默认Application指向空的隐藏实例。
             List<EtSelectionInfo> infos;
-            try { infos = EtSelectionReader.TryReadAll(out why); }
+            try { infos = EtSelectionReader.TryReadAll(t.WorkbookPath, out why); }
             catch (Exception ex) { why = "读取表格选区异常：" + ex.Message; return false; }
             if (infos == null || infos.Count == 0) return false;
 
-            string last = why;
+            return TryApplyEtSelections(t, infos, targetCount, out why);
+        }
+
+        private static bool TryApplyEtSelections(SourceTemplate t, List<EtSelectionInfo> infos, int targetCount, out string why)
+        {
+            string last = "未找到与目标格数一致的多区域来源。";
+            List<SourceArea> original = t.Areas, chosen = null;
             for (int i = 0; i < infos.Count; i++)
             {
+                if (infos[i] == null) continue;
+                long count = 0;
+                foreach (SourceArea area in infos[i].Areas) count += area.Count;
+                if (count != targetCount) continue;
                 string w;
-                if (ValidateEtSelection(t, infos[i], out w)) return true;
+                if (ValidateEtSelection(t, infos[i], out w))
+                {
+                    if (chosen != null && !SameSourceAreas(chosen, t.Areas))
+                    {
+                        t.Areas = original;
+                        why = "同一来源存在多个不同的窗口选区，无法确认刚复制的区域。";
+                        return false;
+                    }
+                    chosen = t.Areas;
+                }
                 if (w != null) last = w;
             }
-            why = last;
-            return false;
+            t.Areas = chosen ?? original;
+            why = chosen != null ? null : last;
+            return chosen != null;
+        }
+
+        private static bool SameSourceAreas(List<SourceArea> first, List<SourceArea> second)
+        {
+            if (first.Count != second.Count) return false;
+            for (int i = 0; i < first.Count; i++)
+                if (first[i].R1 != second[i].R1 || first[i].C1 != second[i].C1
+                    || first[i].R2 != second[i].R2 || first[i].C2 != second[i].C2) return false;
+            return true;
         }
 
         /// <summary>校验某个 ET 选区能否代表本次剪贴板来源；通过则直接替换 t.Areas。</summary>
@@ -968,7 +959,9 @@ namespace WordUpdater
                 return false;
             }
 
-            // 校验 3：每一片都必须完全落在包围盒内 —— 挡掉陈旧 / 不相干的选区
+            // 窗口候选可能来自其他视图：逐片在包围盒内、互不重叠，且外边界完全一致。
+            if (info.Areas.Count < 2) { why = "来源没有多个子区域。"; return false; }
+            int minRow = int.MaxValue, maxRow = 0, minCol = int.MaxValue, maxCol = 0;
             for (int i = 0; i < info.Areas.Count; i++)
             {
                 SourceArea a = info.Areas[i];
@@ -977,7 +970,17 @@ namespace WordUpdater
                     why = "表格选区存在超出剪贴板包围盒的子区域。";
                     return false;
                 }
+                minRow = Math.Min(minRow, a.R1); maxRow = Math.Max(maxRow, a.R2);
+                minCol = Math.Min(minCol, a.C1); maxCol = Math.Max(maxCol, a.C2);
+                for (int j = 0; j < i; j++)
+                {
+                    SourceArea previous = info.Areas[j];
+                    if (a.R1 <= previous.R2 && previous.R1 <= a.R2 && a.C1 <= previous.C2 && previous.C1 <= a.C2)
+                    { why = "来源多区域包含重叠单元格。"; return false; }
+                }
             }
+            if (minRow != t.R1 || maxRow != t.R2 || minCol != t.C1 || maxCol != t.C2)
+            { why = "来源多区域的外边界与剪贴板包围范围不一致。"; return false; }
 
             // 工作表前缀一律沿用剪贴板里的写法（带空格的表名 WPS 会加单引号），
             // 不采用 ET 的裸名，避免生成不合格式的引用。
@@ -1000,7 +1003,7 @@ namespace WordUpdater
         /// 路径比较用的规范化：统一分隔符并折叠连续分隔符（保留 UNC 的开头 \\）。
         /// 只用于比对，绝不写回 —— 生成的字段代码必须与手工粘贴链接逐字一致。
         /// </summary>
-        private static string NormPath(string p)
+        internal static string NormPath(string p)
         {
             if (string.IsNullOrEmpty(p)) return "";
             string s = p.Trim().Replace('/', '\\');
@@ -1126,22 +1129,13 @@ namespace WordUpdater
 
         // ================= 辅助 =================
 
-        /// <summary>按绝对行列号取单元格。Uniform=false 已在上游排除，此处只做最后兜底。</summary>
-        private static dynamic GetCell(dynamic table, int row, int col)
+        private static LinkPasteStatus TargetStatus(TargetRectStatus status)
         {
-            try
-            {
-                dynamic c = table.Cell(row, col);
-                if (c != null) return c;
-            }
-            catch { }
-            try
-            {
-                dynamic rowObj = UpdateEngine.GetItem(table.Rows, row);
-                return UpdateEngine.GetItem(rowObj.Cells, col);
-            }
-            catch { }
-            return null;
+            if (status == TargetRectStatus.NoCells) return LinkPasteStatus.SelectionEmpty;
+            if (status == TargetRectStatus.NotRect) return LinkPasteStatus.SelectionNotRect;
+            if (status == TargetRectStatus.OutOfTable || status == TargetRectStatus.MultiTable)
+                return LinkPasteStatus.SelectionOutOfTable;
+            return LinkPasteStatus.Error;
         }
 
         private static void Rollback(List<object> fields)

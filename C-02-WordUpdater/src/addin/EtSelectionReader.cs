@@ -55,19 +55,19 @@ namespace WordUpdater
         [DllImport("ole32.dll")]
         private static extern int CreateBindCtx(int reserved, out IBindCtx context);
 
-        internal static List<EtSelectionInfo> TryReadAll(out string note)
+        internal static List<EtSelectionInfo> TryReadAll(string workbookPath, out string note)
         {
             note = null;
             List<EtSelectionInfo> result = new List<EtSelectionInfo>();
             string last = null;
             using (EtReferenceScope references = new EtReferenceScope())
             {
-                List<object> apps = CollectEtApps(references);
+                List<object> apps = CollectEtApps(workbookPath, references);
                 foreach (object app in apps)
                 {
                     string why;
-                    EtSelectionInfo info = ReadFrom(app, out why);
-                    if (info != null) result.Add(info);
+                    List<EtSelectionInfo> infos = ReadCandidatesFrom(app, out why, new EtReferenceScope());
+                    if (infos.Count > 0) result.AddRange(infos);
                     else if (why != null) last = why;
                 }
             }
@@ -75,7 +75,7 @@ namespace WordUpdater
             return result;
         }
 
-        private static List<object> CollectEtApps(EtReferenceScope references)
+        private static List<object> CollectEtApps(string workbookPath, EtReferenceScope references)
         {
             List<object> apps = new List<object>();
             List<string> guids = new List<string>();
@@ -89,12 +89,10 @@ namespace WordUpdater
                 }
                 catch { }
 
-            if (guids.Count > 0)
-            {
-                try { EnumerateRot(apps, guids, true, references); } catch { }
-                if (apps.Count == 0)
-                    try { EnumerateRot(apps, guids, false, references); } catch { }
-            }
+            // A registered Application can be an empty hidden ET server. The
+            // visible source may publish only its workbook path. Always check
+            // that exact moniker, even when an Application was already found.
+            try { EnumerateRot(apps, guids, workbookPath, references); } catch { }
             foreach (string id in ProgIds)
                 try { AddApp(apps, Marshal.GetActiveObject(id), references); }
                 catch { }
@@ -115,7 +113,30 @@ namespace WordUpdater
             apps.Add(value);
         }
 
-        private static void EnumerateRot(List<object> apps, List<string> guids, bool nameFilter, EtReferenceScope applications)
+        private static bool SameWorkbookPath(string first, string second)
+        {
+            string normalized = LinkPasteEngine.NormPath(first);
+            return normalized.Length > 0
+                && string.Equals(normalized, LinkPasteEngine.NormPath(second), StringComparison.OrdinalIgnoreCase);
+        }
+
+        // The workbook is borrowed from the ROT item scope. Only the returned
+        // Application acquisition is retained by the outer candidate scope.
+        private static bool AddWorkbookApplication(List<object> apps, object workbook, string workbookPath, EtReferenceScope references)
+        {
+            if (workbook == null) return false;
+            try
+            {
+                dynamic book = workbook;
+                if (!SameWorkbookPath((string)book.FullName, workbookPath)) return false;
+                object application = (object)book.Application;
+                AddApp(apps, application, references);
+                return application != null;
+            }
+            catch { return false; }
+        }
+
+        private static void EnumerateRot(List<object> apps, List<string> guids, string workbookPath, EtReferenceScope applications)
         {
             using (EtReferenceScope rotReferences = new EtReferenceScope())
             {
@@ -149,20 +170,24 @@ namespace WordUpdater
                             if (created == 0 && context != null) moniker.GetDisplayName(context, null, out name);
                         }
                         catch { }
-                        if (nameFilter)
-                        {
-                            bool match = false;
-                            if (name != null)
-                                foreach (string guid in guids)
-                                    if (name.IndexOf(guid, StringComparison.OrdinalIgnoreCase) >= 0) { match = true; break; }
-                            if (!match) continue;
-                        }
+                        bool sourceWorkbook = SameWorkbookPath(name, workbookPath), applicationMoniker = false;
+                        if (name != null)
+                            foreach (string guid in guids)
+                                if (string.Equals(name, "!{" + guid + "}", StringComparison.OrdinalIgnoreCase))
+                                { applicationMoniker = true; break; }
+                        // Never bind unrelated documents or arbitrary ROT objects.
+                        if (!sourceWorkbook && !applicationMoniker) continue;
                         object application = null;
                         try
                         {
                             try { rot.GetObject(moniker, out application); }
-                            finally { applications.Own(application); }
-                            AddUnique(apps, application);
+                            finally { if (sourceWorkbook) itemReferences.Own(application); else applications.Own(application); }
+                            if (sourceWorkbook)
+                            {
+                                if (AddWorkbookApplication(apps, application, workbookPath, applications))
+                                    Connect.Log("链接Excel：已通过来源工作簿的 ROT 登记定位表格实例。");
+                            }
+                            else AddUnique(apps, application);
                         }
                         catch { }
                     }
@@ -176,14 +201,80 @@ namespace WordUpdater
         // offline tests. The passed Application is borrowed and is not registered.
         private static EtSelectionInfo ReadFrom(object application, out string note, EtReferenceScope references)
         {
+            List<EtSelectionInfo> infos = ReadCandidatesFrom(application, out note, references);
+            return infos.Count > 0 ? infos[0] : null;
+        }
+
+        private static List<EtSelectionInfo> ReadCandidatesFrom(object application, out string note, EtReferenceScope references)
+        {
             note = null;
             using (references)
             {
-                if (application == null) { note = "表格实例为空。"; return null; }
+                if (application == null) { note = "表格实例为空。"; return new List<EtSelectionInfo>(); }
                 dynamic app = application;
-                dynamic selection = null;
+                object selection = null;
                 try { selection = references.Own((object)app.Selection); } catch { }
-                if (selection == null) { note = "WPS 表格无可用选区。"; return null; }
+                EtSelectionInfo direct = ReadSelection(selection, out note, references);
+                if (direct != null) return new List<EtSelectionInfo> { direct };
+
+                // WPS 文字功能区回调内，ET 的 Application.Selection 可能为空。
+                // 明确读取已打开工作簿各窗口保存的选区，不 Activate/Select，不猜包围盒。
+                string primaryNote = note, windowNote;
+                List<EtSelectionInfo> windows = ReadWindowSelections(application, references, out windowNote);
+                note = windows.Count > 0 ? null : primaryNote + "；" + windowNote;
+                return windows;
+            }
+        }
+
+        private static List<EtSelectionInfo> ReadWindowSelections(object application, EtReferenceScope references, out string note)
+        {
+            var result = new List<EtSelectionInfo>();
+            note = "未能从已打开工作簿窗口读取多区域选区。";
+            try
+            {
+                dynamic books = references.Own((object)((dynamic)application).Workbooks);
+                int bookCount = (int)books.Count;
+                for (int b = 1; b <= bookCount; b++)
+                {
+                    try
+                    {
+                        dynamic book = references.Own((object)UpdateEngine.GetItem(books, b));
+                        dynamic windows = references.Own((object)book.Windows);
+                        int windowCount = (int)windows.Count;
+                        for (int w = 1; w <= windowCount; w++)
+                        {
+                            try
+                            {
+                                dynamic window = references.Own((object)UpdateEngine.GetItem(windows, w));
+                                object selected = null;
+                                try { selected = references.Own((object)window.RangeSelection); } catch { }
+                                string why;
+                                EtSelectionInfo info = ReadSelection(selected, out why, references);
+                                if (info == null)
+                                {
+                                    selected = null;
+                                    try { selected = references.Own((object)window.Selection); } catch { }
+                                    info = ReadSelection(selected, out why, references);
+                                }
+                                if (info != null) result.Add(info);
+                                else if (why != null) note = why;
+                            }
+                            catch (Exception error) { note = "读取工作簿窗口选区失败：" + error.Message; }
+                        }
+                    }
+                    catch (Exception error) { note = "读取工作簿窗口集合失败：" + error.Message; }
+                }
+            }
+            catch (Exception error) { note = "读取已打开工作簿集合失败：" + error.Message; }
+            if (result.Count > 0) note = null;
+            return result;
+        }
+
+        private static EtSelectionInfo ReadSelection(object value, out string note, EtReferenceScope references)
+        {
+                note = null;
+                if (value == null) { note = "WPS 表格无可用选区。"; return null; }
+                dynamic selection = value;
                 string address = null;
                 try { address = (string)selection.Address; } catch { }
                 if (address == null) { note = "当前选区不是单元格区域。"; return null; }
@@ -215,6 +306,9 @@ namespace WordUpdater
                     }
                     if (book != null) try { workbookPath = (string)book.FullName; } catch { }
                     if (areaAddress == null) { note = "子区域 " + i + " 无地址。"; return null; }
+                    if (result.Areas.Count > 0 && (!string.Equals(result.WorkbookPath, workbookPath, StringComparison.OrdinalIgnoreCase)
+                        || !string.Equals(result.SheetName, sheetName, StringComparison.OrdinalIgnoreCase)))
+                    { note = "多个子区域不属于同一工作簿和工作表。"; return null; }
                     result.WorkbookPath = workbookPath;
                     result.SheetName = sheetName;
                     LinkPasteEngine.SourceArea parsed = ParseAddress(areaAddress, sheetName);
@@ -223,7 +317,6 @@ namespace WordUpdater
                 }
                 if (result.Areas.Count < 2) { note = "未取到多个子区域。"; return null; }
                 return result;
-            }
         }
 
         private static LinkPasteEngine.SourceArea ParseAddress(string address, string sheetName)
