@@ -17,6 +17,7 @@ public static class ClipboardBoundaryFixture
         public Tables Tables { get; set; }
         public Numbers Fields { get; set; }
         public Document Document;
+        public string WordOpenXML;
         public bool Content;
         private string text = "";
         public string Text
@@ -122,7 +123,9 @@ public static class ClipboardBoundaryFixture
     static int Finish(object session, int code) { return (int)sessionType.GetMethod("Finish", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(session, new object[] { code }); }
     static Table TableSample()
     {
-        return new Table { Rows = new Numbers { Count = 3 }, Columns = new Numbers { Count = 3 }, Range = new Range { Start = 0, End = 12 } };
+        string row = "<w:tr><w:tc><w:p/></w:tc><w:tc><w:p/></w:tc><w:tc><w:p/></w:tc></w:tr>";
+        return new Table { Rows = new Numbers { Count = 3 }, Columns = new Numbers { Count = 3 },
+            Range = new Range { Start = 0, End = 12, WordOpenXML = "<w:tbl xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">" + row + row + row + "</w:tbl>" } };
     }
     static Selection Outside(Table table)
     {
@@ -145,7 +148,7 @@ public static class ClipboardBoundaryFixture
                 outside.ThrowCells = true;
                 Check(Invoke("ReadRect", session, "throwing outside cells", outside, table).ToString() == "OutOfTable", "outside Cells COM failure does not mask geometry");
                 var cells = new Cells(); var parents = new Tables(); parents.Values.Add(table);
-                cells.Values.Add(new Cell { RowIndex = 2, ColumnIndex = 2, Range = new Range { Tables = parents } });
+                cells.Values.Add(new Cell { RowIndex = 2, ColumnIndex = 2, Range = new Range { Start = 5, End = 6, Tables = parents } });
                 var fallback = new Selection { Range = new Range { Start = 5, End = 5, Cells = cells } };
                 Check(Invoke("ReadRect", session, "range cells fallback", fallback, table).ToString() == "Ok", "positive selection falls back to Range.Cells");
                 var missing = new Selection { Range = new Range { Start = 5, End = 5 } };

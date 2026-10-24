@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Reflection;
+using System.Collections;
 using WordUpdater;
 
 // =====================================================================
@@ -21,12 +23,37 @@ public class FakeRange
     public int Start;
     public int End;
     public FakeTables Tables = new FakeTables(new List<FakeTableRef>());
+    public string WordOpenXML;
+    public FakeDocument Document;
+    public FakeCellCollection Cells;
 
     public FakeRange(int s, int e)
     {
         Start = s;
         End = e;
     }
+    public bool Information(int kind) { return false; }
+    public void Select() { }
+}
+
+public class FakeDocument
+{
+    public FakeRange Content = new FakeRange(0, 1001);
+    public FakeRange Range(int start, int end) { return new FakeRange(start, end); }
+}
+
+public class FakeDocuments
+{
+    public int Count { get { return 1; } }
+    public object Add() { throw new InvalidOperationException("离线探针没有剪贴板来源。"); }
+}
+
+public class FakeMapApplication
+{
+    public FakeDocuments Documents = new FakeDocuments();
+    public FakeSelection Selection;
+    public object DisplayAlerts = 1;
+    public object ScreenUpdating = true;
 }
 
 public class FakeTableRef
@@ -58,30 +85,37 @@ public class FakeCell
 public class FakeCellCollection
 {
     private List<FakeCell> _list;
+    public int FailIndex;
 
     public FakeCellCollection(List<FakeCell> list) { _list = list; }
     public int Count { get { return _list.Count; } }
-    public FakeCell this[int i] { get { return _list[i - 1]; } }
+    public FakeCell this[int i] { get { if (i == FailIndex) throw new InvalidOperationException("单元格读取失败"); return _list[i - 1]; } }
 }
 
 public class FakeCount
 {
     private int _n;
+    public bool ThrowOnRead;
     public FakeCount(int n) { _n = n; }
-    public int Count { get { return _n; } }
+    public int Count { get { if (ThrowOnRead) throw new InvalidOperationException("整表尺寸不可读"); return _n; } }
 }
 
-public class FakeTable
+public class FakeTable : FakeTableRef
 {
     public FakeCount Rows;
     public FakeCount Columns;
-    public FakeRange Range;
+    public bool Uniform = true;
+    public FakeTable() : base(0) { }
 }
 
 public class FakeSelection
 {
     public FakeRange Range;
     public FakeCellCollection Cells;
+    public FakeTables Tables;
+    public bool Information(int kind) { return true; }
+    public void PasteSpecial(int IconIndex, bool Link, int Placement, bool DisplayAsIcon, int DataType)
+    { throw new InvalidOperationException("离线探针没有剪贴板来源。"); }
 }
 
 internal static class LinkMapProbe
@@ -133,7 +167,29 @@ internal static class LinkMapProbe
         t.Rows = new FakeCount(rows);
         t.Columns = new FakeCount(cols);
         t.Range = new FakeRange(0, 1000);
+        t.Range.Document = new FakeDocument();
+        string xml = "<w:tbl xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">";
+        for (int row = 0; row < rows; row++)
+        {
+            string[] properties = new string[cols];
+            xml += RowXml(properties);
+        }
+        t.Range.WordOpenXML = xml + "</w:tbl>";
         return t;
+    }
+
+    private static string RowXml(params string[] properties)
+    {
+        string xml = "<w:tr>";
+        foreach (string property in properties)
+            xml += "<w:tc><w:tcPr>" + property + "</w:tcPr><w:p/></w:tc>";
+        return xml + "</w:tr>";
+    }
+
+    private static void SetRows(FakeTable table, params string[] rows)
+    {
+        table.Range.WordOpenXML = "<w:tbl xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+            + string.Join("", rows) + "</w:tbl>";
     }
 
     private static FakeSelection MakeSel(int[] rowIdx, int[] colIdx, int[] parentStart,
@@ -155,13 +211,198 @@ internal static class LinkMapProbe
         FakeSelection s = new FakeSelection();
         s.Cells = new FakeCellCollection(cs);
         s.Range = new FakeRange(selStart, selEnd);
+        s.Range.Cells = s.Cells;
         return s;
+    }
+
+    private static void CheckEngine(string name, FakeSelection selection, FakeTable table, LinkPasteStatus expected)
+    {
+        selection.Tables = new FakeTables(new List<FakeTableRef> { table });
+        LinkPasteResult result = LinkPasteEngine.Execute(new FakeMapApplication { Selection = selection });
+        Check(name, result.Status == expected && result.CellsLinked == 0,
+            "期望 " + expected + " 实际 " + result.Status + " " + result.ErrorMessage);
+    }
+
+    private static void SelectedStructureCases()
+    {
+        FakeTable header = MakeTable(3, 4);
+        header.Uniform = false;
+        header.Columns.ThrowOnRead = true;
+        SetRows(header, RowXml("<w:gridSpan w:val=\"4\"/>"), RowXml("", "", "", ""), RowXml("", "", "", ""));
+        FakeSelection four = MakeSel(new[] { 2, 2, 3, 3 }, new[] { 1, 2, 1, 2 }, null, 10, 20);
+        CheckRect("合并表头下方四格仍为2x2", four, header, TargetRectStatus.Ok, "2,1,3,2 (2x2)");
+        CheckEngine("整表不规则且Columns不可读仍进入剪贴板检查", four, header, LinkPasteStatus.ClipboardInvalid);
+        header.Rows.ThrowOnRead = true;
+        CheckEngine("整表Rows/Columns均不可读不阻止局部选区", four, header, LinkPasteStatus.ClipboardInvalid);
+        CheckRect("合并表头本身即使只选一格也拒绝",
+            MakeSel(new[] { 1 }, new[] { 1 }, null, 10, 12), header, TargetRectStatus.NotRect, null);
+
+        FakeTable vertical = MakeTable(3, 3);
+        vertical.Uniform = false;
+        SetRows(vertical, RowXml("<w:vMerge w:val=\"restart\"/>", "", ""),
+            RowXml("<w:vMerge/>", "", ""), RowXml("", "", ""));
+        CheckRect("选区外纵向合并不阻止右侧2x2",
+            MakeSel(new[] { 1, 1, 2, 2 }, new[] { 2, 3, 2, 3 }, null, 10, 20), vertical, TargetRectStatus.Ok, "1,2,2,3 (2x2)");
+        CheckRect("选区内纵向合并起点拒绝",
+            MakeSel(new[] { 1 }, new[] { 1 }, null, 10, 12), vertical, TargetRectStatus.NotRect, null);
+        CheckRect("选区内纵向合并延续拒绝",
+            MakeSel(new[] { 2 }, new[] { 1 }, null, 10, 12), vertical, TargetRectStatus.NotRect, null);
+
+        FakeTable shifted = MakeTable(2, 4);
+        SetRows(shifted, RowXml("<w:gridSpan w:val=\"2\"/>", "", ""), RowXml("", "", "", ""));
+        CheckRect("选区左侧横向合并导致物理列号错位仍按网格对齐",
+            MakeSel(new[] { 1, 1, 2, 2 }, new[] { 2, 3, 3, 4 }, null, 10, 20), shifted, TargetRectStatus.Ok, "1,3,2,4 (2x2)");
+        CheckRect("物理列号相同但实际列边界错位应拒绝",
+            MakeSel(new[] { 1, 1, 2, 2 }, new[] { 2, 3, 2, 3 }, null, 10, 20), shifted, TargetRectStatus.NotRect, null);
+
+        FakeTable nested = MakeTable(2, 3);
+        string inside = "</w:tcPr><w:tbl><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:tcPr>";
+        SetRows(nested, RowXml(inside, "", ""), RowXml("", "", ""));
+        CheckRect("选区外嵌套不阻止右侧2x2",
+            MakeSel(new[] { 1, 1, 2, 2 }, new[] { 2, 3, 2, 3 }, null, 10, 20), nested, TargetRectStatus.Ok, "1,2,2,3 (2x2)");
+        CheckRect("选区内嵌套在写入前拒绝",
+            MakeSel(new[] { 1 }, new[] { 1 }, null, 10, 12), nested, TargetRectStatus.NotRect, null);
+
+        FakeTable split = MakeTable(2, 3);
+        SetRows(split, RowXml("", "", "", ""), RowXml("", "", "<w:gridSpan w:val=\"2\"/>"));
+        CheckRect("选区外拆分不阻止左侧2x2",
+            MakeSel(new[] { 1, 1, 2, 2 }, new[] { 1, 2, 1, 2 }, null, 10, 20), split, TargetRectStatus.Ok, "1,1,2,2 (2x2)");
+        CheckRect("选区内拆分造成缺格应拒绝",
+            MakeSel(new[] { 1, 1, 2 }, new[] { 2, 3, 2 }, null, 10, 20), split, TargetRectStatus.NotRect, null);
+
+        FakeSelection broken = MakeSel(new[] { 1, 1 }, new[] { 1, 2 }, null, 10, 20);
+        broken.Cells.FailIndex = 2;
+        CheckRect("中途单元格读取失败不能缩成单格后放行", broken, MakeTable(2, 2), TargetRectStatus.ReadError, null);
+        FakeSelection alias = MakeSel(new[] { 1, 1 }, new[] { 1, 2 }, null, 10, 20);
+        alias.Cells[2].Range.Start = alias.Cells[1].Range.Start;
+        alias.Cells[2].Range.End = alias.Cells[1].Range.End;
+        CheckRect("不同坐标指向同一物理单元格应拒绝", alias, MakeTable(2, 2), TargetRectStatus.NotRect, null);
+        FakeSelection outside = MakeSel(new[] { 1 }, new[] { 1 }, null, 10, 20);
+        outside.Cells[1].Range.End = 2000;
+        CheckRect("单元格实际范围越界应拒绝", outside, MakeTable(2, 2), TargetRectStatus.OutOfTable, null);
+
+        FakeTable unreadable = MakeTable(2, 2); unreadable.Range.WordOpenXML = "<broken";
+        CheckRect("表格结构无法解析时明确失败", four, unreadable, TargetRectStatus.ReadError, null);
+        FakeSelection fallback = MakeSel(new[] { 1, 1 }, new[] { 1, 2 }, null, 10, 20); fallback.Cells = null;
+        CheckRect("Selection.Cells不可用时Range.Cells兜底", fallback, MakeTable(2, 2), TargetRectStatus.Ok, "1,1,1,2 (1x2)");
+
+        foreach (int count in new[] { 500, 501 })
+        {
+            var row = new int[count]; var col = new int[count];
+            for (int i = 0; i < count; i++) { row[i] = 1; col[i] = i + 1; }
+            FakeTable large = MakeTable(1, count); large.Range.End = 10000;
+            CheckEngine(count + "格上限检查", MakeSel(row, col, null, 10, 2000), large,
+                count == 500 ? LinkPasteStatus.ClipboardInvalid : LinkPasteStatus.TableTooLarge);
+        }
+    }
+
+    private static void RevalidationCases()
+    {
+        Type geometry = typeof(LinkPasteGeometry);
+        MethodInfo resolve = geometry.GetMethod("ResolveTargetCells", BindingFlags.NonPublic | BindingFlags.Static);
+        MethodInfo validate = geometry.GetMethod("RevalidateTargets", BindingFlags.NonPublic | BindingFlags.Static);
+        MethodInfo release = geometry.GetMethod("ReleaseTargets", BindingFlags.NonPublic | BindingFlags.Static);
+        FakeTable table = MakeTable(2, 2);
+        FakeSelection selection = MakeSel(new[] { 1, 1, 2, 2 }, new[] { 1, 2, 1, 2 }, null, 10, 20);
+        object[] parameters = { selection, table, null, null, null };
+        TargetRectStatus initial = (TargetRectStatus)resolve.Invoke(null, parameters);
+        Check("内部入口返回规则矩形及实际单元格", initial == TargetRectStatus.Ok && parameters[3] != null, "实际 " + initial);
+        object targets = parameters[3];
+        try
+        {
+            for (int i = 1; i <= 4; i++) { selection.Cells[i].Range.Start += 100; selection.Cells[i].Range.End += 100; }
+            CheckRevalidation("文档偏移漂移后仍使用原Cell复核", validate, table, targets, TargetRectStatus.Ok);
+            selection.Cells[4].ColumnIndex = 1;
+            CheckRevalidation("写入前单元格坐标改变应拒绝", validate, table, targets, TargetRectStatus.NotRect);
+            selection.Cells[4].ColumnIndex = 2;
+            int start = selection.Cells[4].Range.Start, end = selection.Cells[4].Range.End;
+            selection.Cells[4].Range.Start = selection.Cells[1].Range.Start;
+            selection.Cells[4].Range.End = selection.Cells[1].Range.End;
+            CheckRevalidation("写入前目标变成同一物理格应拒绝", validate, table, targets, TargetRectStatus.NotRect);
+            selection.Cells[4].Range.Start = start; selection.Cells[4].Range.End = end;
+            string xml = table.Range.WordOpenXML;
+            SetRows(table, RowXml("<w:hMerge w:val=\"restart\"/>", ""), RowXml("", ""));
+            CheckRevalidation("写入前新增合并结构应拒绝", validate, table, targets, TargetRectStatus.NotRect);
+            table.Range.WordOpenXML = "<broken";
+            CheckRevalidation("写入前结构无法读取应拒绝", validate, table, targets, TargetRectStatus.ReadError);
+            table.Range.WordOpenXML = xml;
+            CheckRevalidation("写入前所有目标完整可读才放行", validate, table, targets, TargetRectStatus.Ok);
+        }
+        finally { release.Invoke(null, new[] { targets }); }
+    }
+
+    private static void CheckRevalidation(string name, MethodInfo validate, FakeTable table, object targets, TargetRectStatus expected)
+    {
+        object[] parameters = { table, targets, null };
+        TargetRectStatus actual = (TargetRectStatus)validate.Invoke(null, parameters);
+        Check(name, actual == expected, "期望 " + expected + " 实际 " + actual + " " + parameters[2]);
     }
 
     private static string RectText(LinkTargetRect r)
     {
         if (r == null) return "(null)";
         return r.Row1 + "," + r.Col1 + "," + r.Row2 + "," + r.Col2 + " (" + r.Rows + "x" + r.Cols + ")";
+    }
+
+    private static object MultiAreaInfo(string path, string sheet, params int[][] rectangles)
+    {
+        Assembly assembly = typeof(LinkPasteEngine).Assembly;
+        Type infoType = assembly.GetType("WordUpdater.EtSelectionInfo", true);
+        Type areaType = assembly.GetType("WordUpdater.LinkPasteEngine+SourceArea", true);
+        object info = Activator.CreateInstance(infoType, true);
+        infoType.GetField("WorkbookPath").SetValue(info, path); infoType.GetField("SheetName").SetValue(info, sheet);
+        IList areas = (IList)infoType.GetField("Areas").GetValue(info);
+        foreach (int[] rectangle in rectangles)
+        {
+            object area = Activator.CreateInstance(areaType, true);
+            string[] names = { "R1", "C1", "R2", "C2" };
+            for (int i = 0; i < names.Length; i++) areaType.GetField(names[i]).SetValue(area, rectangle[i]);
+            areas.Add(area);
+        }
+        return info;
+    }
+
+    private static void CheckMultiAreaCandidate(string name, bool expected, params object[] candidates)
+    {
+        Type engine = typeof(LinkPasteEngine);
+        MethodInfo parse = engine.GetMethod("ParseLinkCode", BindingFlags.Static | BindingFlags.NonPublic);
+        object[] parseArguments = { "LINK Excel.Sheet.12 \"C:\\sample\\source.xlsx\" \"Sheet1!R2C1:R4C4\" \\t \\a", false, null };
+        object template = parse.Invoke(null, parseArguments);
+        Type info = engine.Assembly.GetType("WordUpdater.EtSelectionInfo", true);
+        IList list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(info));
+        foreach (object candidate in candidates) list.Add(candidate);
+        object[] arguments = { template, list, 8, null };
+        bool applied = (bool)engine.GetMethod("TryApplyEtSelections", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, arguments);
+        IList cells = (IList)engine.GetMethod("ExpandSource", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new[] { template });
+        Check(name, applied == expected && cells.Count == (expected ? 8 : 12), "applied=" + applied + " cells=" + cells.Count + " " + arguments[3]);
+        if (applied)
+        {
+            string[] actual = new string[cells.Count]; for (int i = 0; i < cells.Count; i++) actual[i] = cells[i].ToString();
+            Check("第2/4行映射不包含第3行", string.Join(",", actual) == "Sheet1!R2C1,Sheet1!R2C2,Sheet1!R2C3,Sheet1!R2C4,Sheet1!R4C1,Sheet1!R4C2,Sheet1!R4C3,Sheet1!R4C4", string.Join(",", actual));
+        }
+    }
+
+    private static void MultiAreaCandidateCases()
+    {
+        string path = "C:\\sample\\source.xlsx";
+        object correct = MultiAreaInfo(path, "Sheet1", new[] { 2, 1, 2, 4 }, new[] { 4, 1, 4, 4 });
+        CheckMultiAreaCandidate("第2/4行12格包围盒恢复为8格", true, correct);
+        CheckMultiAreaCandidate("跳过格数不匹配窗口候选后继续寻找", true,
+            MultiAreaInfo(path, "Sheet1", new[] { 2, 1, 2, 2 }, new[] { 4, 1, 4, 2 }), correct);
+        CheckMultiAreaCandidate("不同工作簿窗口不可冒充来源", false,
+            MultiAreaInfo("C:\\other.xlsx", "Sheet1", new[] { 2, 1, 2, 4 }, new[] { 4, 1, 4, 4 }));
+        CheckMultiAreaCandidate("不同工作表窗口不可冒充来源", false,
+            MultiAreaInfo(path, "Sheet2", new[] { 2, 1, 2, 4 }, new[] { 4, 1, 4, 4 }));
+        CheckMultiAreaCandidate("仅位于包围盒内部但边界不同的陈旧选区拒绝", false,
+            MultiAreaInfo(path, "Sheet1", new[] { 2, 1, 2, 4 }, new[] { 3, 1, 3, 4 }));
+        CheckMultiAreaCandidate("8格含重叠的候选不能算8个独立格", false,
+            MultiAreaInfo(path, "Sheet1", new[] { 2, 1, 2, 4 }, new[] { 2, 2, 4, 2 }, new[] { 4, 4, 4, 4 }));
+        CheckMultiAreaCandidate("缺少来源路径时不猜工作簿", false,
+            MultiAreaInfo(null, "Sheet1", new[] { 2, 1, 2, 4 }, new[] { 4, 1, 4, 4 }));
+        CheckMultiAreaCandidate("没有可验证候选时保留剪贴板范围", false);
+        CheckMultiAreaCandidate("相同窗口选区重复发现可以去重", true, correct, correct);
+        CheckMultiAreaCandidate("多个窗口具有不同但均匹配的8格选区时不猜来源", false, correct,
+            MultiAreaInfo(path, "Sheet1", new[] { 2, 1, 4, 1 }, new[] { 2, 4, 4, 4 }, new[] { 2, 2, 2, 3 }));
     }
 
     private static void CheckRect(string name, FakeSelection sel, FakeTable tbl,
@@ -299,6 +540,10 @@ internal static class LinkMapProbe
         CheckRect("选区没有单元格应判定 NoCells",
             MakeSel(new int[0], new int[0], null, 10, 20), t3,
             TargetRectStatus.NoCells, null);
+
+        SelectedStructureCases();
+        RevalidationCases();
+        MultiAreaCandidateCases();
 
         // ============ 3. 目标行优先展开顺序 ============
         Console.WriteLine();

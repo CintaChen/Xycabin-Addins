@@ -86,6 +86,19 @@
       "offline": false
     },
     {
+      "name": "CtrlSelectionLiveProbe",
+      "source": "src/testharness/CtrlSelectionLiveProbe.cs",
+      "additional_sources": [
+        "src/tools/LiveProbeSafety.cs"
+      ],
+      "references": [
+        "System.Windows.Forms.dll",
+        "System.Xml.dll",
+        "@addin"
+      ],
+      "offline": false
+    },
+    {
       "name": "ClipboardAreaProbe",
       "source": "src/tools/ClipboardAreaProbe.cs",
       "additional_sources": [

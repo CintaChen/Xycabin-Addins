@@ -20,8 +20,14 @@ public static class EtSelectionReaderProbe
     public sealed class Book : Reference
     {
         public bool FailName;
+        public bool FailApplication;
+        public Host ApplicationHost;
+        public string Path = "C:\\sample\\source.xlsx";
+        public Windows OpenWindows;
         public Book() : base("book") { }
-        public string FullName { get { if (FailName) throw new InvalidOperationException("injected FullName"); return "C:\\sample\\source.xlsx"; } }
+        public string FullName { get { if (FailName) throw new InvalidOperationException("injected FullName"); return Path; } }
+        public object Application { get { if (FailApplication) throw new InvalidOperationException("injected Application"); return ApplicationHost == null ? null : ApplicationHost.Acquire(); } }
+        public object Windows { get { return OpenWindows == null ? null : OpenWindows.Acquire(); } }
     }
     public sealed class Sheet : Reference
     {
@@ -57,10 +63,35 @@ public static class EtSelectionReaderProbe
     {
         public readonly Selection Selected;
         public bool FailSelection;
+        public Books OpenBooks;
         public int QuitCalls;
         public Host(Selection selected) : base("borrowed-host") { Selected = selected; Outstanding = 1; }
         public object Selection { get { if (FailSelection) throw new InvalidOperationException("injected Selection"); return Selected.Acquire(); } }
+        public object Workbooks { get { return OpenBooks == null ? null : OpenBooks.Acquire(); } }
         public void Quit() { QuitCalls++; }
+    }
+    public sealed class Books : Reference
+    {
+        public readonly List<Book> Items = new List<Book>();
+        public Books() : base("books") { }
+        public int Count { get { return Items.Count; } }
+        public object Item(int index) { return Items[index - 1].Acquire(); }
+    }
+    public sealed class Windows : Reference
+    {
+        public readonly List<Window> Items = new List<Window>();
+        public bool FailCount;
+        public Windows() : base("windows") { }
+        public int Count { get { if (FailCount) throw new InvalidOperationException("injected Windows.Count"); return Items.Count; } }
+        public object Item(int index) { return Items[index - 1].Acquire(); }
+    }
+    public sealed class Window : Reference
+    {
+        public Selection Selected;
+        public bool FailRangeSelection;
+        public Window(Selection selection) : base("window") { Selected = selection; }
+        public object RangeSelection { get { if (FailRangeSelection) throw new InvalidOperationException("injected RangeSelection"); return Selected.Acquire(); } }
+        public object Selection { get { return Selected.Acquire(); } }
     }
     private sealed class Sample
     {
@@ -218,6 +249,80 @@ public static class EtSelectionReaderProbe
         Check(sample.Host.Outstanding == 1 && sample.Host.Releases == 0, "release failure never force-releases the borrowed Application");
     }
 
+    private static void WindowSelectionFallback()
+    {
+        foreach (bool useSelectionFallback in new[] { false, true })
+        {
+            Sample sample = new Sample();
+            sample.Host.FailSelection = true;
+            sample.First.Address = "$A$2:$D$2"; sample.Second.Address = "$A$4:$D$4";
+            sample.Selection.Address = "$A$2:$D$2,$A$4:$D$4";
+            var window = new Window(sample.Selection) { FailRangeSelection = useSelectionFallback };
+            var windows = new Windows(); windows.Items.Add(window);
+            var books = new Books(); books.Items.Add(sample.Book);
+            sample.Book.OpenWindows = windows; sample.Host.OpenBooks = books;
+            var released = new List<string>(); var diagnostics = new List<string>(); string note;
+            object result = Read(sample, released, diagnostics, out note);
+            Check(result != null, "Application.Selection不可用时从工作簿窗口恢复第2/4行：" + note);
+            IList areas = (IList)result.GetType().GetField("Areas").GetValue(result);
+            long count = 0;
+            foreach (object area in areas) count += (long)area.GetType().GetProperty("Count").GetValue(area, null);
+            Check(areas.Count == 2 && count == 8, "窗口多选明细是8格而非12格包围盒");
+            Check((int)areas[0].GetType().GetField("R1").GetValue(areas[0]) == 2
+                && (int)areas[1].GetType().GetField("R1").GetValue(areas[1]) == 4, "窗口明细保留第2行、第4行顺序");
+            Balanced(sample, "window fallback");
+            Check(new Reference[] { books, windows, window }.All(reference => reference.Outstanding == 0
+                && reference.Acquisitions == reference.Releases), "工作簿/窗口引用逐次平衡释放");
+            Check(sample.Host.QuitCalls == 0 && diagnostics.Count == 0, "窗口回读不关闭或激活用户宿主");
+
+            windows.FailCount = true; released.Clear();
+            Check(Read(sample, released, diagnostics, out note) == null, "窗口集合异常不伪造多选结果");
+            Balanced(sample, "window count exception");
+            Check(books.Outstanding == 0 && windows.Outstanding == 0, "窗口集合异常仍释放已取得引用");
+        }
+    }
+
+    private static void SourceWorkbookDiscovery()
+    {
+        MethodInfo fromBook = readerType.GetMethod("AddWorkbookApplication", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo samePath = readerType.GetMethod("SameWorkbookPath", BindingFlags.Static | BindingFlags.NonPublic);
+        Check((bool)samePath.Invoke(null, new object[] { "c:/SAMPLE/source.xlsx", "C:\\\\sample\\\\source.xlsx" }), "file moniker and escaped LINK path use the same normalization");
+        foreach (string other in new[] { "C:\\other\\source.xlsx", "C:\\sample\\source.xlsx.backup", "", null, " " })
+            Check(!(bool)samePath.Invoke(null, new object[] { "C:\\sample\\source.xlsx", other }), "exact source path rejects unrelated or missing monikers");
+        Check(!(bool)samePath.Invoke(null, new object[] { " ", " " }), "blank source paths cannot bind a ROT object");
+
+        Sample sample = new Sample(); sample.Book.ApplicationHost = sample.Host;
+        var candidates = new List<object>(); var released = new List<string>(); var diagnostics = new List<string>();
+        object scope = NewScope(released, diagnostics);
+        // An empty hidden Application was already discovered. It must not hide
+        // the source workbook's separate Application or own the borrowed book.
+        var hidden = new Host(sample.Selection) { FailSelection = true, OpenBooks = new Books() };
+        add.Invoke(null, new object[] { candidates, hidden.Acquire(), scope });
+        Check((bool)fromBook.Invoke(null, new object[] { candidates, sample.Book, "C:\\\\sample\\\\source.xlsx", scope })
+            && candidates.Count == 2 && ReferenceEquals(candidates[1], sample.Host), "source workbook adds its Application even when a hidden instance was found first");
+        Check((bool)fromBook.Invoke(null, new object[] { candidates, sample.Book, sample.Book.FullName, scope })
+            && candidates.Count == 2, "duplicate workbook/application discoveries retain each acquisition without duplicate candidates");
+        ((IDisposable)scope).Dispose();
+        Check(sample.Host.Outstanding == 1 && hidden.Outstanding == 1 && sample.Host.Releases == 2 && hidden.Releases == 1,
+            "both Application identities balance acquisitions and preserve borrowed host references");
+        Check(sample.Book.Releases == 0 && sample.Book.Outstanding == 0 && sample.Host.QuitCalls == 0 && hidden.QuitCalls == 0,
+            "workbook normalization never releases the borrowed workbook or closes either host");
+        foreach (string failure in new[] { "wrong-path", "name", "application", "null-application", "null-workbook" })
+        {
+            sample = new Sample(); sample.Book.ApplicationHost = sample.Host;
+            sample.Book.FailName = failure == "name"; sample.Book.FailApplication = failure == "application";
+            if (failure == "null-application") sample.Book.ApplicationHost = null;
+            candidates.Clear(); released.Clear(); scope = NewScope(released, diagnostics);
+            object book = failure == "null-workbook" ? null : sample.Book;
+            string path = failure == "wrong-path" ? "C:\\other\\source.xlsx" : "C:\\sample\\source.xlsx";
+            Check(!(bool)fromBook.Invoke(null, new object[] { candidates, book, path, scope }) && candidates.Count == 0,
+                "source workbook discovery rejects " + failure);
+            ((IDisposable)scope).Dispose();
+            Check(released.Count == 0 && sample.Host.Outstanding == 1 && sample.Book.Releases == 0,
+                "failed workbook discovery owns no unacquired references: " + failure);
+        }
+    }
+
     private static int Main()
     {
         try
@@ -232,6 +337,8 @@ public static class EtSelectionReaderProbe
             DuplicateDiscovery();
             SelectionSuccessAndEarlyReturns();
             ScopeFinallyAndReleaseFailures();
+            WindowSelectionFallback();
+            SourceWorkbookDiscovery();
             Console.WriteLine("EtSelectionReaderProbe: " + checks + " PASS, 0 FAIL; fake references only, no WPS attached");
             return 0;
         }
