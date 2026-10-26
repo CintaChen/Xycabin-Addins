@@ -87,6 +87,8 @@ namespace Excel_Iterate
                 if (changes.Any(c => !actual.Contains(c.Old))) throw new IOException("链接来源已变化，未断开：" + owner);
                 ordered = LinkBatch.Order(changes.Where(c => c.Action == LinkAction.Replace), actual, false);
                 ordered.AddRange(changes.Where(c => c.Action == LinkAction.Break));
+                var names = LinkNameAnalysis.Read(owner);
+                foreach (var change in changes.Where(c => c.Action == LinkAction.Break)) names.Plan(change.Old);
                 snapshot = CreateCheckpoint(owner);
             }
             catch (Exception error) { outcome.Error = error; }
@@ -130,18 +132,42 @@ namespace Excel_Iterate
                             var source = sources.SingleOrDefault(s => string.Equals(s.Path, change.Old, StringComparison.OrdinalIgnoreCase));
                             if (source == null) throw new IOException("不能唯一定位待处理来源：" + change.Old);
                             if (change.Action == LinkAction.Replace && (expected.Contains(change.New) || MissingTarget(change.New))) throw new IOException("执行期间替换目标变化，已停止该工作簿。");
-                            if (original != null) { change.Intent = true; snapshot.Uncertain = true; Batch.Persist(); }
-                            using (var quiet = new HostQuiet(App))
+                            LinkNameAnalysis nameAnalysis = null; List<LinkDefinedName> namePlan = null;
+                            List<object> nativeNames = null;
+                            using (var nameReferences = new ComBag())
                             {
-                                if (change.Action == LinkAction.Break) { Operations.Trace("调用BreakLink", "Name=" + source.Name + "；Type=1"); ((dynamic)work).BreakLink(source.Name, 1); }
-                                else ((dynamic)work).ChangeLink(source.Name, change.New, 1);
-                                WorkbookSaving.Save(work, true);
+                                if (change.Action == LinkAction.Break)
+                                {
+                                    nameAnalysis = LinkNameAnalysis.Read(path); namePlan = nameAnalysis.Plan(change.Old);
+                                    nativeNames = nameAnalysis.NativeNames(work, namePlan, nameReferences);
+                                }
+                                GuardCheckpoint(snapshot, work);
+                                if (original == null && XlsxLinkPackage.Hash(stage) != stageHash)
+                                { preserveCopy = true; throw new IOException("名称读取期间暂存副本发生新编辑，已保留副本且未提交原文件。"); }
+                                if (original != null) { change.Intent = true; snapshot.Uncertain = true; Batch.Persist(); }
+                                using (var quiet = new HostQuiet(App))
+                                {
+                                    if (change.Action == LinkAction.Break)
+                                    {
+                                        foreach (object name in nativeNames) ((dynamic)name).Delete();
+                                        if (namePlan.Count > 0) Operations.Trace("清理来源名称", change.Old + "；" + namePlan.Count + " 个未使用名称");
+                                        // Name deletion can remove the native source immediately;
+                                        // match fresh raw names without requiring the old package to agree.
+                                        var current = ParseHostSources((object)((dynamic)work).LinkSources(1), path, XlsxLinkPackage.Scan(path))
+                                            .Where(s => string.Equals(s.Path, change.Old, StringComparison.OrdinalIgnoreCase)).GroupBy(s => s.Name, StringComparer.Ordinal).Select(g => g.First()).ToList();
+                                        if (current.Count > 1) throw new IOException("清理名称后宿主来源不唯一，备份已保留。");
+                                        if (current.Count == 1) { Operations.Trace("调用BreakLink", "Name=" + current[0].Name + "；Type=1"); ((dynamic)work).BreakLink(current[0].Name, 1); }
+                                    }
+                                    else ((dynamic)work).ChangeLink(source.Name, change.New, 1);
+                                    WorkbookSaving.Save(work, true);
+                                }
+                                if (original != null) { snapshot.LastHash = XlsxLinkPackage.Hash(owner); snapshot.Applied = true; snapshot.Uncertain = false; change.EverApplied |= snapshot.LastHash != snapshot.BeforeHash; Batch.Persist(); }
+                                else stageHash=XlsxLinkPackage.Hash(stage);
+                                expected.Remove(change.Old); if (change.Action == LinkAction.Replace) expected.Add(change.New);
+                                if (!expected.SetEquals(SavedSources(path))) throw new IOException("保存后断链或剩余来源核对失败，备份已保留。");
+                                if (nameAnalysis != null) nameAnalysis.Verify(LinkNameAnalysis.Read(path), change.Old, namePlan);
+                                if (original != null) { change.Applied = change.EverApplied = true; change.Intent = false; Batch.Persist(); outcome.Success++; Pair(change, false, true, null); }
                             }
-                            if (original != null) { snapshot.LastHash = XlsxLinkPackage.Hash(owner); snapshot.Applied = true; snapshot.Uncertain = false; Batch.Persist(); }
-                            else stageHash=XlsxLinkPackage.Hash(stage);
-                            expected.Remove(change.Old); if (change.Action == LinkAction.Replace) expected.Add(change.New);
-                            if (!expected.SetEquals(SavedSources(path))) throw new IOException("保存后断链或剩余来源核对失败，备份已保留。");
-                            if (original != null) { change.Applied = change.EverApplied = true; change.Intent = false; Batch.Persist(); outcome.Success++; Pair(change, false, true, null); }
                         }
                         catch (Exception error) { outcome.Error = error; break; }
                         yield return (original == null ? "已处理暂存副本：" : "已保存链接操作：") + Path.GetFileName(owner);

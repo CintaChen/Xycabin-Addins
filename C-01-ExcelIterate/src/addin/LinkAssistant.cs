@@ -116,6 +116,7 @@ namespace Excel_Iterate
                 Owner(item);
                 using (ComBag one = new ComBag()) { object open = one.Own(FindBook(App, item)); if (open != null) RequireSaved(open); }
                 var found = XlsxLinkPackage.Scan(item);
+                LinkNameAnalysis.Describe(item, found);
                 int previous = collected.Count;
                 foreach (ExternalLinkInfo link in found)
                     if (!collected.Any(l => string.Equals(l.Key, link.Key, StringComparison.OrdinalIgnoreCase))) collected.Add(link);
@@ -167,12 +168,12 @@ namespace Excel_Iterate
                 reportSaved=true;
             }
             var previousBatch=Batch;
-            Batch=new LinkBatch {ReportBook=ReportBookPath,Anchor=ReportAnchor,ReportName=ReportName,ScopeFolder=ScanFolder,Owners=targets.ToList(),Rows=Links.Select(l=>new LinkRowRecord {Owner=l.OwnerPath,Source=l.SourcePath,Raw=l.RawTarget}).ToList()};
+            Batch=new LinkBatch {ReportBook=ReportBookPath,Anchor=ReportAnchor,ReportName=ReportName,ScopeFolder=ScanFolder,Owners=targets.ToList(),Rows=Links.Select(l=>new LinkRowRecord {Owner=l.OwnerPath,Source=l.SourcePath,Raw=l.RawTarget,Status=l.Status}).ToList()};
             Batch.LogDirectories=ScanFolder!=null?new List<string>{ScanFolder}:targets.Select(Path.GetDirectoryName).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if(previousBatch!=null){Batch.Id=previousBatch.Id;Batch.LogDirectories=Batch.LogDirectories.Concat(previousBatch.LogDirectories).Distinct(StringComparer.OrdinalIgnoreCase).ToList();}
             Batch.Persist();FlushDiagnostics();
             Operations.Trace("导出清单", ReportBookPath + "；工作表「" + ReportName + "」");
-            LastResult=Links.Any(l=>l.SourcePath!=null)?"扫描完成。在「外部链接」第三列填完整新路径，或填「请断开该链接」，再点击「执行替换」。":"扫描完成，未发现可处理链接。";
+            LastResult=Links.Any(l=>l.SourcePath!=null)?"扫描完成。在「外部链接」第三列填完整新路径，或填「断开链接」，再点击「执行替换」。":"扫描完成，未发现可处理链接。";
             SaveSummary();
             return Links.Count;
         }
@@ -183,7 +184,7 @@ namespace Excel_Iterate
             return bag.Own(range.Worksheet);
         }
         internal const string MissingStatus="新链接不存在，暂已跳过，请排查原因";
-        internal const string BreakCommand="请断开该链接";
+        internal const string BreakCommand="断开链接";
         internal static bool MissingTarget(string path) {
             try { if((File.GetAttributes(path)&FileAttributes.Directory)!=0)throw new IOException("新链接指向文件夹，请填写 xlsx 文件路径。");return false; }
             catch(FileNotFoundException){return true;}catch(DirectoryNotFoundException){return true;}
@@ -216,7 +217,8 @@ namespace Excel_Iterate
                     if (input.Length == 0) { link.Status = link.SourcePath == null ? "不支持的网页或非文件链接" : "未填新链接，跳过"; Operations.Trace("跳过链接", link.Key + "；" + link.Status); continue; }
                     try {
                     if (link.SourcePath == null) throw new InvalidOperationException("不能替换非文件外部链接：" + link.RawTarget);
-                    if(input==BreakCommand){link.BreakRequested=true;link.Status="待断开，相关公式将转为当前值";Operations.Trace("待断开链接",link.Key);continue;}
+                    if(input==BreakCommand){link.BreakRequested=true;link.Status="待断开，将处理相关公式及未使用的名称引用";Operations.Trace("待断开链接",link.Key);continue;}
+                    if(input=="请断开该链接")throw new InvalidOperationException("断链指令已改为「断开链接」，请修改清单后重试。");
                     string path = Path.GetFullPath(input);
                     if (!System.Text.RegularExpressions.Regex.IsMatch(input, @"^(?:[A-Za-z]:[\\/]|\\\\)")) throw new InvalidOperationException("新链接请填写完整文件路径：" + input);
                     if (Path.GetExtension(path).ToLowerInvariant() != ".xlsx") throw new InvalidOperationException("新链接需要填写 xlsx 完整路径：" + input);
@@ -310,7 +312,7 @@ namespace Excel_Iterate
         {
             var rows=new List<ExternalLinkInfo>();
             foreach(string path in owners)
-            {using(var bag=new ComBag()){object book=bag.Own(FindBook(App,path));if(book!=null)RequireSaved(book);}foreach(var link in XlsxLinkPackage.Scan(path))if(!rows.Any(r=>string.Equals(r.Key,link.Key,StringComparison.OrdinalIgnoreCase)))rows.Add(link);}
+            {using(var bag=new ComBag()){object book=bag.Own(FindBook(App,path));if(book!=null)RequireSaved(book);}var found=XlsxLinkPackage.Scan(path);LinkNameAnalysis.Describe(path,found);foreach(var link in found)if(!rows.Any(r=>string.Equals(r.Key,link.Key,StringComparison.OrdinalIgnoreCase)))rows.Add(link);}
             return rows;
         }
         private void Rescan()
@@ -467,7 +469,8 @@ namespace Excel_Iterate
         private void RefreshStatuses(bool undo)
         {
             foreach(var l in Links){var c=Batch.Changes.FirstOrDefault(x=>string.Equals(x.Owner,l.OwnerPath,StringComparison.OrdinalIgnoreCase)&&string.Equals(x.Old,l.SourcePath,StringComparison.OrdinalIgnoreCase));if(c==null)continue;
-                l.Status=c.Intent?"处理状态待核对，请重试取消":c.Applied?c.Action==LinkAction.Break?"链接已断开，公式转为当前值；结果已保存":"链接已替换，结果已保存":undo&&c.EverApplied?"本批链接已还原":c.FailureReason==null?"未执行":"原链接未改变；失败："+c.FailureReason;}
+                var checkpoint=Checkpoint(c.Owner);
+                l.Status=c.Intent?(checkpoint!=null&&checkpoint.Applied?"已保存，但处理结果尚未核对；请重试取消":"处理结果待核对，备份已保留；请重试取消"):c.Applied?c.Action==LinkAction.Break?"链接已断开；结果已保存":"链接已替换，结果已保存":undo&&c.EverApplied?"本批处理已还原":c.FailureReason==null?"未执行":checkpoint!=null&&checkpoint.Restored?"已核对备份状态；此前失败："+c.FailureReason:"未执行；失败："+c.FailureReason;}
         }
         private void SaveSummary()
         {Operations.Record("",LastResult);Batch.LastSummary=LastResult;Batch.UserLog=Operations.Text;Batch.Persist();}
@@ -519,7 +522,7 @@ namespace Excel_Iterate
         internal readonly Button CopyLog=Ui.Button("复制日志",96),ScanButton=Ui.Button("扫描链接",116),ExecuteButton=Ui.Button("执行替换",116),Browse=Ui.Button("选择…",96),Stop=Ui.Button("取消操作",104),Confirm=Ui.Button("确认操作",104);
         internal readonly LinkOperationLog Operations;
         internal Action<string> CopyText=text=>Clipboard.SetDataObject(text,true);
-        internal readonly string Guidance="先扫描链接，在「外部链接」第三列填写完整新路径，或填写「请断开该链接」，再执行替换。\r\n断链将相关公式转为当前值并保留整簿备份；取消恢复断链前请关闭相关工作簿，新编辑会阻止覆盖。";
+        internal readonly string Guidance="先扫描链接，在「外部链接」第三列填写完整新路径，或填写「断开链接」，再执行替换。\r\n名称定义也会产生外部链接；断链会处理所选来源的公式和未使用名称，并保留整簿备份。名称仍被使用或无法安全核对时停止；取消恢复前请关闭相关工作簿，新编辑会阻止覆盖。";
         private readonly UiCard scope=new UiCard(),logCard=new UiCard();
         private readonly Label logTitle=Ui.Label("操作日志",10,true),help=Ui.Label("当前工作簿接收清单；文件夹只扫描本层.xlsx，跳过临时文件。",9,false);
         private readonly FlowLayoutPanel options=new FlowLayoutPanel {WrapContents=true},actions=new FlowLayoutPanel {WrapContents=true};

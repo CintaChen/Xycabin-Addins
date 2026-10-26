@@ -43,6 +43,7 @@
     "LinkOperationLog.cs",
     "LinkBatch.cs",
     "LinkBreakActions.cs",
+    "LinkNameAnalysis.cs",
     "Connect.Agent.cs",
     "AgentDocumentForm.cs",
     "AgentLocalFiles.cs",
@@ -122,8 +123,16 @@
       ],
       "offline": true,
       "additional_sources": [
-        "src/testharness/BreakLinksProbe.cs"
+        "src/testharness/BreakLinksProbe.cs",
+        "src/testharness/NameLinksProbe.cs"
       ]
+    },
+    {
+      "name": "NameLinksLiveProbe",
+      "source": "src/tools/NameLinksLiveProbe.cs",
+      "additional_sources": ["src/tools/LiveProbeSafety.cs"],
+      "references": ["@addin", "System.Xml.dll", "System.Windows.Forms.dll"],
+      "offline": false
     },
     {
       "name": "WpsFeatureLiveProbe",
