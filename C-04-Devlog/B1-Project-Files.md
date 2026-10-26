@@ -1,6 +1,6 @@
 **三项目档案与版本**
 
-最后更新：2026-10-24 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-26 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
@@ -49,7 +49,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 0.9.9.0 | 1. 文件整理、清单命名及多前缀OCR，按行断链、整簿恢复与编辑保护；2. 六列预览、布局回缩，即时配置及控件缩放，表头单行居中；3. 追踪引用新增显示错误来源：沿引用链定位错误源头格，可跳转标黄；4. 审计工具箱新增合并抵消：往来按单位对冲、坏账按比例冲回，收入成本逐行算未实现利润，列映射+分录预览+备份还原；5. 修复追踪弹窗锁死宿主：去除工具窗样式并对齐链接助手，根治抢焦点/失激活。 |
 | 0.9.9.1 | 1. 合并抵消改净额法取数：资产端=债权方资产−负债、负债端=债务方负债−资产，债权方按净额较大方动态判定，净额保留真实符号；2. 公司对按实际往来自动配对，对方单位精确匹配，取消前缀匹配与别名归一；3. 差异表扩至15列，展示四类原始余额与净额过程，结果表跨表引用抵消金额；4. 修复未勾写数值时结果表金额引用错行。                                      |
 | 0.9.9.2 | 1. 文档收敛为 C-04-Devlog 五份（B0 入口、A 使用说明、B1 档案、B2 经验、B3 门禁），项目内不留副本；2. 目录重构为 AA-Program/AB-Graphic，配置器更名 C1；3. 内嵌文档改按 C-04-Devlog 新路径读取，Agent-Evo 概览按章节标题与首段生成；4. 业务功能无变更。                               |
-| 0.9.9.3 | 1. 开发预览“全文”改为打开整份 B2-DevExperience.md，用户预览改为打开整份 A-UserGuide.md；2. 两份文档各自整份内嵌，不再分章裁剪、拼接或改写图片路径，导出文件名同源；3. 加载项业务功能与门禁规则不变。                                                                            |
+| 0.9.9.3 | 1. 开发/用户全文分别整份内嵌B2与A-UserGuide，导出文件名同源；2. 链接助手说明名称外链，按来源及作用域清理未使用名称后原生断链，保留整簿恢复；3. 断链指令改为“断开链接”，旧文本提示改填；4. 名称依赖预检区分A1地址与真实名称，保存后核对并准确报告失败状态；5. 名称外链状态改为“仅名称管理器定义引用（X 个名称）”。 |
 
 
 ## 3. 当前命令按钮概览
@@ -64,7 +64,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 审计工具箱   | Excel-Iterate·数据 | 表头匹配增加、合并抵消（往来抵消、收入成本抵消）                                                                                                                        | 按表头列名批量匹配多个工作簿，把列数据合并到目标工作簿；往来抵消按列映射生成抵消分录，收入成本抵消按三维聚合生成矩阵式底稿（借贷恒等式保证平衡），两者均写入前备份、可一键还原 | OnMergeHeaders（Connect.MergeHeaders.cs:24）→ MergeHeadersForm.cs；OnEliminationReceivable/OnEliminationRevenueCost（Connect.Elimination.cs:46/49）→ EliminationForm.cs |
 | 一键公式    | Excel-Iterate·操作 | 进行公式封装（IFERROR封装〔默认返回空、自定义封装〕、ROUND封装〔默认保留2位、自定义封装〕、ABS封装、自定义函数）、移除公式封装、数值计算（加〔默认加100、自定义计算〕、减〔默认减100、自定义计算〕、乘〔默认乘100、自定义计算〕、除〔默认除10000、自定义计算〕） | 封装或移除当前选区公式的最外层函数                                                                       | 15 个回调均在 Connect.cs:197-228，委托 FormulaCommandEngine.cs                                                                                                             |
 | 文件操作    | Excel-Iterate·操作 | 文件批量整理、文件批量命名、文件提取名称                                                                                                                            | 整理文件或通过工作表清单批量重命名                                                                       | OnOrganizeFiles/OnRenameFiles（Connect.cs:242/249）→ FileToolForms.cs；OnFileNames（Connect.FileNames.cs:422）                                                          |
-| 链接助手    | Excel-Iterate·操作 | —                                                                                                                                               | 扫描 xlsx 外部引用，C列填新路径或「请断开该链接」后执行                                                         | OnLinkAssistant（Connect.cs:270）→ LinkAssistant.cs                                                                                                                  |
+| 链接助手    | Excel-Iterate·操作 | —                                                                                                                                               | 扫描并说明名称外链，C列填新路径或“断开链接”；名称清理先预检，整簿备份可恢复                                                         | OnLinkAssistant（Connect.cs:270）→ LinkAssistant + LinkBreakActions + LinkNameAnalysis                                                                                                                  |
 | 生成目录    | Excel-Iterate·操作 | —                                                                                                                                               | 链接全部工作表，隐藏表点击后显示并跳转                                                                     | OnGenerateDirectory（Connect.cs:263）→ WorkbookFeatures.cs                                                                                                           |
 | 问题反馈    | Excel-Iterate·反馈 | —                                                                                                                                               | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版）                                                             | OnOpenUrl_btnFeedback（Connect.cs:453）→ RibbonConfig.GetUrl 字典                                                                                                      |
 | Agent扩展 | Excel-Iterate·扩展 | —                                                                                                                                               | 显示或隐藏 Agent-Evo 选项卡（开关，按用户记住选择）                                                         | OnToggleAgentExtension（Connect.Agent.cs:131）                                                                                                                       |
@@ -83,7 +83,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 尺寸/预览      | DialogSizes、DialogSizeEditor、DialogPreviewFactory；src/tools/dialog_catalog_probe与DialogSizesProbe                                                     |
 | 单元格/公式/筛选  | FormulaRefParser、Tracker引擎、ErrorSourceEngine/Form、FormulaCommandEngine/Interaction/WindowThread、WorksheetIdentity、ColumnVisibilityEngine              |
 | 目录/合并      | WorkbookFeatures、FormulaRefRewriter、MergeHeadersEngine/Host/Form、EliminationEngine/Matrix/Diff/Host/Form、Connect.MergeHeaders、Connect.Elimination     |
-| 链接/文件/OCR  | XlsxLinkPackage、LinkAssistant/BreakActions/Batch/OperationLog、FileOperations/OperationBatch/RecycleFiles、FileOcr/Selection/CloudOcr、Connect.FileNames |
+| 链接/文件/OCR  | XlsxLinkPackage、LinkAssistant/BreakActions/Batch/OperationLog、LinkNameAnalysis、FileOperations/OperationBatch/RecycleFiles、FileOcr/Selection/CloudOcr、Connect.FileNames |
 | 构建/安装      | build/rebuild/resign/gen_manifest/build_installer/verify_package/validate.py；src/installer及src/tools                                                  |
 | 验证/网站      | src/testharness、src/tools；同级Website完整源码与父verify_shared.py                                                                                             |
 
@@ -95,20 +95,32 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 本次将文档整理为五部分，共享方法与门禁分开，删重复流水和外部历史范例依赖；保留宿主独有算法/恢复边界，修正控件与四种拖动术语、窗口过度因果和内嵌网页一致性表述。新增表头匹配合并的接线、公式相对行规则与独立验收边界。
 
+本轮修复链接助手的名称外链：来源可能仅存在于名称定义，扫描仍应列出并说明数量。LinkNameAnalysis按完整来源路径、外部引用顺序与名称作用域分析依赖；混合来源、仍被公式/对象使用或无法安全分析时在修改前停止。预检通过后沿用整簿备份，精确删除所选来源未使用名称，再调用宿主BreakLink并保存核对；不直接删除ZIP关系，不触碰其他来源。C列仅接受“断开链接”，旧文本提示改填。四列清单、旧批次及恢复边界沿用；实测结果、安装包及待验收项目见本轮交付证据。
+
+名称外链扫描状态按用户要求改为“仅名称管理器定义引用（X 个名称）”，数量仍按实际名称定义显示；同一文案同步到离线/实机探针、使用说明及网站指南。已有清单中的旧文本在重新扫描时更新，安装与真实按钮验收单独记录。
+
+补修短名称依赖误判：旧版将原始报表差异!Y$5误认为局部名称Y的使用，并把筛选范围$A$8:$Y$271误认为全局名称Y的使用。UsesName复用FormulaRefRewriter的A1地址跨度，核有效行列边界后排除地址中的名称字母；裸Y、Sheet!Y及超出合法地址边界的真实名称仍执行作用域与依赖保护。仅修改内部分析，公开命令、批次格式和恢复流程沿用；旧版失败、修复后离线与样本副本实机结果见本轮交付证据。
+
 本批（0.9.9.0）修复追踪弹窗锁死宿主并经真实WPS实机验证：弹窗打开后可正常键入单元格、点开有子选项的功能区菜单；合并抵消由置灰占位转为可用：引擎/宿主/窗体三层拆分，写入前备份、可一键还原。收入成本抵消已改为矩阵式审计底稿（三维聚合+活公式+动态年度列，详见第五章(3)），离线探针144项锁定会计模型。底稿写入与还原待联机验收。
 
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
 
 ### (2). 本轮交付证据
 
-10月24日联合交付 0.9.9.3：Excel 业务代码未变，仅随联合交付重新打包并重签；内嵌的使用说明与开发经验随 Word 侧 Ctrl 多选修复同步更新，用户预览与开发预览仍分别打开整份 A-UserGuide.md 与 B2-DevExperience.md。安装包因文档正文变化由 3,784,192 增至 4,813,312 字节。
+本轮单独更新Excel-Iterate 0.9.9.3的状态文案为“仅名称管理器定义引用（X 个名称）”，同步现有精确断言、实机探针及说明文档；其他状态、数量统计、依赖判断与断链逻辑沿用。本轮完整391项离线检查及24项后台任务通过，原证书重签、五载荷和内嵌资产校验通过。此前名称外链及A1误判修复的49项实机结果保留为历史证据，本轮文案调整未重复连接WPS；安装和真实按钮待人工验收。非审计正文在构建前固定，本节在全部验证后回填。
 
 | 检查    | 结果                                                                                                                                                              |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,813,312 字节，版本 0.9.9.3，SHA-256 前缀 10DF9117                                                    |
-| 构建与验证 | [Excel\_Iterate-validation.log](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log)、[payload](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log)  |
-| 联合交付  | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                    |
-| 文档门禁  | verify_devlog 五份 PASS；verify_shared 73 文件 PASS；workflow_probe 77 PASS；layout 14 项 PASS；DisciplineProbe 28、AgentDocumentCoreProbe 113、DialogSizesProbe 105 全 PASS |
+| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,836,864字节，版本0.9.9.3，SHA-256前缀13F696E7；[交付摘要](../C-01-ExcelIterate/build/name-status-label-delivery.json)记录安装包、DLL、两清单摘要、当前验证及边界 |
+| 历史失败 | [离线旧DLL失败](../C-01-ExcelIterate/build/name-address-red.log)、[旧DLL复验](../C-01-ExcelIterate/build/name-address-red-confirm.log)及[实机旧DLL失败](../C-01-ExcelIterate/build/name-address-live-red.log)：此前实际生产会话在删除前报告相同的局部Y依赖，来源仍在；旧DLL与失败样本保留 |
+| 历史定位 | [旧判断](../C-01-ExcelIterate/build/name-address-observation-red.log)记录局部Y 360处、全局Y 1处假依赖；[修复后](../C-01-ExcelIterate/build/name-address-observation-green.log)同一原件、同一内部分析均为0处。两份证据只读原件，本轮未重测 |
+| 离线回归 | [background-validation.log](../C-01-ExcelIterate/build/background-validation.log)中的WorkbookToolsProbe为391 PASS，已使用新文案精确断言；包括此前的来源/作用域、地址/名称、指令、读取/保存失败、完整会话与恢复回归，本轮不新增重复测试 |
+| 历史COM | [name-address-live-final.log](../C-01-ExcelIterate/build/name-address-live-final.log)：此前正式DLL 49项PASS，含审核2.XLS及其两个Y名称断链；其他来源、名称含筛选范围、数据表值/公式/已使用样式/几何均保留，保存重开不重现、取消逐字节还原，原件摘要未变。本轮仅改文案，未重复实机操作 |
+| 工具入口 | [NameLinksLiveProbe.cs](../C-01-ExcelIterate/src/tools/NameLinksLiveProbe.cs)以LiveProbeSafety管理临时副本；[NameLinksProbe.cs](../C-01-ExcelIterate/src/testharness/NameLinksProbe.cs)加入既有WorkbookToolsProbe，原四列清单、LinkAction及旧批次XML兼容 |
+| 构建与后台 | [name-status-label-build.log](../C-01-ExcelIterate/build/name-status-label-build.log)完整编译/重签/打包PASS；[name-status-label-validation.log](../C-01-ExcelIterate/build/name-status-label-validation.log)完整24项后台任务PASS；使用validate.py --background --mode full --site-html build/site-embedded.snapshot.html |
+| 签名与载荷 | [name-status-label-package.log](../C-01-ExcelIterate/build/name-status-label-package.log)：固定发布者、两清单SHA-256双签名、五载荷、两份完整文档、14份图片与内嵌HTML全部PASS；交付脚本核对五份非审计正文在构建前后未变 |
+| 前轮证据 | [名称残留交付](../C-01-ExcelIterate/build/name-link-delivery.json)、[地址误判交付](../C-01-ExcelIterate/build/name-address-delivery.json)、[地址修复后台原日志](../C-01-ExcelIterate/build/name-address-background-validation.log)及[原实机记录](../C-01-ExcelIterate/build/name-link-live-final.log)保留为历史证据；当前安装包及后台结果以name-status-label交付为准 |
+| 文档与边界 | B1、B2、A使用说明及网站Excel摘要/指南已同步；仅重建Excel内嵌快照及安装包，Word安装包和网站联合正式HTML未重建。本次未自动安装，安装后真实按钮点击、焦点与弹窗外观待人工验收；不把实机COM或后台结果当作已完成安装验收 |
 
 # 三. WordUpdater 项目档案
 
