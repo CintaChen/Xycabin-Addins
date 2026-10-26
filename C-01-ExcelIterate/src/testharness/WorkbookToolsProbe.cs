@@ -373,6 +373,7 @@ partial class WorkbookToolsProbe {
             ResultChecks(folder,a,b,c);
             MissingDestinations(folder);
             BreakLinkChecks(folder,a,b,c);
+            NameLinkChecks(folder,a,b,c);
             Console.WriteLine("WorkbookToolsProbe "+checks+" PASS, 0 FAIL");return 0;
         }catch(Exception ex){File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"workbook-tools-probe-failure.log"),ex.ToString(),new UTF8Encoding(false));Console.WriteLine("FAILED: "+ex);return 1;}
         finally {
