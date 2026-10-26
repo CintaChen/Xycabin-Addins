@@ -51,7 +51,8 @@ namespace Excel_Iterate
         internal void Persist()
         {
             string temp=Journal+".tmp";using(var writer=XmlWriter.Create(temp,new XmlWriterSettings {Encoding=new UTF8Encoding(false),Indent=true}))new XmlSerializer(typeof(LinkBatch)).Serialize(writer,this);
-            if(File.Exists(Journal))File.Replace(temp,Journal,null);else File.Move(temp,Journal);
+            // 已进回收站的旧记录仍被 File.Exists 判为存在，Replace 会因"无法删除要被替换的文件"失败，退化为删除后移动。
+            if(File.Exists(Journal)){try{File.Replace(temp,Journal,null);}catch(IOException){File.Delete(Journal);File.Move(temp,Journal);}}else File.Move(temp,Journal);
         }
         internal string LogPath(string dir){return Path.Combine(dir,".EI_LinkBatch_"+Id+".log");}
         internal void Log(string text){foreach(string dir in LogDirectories)LogTo(dir,text);}
@@ -67,7 +68,7 @@ namespace Excel_Iterate
             State="Cleaning";Persist();
             foreach(var checkpoint in Checkpoints)if(File.Exists(checkpoint.Backup)){ValidateBackup(checkpoint);recycle(checkpoint.Backup);}
             foreach(string dir in LogDirectories)if(File.Exists(LogPath(dir)))recycle(LogPath(dir));
-            if(File.Exists(Journal+".tmp"))recycle(Journal+".tmp");recycle(Journal);
+            if(File.Exists(Journal+".tmp"))recycle(Journal+".tmp");if(File.Exists(Journal))recycle(Journal);
         }
         internal void ValidateBackup(LinkWorkbookCheckpoint checkpoint)
         {

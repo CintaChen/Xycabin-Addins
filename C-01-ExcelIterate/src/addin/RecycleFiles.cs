@@ -10,6 +10,8 @@ namespace Excel_Iterate
         private static extern void SHCreateItemFromParsingName(string path, IntPtr context, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out IShellItem item);
         internal static void Send(string path)
         {
+            // 不存在的目标直接拒绝：Shell 会在 PerformOperations 抛无路径信息的 0x80070002。
+            if (!File.Exists(path) && !Directory.Exists(path)) throw new IOException("回收目标不存在：" + path);
             IFileOperation operation = null; IShellItem item = null;
             try
             {
@@ -21,6 +23,12 @@ namespace Excel_Iterate
                 var sink = new RecycleSink(); operation.DeleteItem(item, sink); operation.PerformOperations();
                 bool aborted; operation.GetAnyOperationsAborted(out aborted);
                 if (aborted || !sink.Completed || sink.Error < 0 || File.Exists(path) || Directory.Exists(path)) throw new IOException("系统无法回收，文件保留；错误 0x" + sink.Error.ToString("X8"));
+            }
+            // Shell 报 ERROR_FILE_NOT_FOUND 时以文件系统状态为准：目标已不在原路径即视为已回收。
+            catch (FileNotFoundException error)
+            {
+                if (!File.Exists(path) && !Directory.Exists(path)) return;
+                throw new IOException("Shell 拒绝回收：" + path, error);
             }
             finally { if (item != null) Marshal.ReleaseComObject(item); if (operation != null) Marshal.ReleaseComObject(operation); }
         }
