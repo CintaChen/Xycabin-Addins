@@ -15,7 +15,7 @@
 //   网络盘文档的回调代理读不出 control.Id，靠名字才能认对按钮。
 //   新增按钮时记得在 Connect.cs 加对应的一行包装方法（本脚本会校验）。
 //
-// 生成时间：2026-10-24 21:17:27
+// 生成时间：2026-10-26 21:51:27
 // =====================================================================
 using System;
 using System.Collections.Generic;
@@ -121,7 +121,7 @@ namespace Excel_Iterate
               <button id=""btnMergePdf"" label=""PDF 合并"" getImage=""GetImage_btnMergePdf"" supertip=""按可调整的列表顺序合并多个 PDF。"" onAction=""OnMergePdf"" />
             </menu>
           </menu>
-          <button id=""btnLinkAssistant"" label=""链接助手"" size=""large"" getImage=""GetImage_btnLinkAssistant"" screentip=""扫描 xlsx 外部引用，C列填新路径或「请断开该链接」后执行；断链可从整簿备份恢复"" onAction=""OnLinkAssistant"" />
+          <button id=""btnLinkAssistant"" label=""链接助手"" size=""large"" getImage=""GetImage_btnLinkAssistant"" screentip=""扫描 xlsx 外部引用，C列填新路径或「断开链接」后执行；支持清理所选来源的未使用名称，断链可从整簿备份恢复"" onAction=""OnLinkAssistant"" />
           <button id=""btnGenerateDirectory"" label=""生成目录"" size=""large"" getImage=""GetImage_btnGenerateDirectory"" screentip=""链接全部工作表，隐藏表点击后显示并跳转"" onAction=""OnGenerateDirectory"" />
         </group>
         <group id=""grpFeedback"" label=""反馈"">

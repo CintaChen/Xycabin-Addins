@@ -111,7 +111,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 | 检查    | 结果                                                                                                                                                              |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,836,864字节，版本0.9.9.3，SHA-256前缀13F696E7；[交付摘要](../C-01-ExcelIterate/build/name-status-label-delivery.json)记录安装包、DLL、两清单摘要、当前验证及边界 |
+| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,837,376字节，版本0.9.9.3，SHA-256前缀6280624B；[交付摘要](../C-01-ExcelIterate/build/name-status-label-delivery.json)记录安装包、DLL、两清单摘要、当前验证及边界 |
 | 历史失败 | [离线旧DLL失败](../C-01-ExcelIterate/build/name-address-red.log)、[旧DLL复验](../C-01-ExcelIterate/build/name-address-red-confirm.log)及[实机旧DLL失败](../C-01-ExcelIterate/build/name-address-live-red.log)：此前实际生产会话在删除前报告相同的局部Y依赖，来源仍在；旧DLL与失败样本保留 |
 | 历史定位 | [旧判断](../C-01-ExcelIterate/build/name-address-observation-red.log)记录局部Y 360处、全局Y 1处假依赖；[修复后](../C-01-ExcelIterate/build/name-address-observation-green.log)同一原件、同一内部分析均为0处。两份证据只读原件，本轮未重测 |
 | 离线回归 | [background-validation.log](../C-01-ExcelIterate/build/background-validation.log)中的WorkbookToolsProbe为391 PASS，已使用新文案精确断言；包括此前的来源/作用域、地址/名称、指令、读取/保存失败、完整会话与恢复回归，本轮不新增重复测试 |
@@ -120,7 +120,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 构建与后台 | [name-status-label-build.log](../C-01-ExcelIterate/build/name-status-label-build.log)完整编译/重签/打包PASS；[name-status-label-validation.log](../C-01-ExcelIterate/build/name-status-label-validation.log)完整24项后台任务PASS；使用validate.py --background --mode full --site-html build/site-embedded.snapshot.html |
 | 签名与载荷 | [name-status-label-package.log](../C-01-ExcelIterate/build/name-status-label-package.log)：固定发布者、两清单SHA-256双签名、五载荷、两份完整文档、14份图片与内嵌HTML全部PASS；交付脚本核对五份非审计正文在构建前后未变 |
 | 前轮证据 | [名称残留交付](../C-01-ExcelIterate/build/name-link-delivery.json)、[地址误判交付](../C-01-ExcelIterate/build/name-address-delivery.json)、[地址修复后台原日志](../C-01-ExcelIterate/build/name-address-background-validation.log)及[原实机记录](../C-01-ExcelIterate/build/name-link-live-final.log)保留为历史证据；当前安装包及后台结果以name-status-label交付为准 |
-| 文档与边界 | B1、B2、A使用说明及网站Excel摘要/指南已同步；仅重建Excel内嵌快照及安装包，Word安装包和网站联合正式HTML未重建。本次未自动安装，安装后真实按钮点击、焦点与弹窗外观待人工验收；不把实机COM或后台结果当作已完成安装验收 |
+| 文档与边界 | B1、B2、A使用说明及网站Excel摘要/指南已同步；最终按用户要求联合重建，两个安装包与网站正式产物一并更新，摘要以current-delivery.json为准。本次未自动安装，安装后真实按钮点击、焦点与弹窗外观待人工验收；不把实机COM或后台结果当作已完成安装验收 |
 
 # 三. WordUpdater 项目档案
 
@@ -195,7 +195,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 | 检查    | 结果                                                                                                                                                      |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,231,168字节，版本0.9.9.3，SHA-256前缀6DC0E1A8；[最终摘要](../C-02-WordUpdater/build/source-instance-delivery.json)记录安装包、DLL、两清单完整摘要与验收状态 |
+| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,235,776字节，版本0.9.9.3，SHA-256前缀039663FB；[最终摘要](../C-02-WordUpdater/build/source-instance-delivery.json)记录安装包、DLL、两清单完整摘要与验收状态 |
 | 真实失败 | [source-instance-user-failure.json](../C-02-WordUpdater/build/source-instance-user-failure.json)：保留实际按钮12/6失败事件、安装DLL与旧交付一致的证据、样本摘要及根因排除过程；用户来源路径脱敏 |
 | 失败回归 | [source-instance-red.log](../C-02-WordUpdater/build/source-instance-red.log)与[旧DLL复验](../C-02-WordUpdater/build/source-instance-red-confirm.log)：正常关联打开样本副本，默认实例0簿、真实实例1簿且选中6格；旧读取器来源候选0，完整引擎稳定返回SizeMismatch源12、目标6、写入0 |
 | 离线检查 | [background-validation.log](../C-02-WordUpdater/build/background-validation.log)：映射67 PASS、读取及引用80 PASS、剪贴板边界19 PASS；新增来源工作簿归一、隐藏候选已存在、双反斜杠/错路径/接口失败及借用引用释放检查，保留原陈旧/错簿/错表/重叠/歧义与局部选区回归 |
@@ -244,6 +244,6 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 | 检查   | 结果                                                                                                                                                                    |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，10,534,559 字节                                                                                         |
+| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，13,321,994 字节                                                                                         |
 | 站点验证 | [site-validation.log](../C-03-Website·Xycabin/build/site-validation.log)、[site-downloads-validation.log](../C-03-Website·Xycabin/build/site-downloads-validation.log) |
 | 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                          |
