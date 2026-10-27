@@ -97,7 +97,7 @@ internal static class NameLinksLiveProbe
         return result.ToString();
     }
     private static void Track(ProbeSession session)
-    { foreach (string file in Directory.GetFiles(session.DirectoryPath)) if (Path.GetFileName(file).StartsWith(".EI_", StringComparison.Ordinal)) session.TrackFile(file); }
+    { foreach (string file in WpsShared.SourcePaths.GetFiles(session.DirectoryPath)) if (Path.GetFileName(file).StartsWith(".EI_", StringComparison.Ordinal)) session.TrackFile(file); }
     private static void Case(ProbeSession session, object application, string input, int number, bool first, bool second, bool closed, bool sameReport = false, bool addressName = false)
     {
         using (var refs = session.References())
@@ -148,7 +148,7 @@ internal static class NameLinksLiveProbe
             foreach (object step in (IEnumerable)Call(engine, "Steps", true, new Func<bool>(() => false))) Console.WriteLine(step);
             Check(Hash(target) == beforeHash, "whole-workbook cancellation restores the exact original bytes and names");
             Call(batch, "Confirm", new Action<string>(File.Delete));
-            Check(!File.Exists((string)batch.GetType().GetProperty("Journal", Hidden).GetValue(batch, null)), "confirmation cleans only this test batch's recovery records");
+            Check(!WpsShared.SourcePaths.Exists((string)batch.GetType().GetProperty("Journal", Hidden).GetValue(batch, null)), "confirmation cleans only this test batch's recovery records");
         }
     }
     [STAThread]

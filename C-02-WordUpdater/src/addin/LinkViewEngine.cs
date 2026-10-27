@@ -164,7 +164,7 @@ namespace WordUpdater
                 r.Total = links.Count;
                 if (links.Count == 0) { r.Executed = true; return r; }
 
-                AppState st = Suppress(app);
+                WordHostStateScope st = WordHostStateScope.Enter(application);
                 HashSet<int> before = EtCleanup.SnapshotEtPids();
                 try
                 {
@@ -212,11 +212,10 @@ namespace WordUpdater
                 }
                 finally
                 {
-                    Restore(app, st);
+                    st.Dispose();
                 }
 
-                // DDE/OLE 更新可能悄悄拉起隐藏的 et.exe 且不自退，统一清理
-                try { Thread.Sleep(500); } catch { }
+                // 诊断新出现的实例，不关闭任何非自有进程。
                 r.CleanedHiddenHosts = EtCleanup.CleanupSpawnedHiddenEt(before);
                 r.Executed = true;
                 return r;
@@ -240,7 +239,7 @@ namespace WordUpdater
                 r.Total = links.Count;
                 if (links.Count == 0) { r.Executed = true; return r; }
 
-                AppState st = Suppress(app);
+                WordHostStateScope st = WordHostStateScope.Enter(application);
                 try
                 {
                     // 倒序：先处理靠后的位置，尽量避免前面的取消/转换影响后续 COM 引用
@@ -269,7 +268,7 @@ namespace WordUpdater
                 }
                 finally
                 {
-                    Restore(app, st);
+                    st.Dispose();
                 }
                 r.Executed = true;
                 return r;
@@ -925,39 +924,5 @@ namespace WordUpdater
                 r.Failures.Add(label + "：" + reason);
         }
 
-        // ---- 运行期状态抑制（与 UpdateEngine 同套路） ----
-
-        private struct AppState
-        {
-            public bool Saved;
-            public object Alerts;
-            public object Screen;
-        }
-
-        private static AppState Suppress(dynamic app)
-        {
-            AppState st = new AppState();
-            try
-            {
-                st.Alerts = app.DisplayAlerts;
-                st.Screen = app.ScreenUpdating;
-                st.Saved = true;
-            }
-            catch { st.Saved = false; }
-            try { app.DisplayAlerts = WdAlertsNone; }
-            catch { }
-            try { app.ScreenUpdating = false; }
-            catch { }
-            return st;
-        }
-
-        private static void Restore(dynamic app, AppState st)
-        {
-            if (!st.Saved) return;
-            try { app.DisplayAlerts = st.Alerts; }
-            catch { }
-            try { app.ScreenUpdating = st.Screen; }
-            catch { }
-        }
     }
 }

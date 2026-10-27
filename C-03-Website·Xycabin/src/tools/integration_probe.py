@@ -39,6 +39,7 @@ def main():
         return text
     try:
         print('Isolated workspace: '+str(stage),flush=True)
+        shutil.copytree(ROOT.parent/'C-00-Shared',stage/'C-00-Shared',ignore=shutil.ignore_patterns('__pycache__'))
         for folder in ('C-01-ExcelIterate','C-02-WordUpdater'):
             source=ROOT.parent/folder; target=stage/folder;target.mkdir()
             for directory in ('src','lib'):
@@ -55,6 +56,7 @@ def main():
             shutil.copytree(ROOT/directory,website/directory)
         shutil.copy2(ROOT.parent/'verify_shared.py',stage/'verify_shared.py')
         shutil.copy2(ROOT.parent/'verify_devlog.py',stage/'verify_devlog.py')
+        shutil.copy2(ROOT.parent/'AGENTS.md',stage/'AGENTS.md')
         shutil.copytree(ROOT.parent/'C-04-Devlog',stage/'C-04-Devlog')
         config=website/'AA-Program/C3-XycabinSite_Configure.py'
         text=config.read_text(encoding='utf-8')

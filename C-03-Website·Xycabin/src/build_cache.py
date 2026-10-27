@@ -74,6 +74,7 @@ def inputs(base, snapshot):
     paths.add(base / 'AA-Program' / CONFIGURE[base.name])
     paths.update(referenced_paths(base))
     paths.add(base.parent / 'verify_shared.py')
+    paths.update(p for p in (base.parent / 'C-00-Shared').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     paths.update(p for p in (SITE / 'src').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     paths.add(SITE / 'AA-Program/C3-XycabinSite_Configure.py')
     values = []
@@ -95,6 +96,7 @@ def input_fingerprint(root, addin_roots):
     root = Path(root).resolve()
     paths = set((root.parent / 'C-04-Devlog').glob('*.md'))
     paths.add(root.parent / 'verify_shared.py')
+    paths.update(p for p in (root.parent / 'C-00-Shared').rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     for base in addin_roots:
         base = Path(base).resolve()
         for item in referenced_paths(base):

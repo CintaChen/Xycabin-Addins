@@ -195,8 +195,8 @@ class WpsFeatureLiveProbe
         var links=(System.Collections.IEnumerable)Call("XlsxLinkPackage","Scan",copy);bool found=false;foreach(object l in links)if((string)l.GetType().GetField("SourcePath",Hidden).GetValue(l)==replacement)found=true;Check(found,"Saved replacement points to new source");
         var inverse=(System.Collections.IEnumerable)Invoke(reopenedSession,"Steps",true,new Func<bool>(()=>false));foreach(object step in inverse)Console.WriteLine(step);
         links=(System.Collections.IEnumerable)Call("XlsxLinkPackage","Scan",copy);found=false;foreach(object l in links)if((string)l.GetType().GetField("SourcePath",Hidden).GetValue(l)==old)found=true;Check(found,"Inverse mapping restored original source");
-        object batch=reopenedSession.GetType().GetField("Batch",Hidden).GetValue(reopenedSession);string journal=(string)batch.GetType().GetProperty("Journal",Hidden).GetValue(batch,null);Check(File.Exists(journal)&&journal.StartsWith(folder+"\\"),"Workspace-local durable mapping");
-        Invoke(batch,"Confirm",new Action<string>(p=>Call("RecycleFiles","Send",p)));Check(!File.Exists(journal),"Strict recycle confirmation cleans test records");
+        object batch=reopenedSession.GetType().GetField("Batch",Hidden).GetValue(reopenedSession);string journal=(string)batch.GetType().GetProperty("Journal",Hidden).GetValue(batch,null);Check(WpsShared.SourcePaths.Exists(journal)&&journal.StartsWith(folder+"\\"),"Workspace-local durable mapping");
+        Invoke(batch,"Confirm",new Action<string>(p=>Call("RecycleFiles","Send",p)));Check(!WpsShared.SourcePaths.Exists(journal),"Strict recycle confirmation cleans test records");
         ((dynamic)test).Close(false);
     }
     static void TestDirectory(object app, object workbook)

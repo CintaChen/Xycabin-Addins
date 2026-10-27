@@ -1,52 +1,38 @@
 """Check shared source and documentation; never compare old build artifacts."""
 from pathlib import Path
+import ast
 import sys
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
-SHARED_FILES = (
-    'src/pdf/build_trial.py',
-    'src/tools/PdfTrialLauncher.cs',
-    'src/testharness/PdfToolsProbe.cs',
-    'src/testharness/PdfCurrentDocumentProbe.cs',
-
-    'src/addin/Connect.Pdf.cs',
-    'src/addin/PdfToolsForm.cs',
-    'src/addin/PdfCurrentDocument.cs',
-    'src/pdf/PdfWorker.cs',
-    'src/pdf/PdfWorker.exe.config',
-    'src/pdf/build_worker.py',
-    'src/pdf/packages.lock.json',
-    'src/pdf/THIRD-PARTY-NOTICES.txt',
-
-    'src/tools/AgentDocumentCoreProbe.cs', 'src/tools/GripProbe.cs', 'src/tools/LiveProbeSafety.cs', 'src/testharness/LiveProbeSafetyFixture.cs',
-    'src/addin/CustomizationRestart.cs', 'src/shared/RestartProtocol.cs', 'src/tools/RestartHelper.cs',
-    'src/tools/window_thread_probe.py', 'src/testharness/HostDialogProbe.cs', 'src/addin/HostDialogService.cs', 'src/addin/UiDiagnostics.cs', 'src/addin/CustomizationSaving.cs', 'src/addin/FormatSession.cs', 'src/addin/FormatEditorThread.cs',
-    'src/testharness/Feature099Probe.cs', 'src/testharness/GridHeadersProbe.cs',
-    'src/addin/AgentCustomization.cs', 'src/addin/DialogFormatting.cs', 'src/addin/Connect.Customization.cs',
-    'build.py', 'build_installer.py', 'gen_manifest.py',
-    'lib/Interop.Microsoft.Office.Core.dll',
-    'lib/Microsoft.Office.Tools.Common.dll',
-    'lib/Microsoft.Office.Tools.Common.v4.0.Utilities.dll',
-    'lib/Microsoft.Office.Tools.dll',
-    'lib/Microsoft.VisualStudio.Tools.Applications.Runtime.dll',
-    'project_support.py', 'rebuild.py', 'resign.py',
-    'src/addin/AgentDocumentForm.cs', 'src/addin/AgentLocalFiles.cs',
-    'src/addin/Connect.Agent.cs', 'src/addin/DialogSizes.cs', 'src/addin/DialogSizeEditor.cs', 'src/addin/DialogPreviewFactory.cs', 'src/addin/InteropDefs.cs', 'src/addin/UiKit.cs',
-    'src/configuration/configure_core.py', 'src/installer/Installer.cs',
-    'src/installer/InstallFlow.cs', 'src/tools/AddInProbe.cs',
-    'src/tools/AgentExtensionProbe.cs', 'src/tools/DialogSizesProbe.cs', 'src/tools/dialog_catalog_probe.py', 'src/tools/configure_probe.py',
-    'src/tools/devlog_probe.py', 'src/tools/markdown_gate.py', 'src/tools/GetPkt.cs', 'src/tools/InstallFlowProbe.cs',
-    'src/tools/MakeCertCapi.cs', 'src/tools/RibbonProbe.cs', 'src/tools/SetupDoctor.cs',
-    'src/tools/SignCmi.cs', 'src/tools/TrustAdd.cs', 'src/tools/UiPreviewProbe.cs',
-    'src/tools/ValidateManifest.cs', 'src/tools/ValidateXmlSig.cs',
-    'validate.py', 'verify_package.py',
-    'AA-Program/一键重建并打包.bat',
-)
+sys.path.insert(0, str(ROOT / 'C-00-Shared'))
+from source_layout import manifest, resolve_source
 
 DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
         'B2-DevExperience.md', 'B3-Gate Control.md'}
 SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享门禁')
+
+
+def check_entry(project, relative):
+    """Product Python entries may only dispatch with an explicit product root."""
+    if not relative.endswith('.py'):
+        return
+    if not (ROOT / 'C-00-Shared' / relative).is_file():
+        raise ValueError('缺少公共脚本实现：' + relative)
+    depth = len(Path(relative).parts) - 1
+    expected = '''"""Product entry point; implementation is compiled/executed from C-00-Shared."""
+from pathlib import Path as _Path
+import sys as _sys
+_root = _Path(__file__).resolve().parents[%d]
+_sys.dont_write_bytecode = True
+_sys.path.insert(0, str(_root))
+_sys.path.insert(1, str(_root.parent / "C-00-Shared"))
+from source_layout import run_entry as _run_entry
+_run_entry(globals(), %r, _root)
+''' % (depth, relative)
+    path = project / relative
+    if not path.is_file() or ast.dump(ast.parse(path.read_text(encoding='utf-8-sig'))) != ast.dump(ast.parse(expected)):
+        raise ValueError('公共脚本产品入口只能保留显式产品根目录的薄封装：' + str(path))
 
 
 # rule=R-01
@@ -87,13 +73,29 @@ def main():
         if not project.is_dir():
             raise FileNotFoundError('共享检查需要两个加载项目录：' + str(project))
     errors = []
-    for relative in SHARED_FILES:
-        paths = [project / relative for project in (left, right)]
-        missing = [str(path) for path in paths if not path.is_file()]
-        if missing:
-            errors.append('缺少公共文件：' + '；'.join(missing))
-        elif paths[0].read_bytes() != paths[1].read_bytes():
-            errors.append('公共文件内容不同：' + relative)
+    layout = manifest()
+    for relative in layout['linked']:
+        if not (ROOT / 'C-00-Shared' / relative).is_file():
+            errors.append('缺少公共实现：' + relative)
+        for project in (left, right):
+            if (project / relative).exists():
+                errors.append('公共实现不得保留产品副本：' + str(project / relative))
+    for project in (left, right):
+        import json
+        for relative in layout['entries']:
+            try: check_entry(project, relative)
+            except (OSError, ValueError, SyntaxError) as error: errors.append(str(error))
+        data = json.loads((project / 'project.json').read_text(encoding='utf-8-sig'))
+        for value in data['sources']:
+            try: resolve_source(project, value, addin=True)
+            except ValueError as error: errors.append(str(error))
+        for tool in data['tools']:
+            for value in [tool['source']] + tool.get('additional_sources', []):
+                try: resolve_source(project, value)
+                except ValueError as error: errors.append(str(error))
+    for relative in layout['binary_checks']:
+        if (left / relative).read_bytes() != (right / relative).read_bytes():
+            errors.append('公共依赖不同：' + relative)
     try:
         check_documents()
     except (OSError, ValueError) as error:
@@ -105,7 +107,7 @@ def main():
             errors.append('缺少集中网站接入文件：' + str(path))
     if errors:
         raise ValueError('\n'.join(errors))
-    print('PASS: C-04 documents and %d shared files are consistent' % len(SHARED_FILES))
+    print('PASS: C-04 documents, %d unique linked implementations and both product source manifests' % len(layout['linked']))
 
 
 if __name__ == '__main__':

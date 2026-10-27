@@ -1,20 +1,9 @@
-"""Delegate the document gate to the repository-level verifier."""
-from pathlib import Path
-import subprocess
-import sys
-
-sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parents[2]
-TARGET = ROOT.parent / 'verify_devlog.py'
-
-
-def main():
-    if '--self-test' in sys.argv:
-        command = [sys.executable, str(TARGET), '--self-test']
-    else:
-        command = [sys.executable, str(TARGET)] + sys.argv[1:]
-    raise SystemExit(subprocess.call(command))
-
-
-if __name__ == '__main__':
-    main()
+"""Product entry point; implementation is compiled/executed from C-00-Shared."""
+from pathlib import Path as _Path
+import sys as _sys
+_root = _Path(__file__).resolve().parents[2]
+_sys.dont_write_bytecode = True
+_sys.path.insert(0, str(_root))
+_sys.path.insert(1, str(_root.parent / "C-00-Shared"))
+from source_layout import run_entry as _run_entry
+_run_entry(globals(), 'src/tools/devlog_probe.py', _root)

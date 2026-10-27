@@ -96,8 +96,8 @@ namespace WordUpdater.Tools
                 }
                 if (addin == null) { Console.WriteLine("[跳过] 找不到 src/addin，弹窗样式红线未扫描"); return; }
                 string file = Path.Combine(addin, "LinkViewForm.cs");
-                Check(ref failed, "LinkViewForm.cs 存在", File.Exists(file));
-                if (!File.Exists(file)) return;
+                Check(ref failed, "LinkViewForm.cs 存在", WpsShared.SourcePaths.Exists(file));
+                if (!WpsShared.SourcePaths.Exists(file)) return;
                 var code = new StringBuilder();
                 foreach (string line in File.ReadAllLines(file))
                 {

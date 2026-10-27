@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -33,7 +33,7 @@ partial class WorkbookToolsProbe {
     static void JournalChecks(string folder,string a,string b,string c) {
         var journal=new LinkOperationLog();var lines=new StringBuilder();journal.LineAdded+=line=>lines.Append(line);
         journal.Record("开始","中文路径与多次操作");journal.EnablePersistence(Path.Combine(folder,"journals"));journal.Record("结束","第二次操作");
-        Check(File.ReadAllText(journal.FilePath,Encoding.UTF8)==journal.DiagnosticText,"UTF-8 diagnostic journal contains complete trace");
+        Check(WpsShared.SourcePaths.ReadAllText(journal.FilePath,Encoding.UTF8)==journal.DiagnosticText,"UTF-8 diagnostic journal contains complete trace");
         byte[] bytes=File.ReadAllBytes(journal.FilePath);Check(!(bytes.Length>2&&bytes[0]==239&&bytes[1]==187&&bytes[2]==191),"journal writes UTF-8 without BOM");
         Check(lines.ToString()==journal.Text,"event sequence equals journal sequence");
         var other=new LinkOperationLog();other.EnablePersistence(Path.Combine(folder,"journals"));Check(other.FilePath!=journal.FilePath,"one unique file per opening");
@@ -55,8 +55,8 @@ partial class WorkbookToolsProbe {
         scope.SetScope(LinkScanScope.Current);Check(scope.Candidates().Single()==a&&journal.DiagnosticText.Contains("取消选择"),"scope switching and cancel accumulate history");
         string t1=Path.Combine(folder,"journal-target1.xlsx"),t2=Path.Combine(folder,"journal-target2.xlsx");Package(t1,a);Package(t2,a);
         var session=JournalSession(b,new[]{t1},a,c,false);string result=session.Execute(null);
-        Check(result.Contains("成功1条，跳过0条，失败0条")&&XlsxLinkPackage.Scan(t1)[0].SourcePath==c,"closed forward committed");Check(!Directory.GetFiles(folder,"*链接备份*").Any(),"no persistent whole workbook backups");
-        Check(File.Exists(session.Batch.Journal)&&File.Exists(session.Batch.LogPath(folder)),"local link log and mapping");
+        Check(result.Contains("成功1条，跳过0条，失败0条")&&XlsxLinkPackage.Scan(t1)[0].SourcePath==c,"closed forward committed");Check(!WpsShared.SourcePaths.GetFiles(folder,"*链接备份*").Any(),"no persistent whole workbook backups");
+        Check(WpsShared.SourcePaths.Exists(session.Batch.Journal)&&WpsShared.SourcePaths.Exists(session.Batch.LogPath(folder)),"local link log and mapping");
         foreach(string step in session.Steps(true,()=>false)){}Check(XlsxLinkPackage.Scan(t1)[0].SourcePath==a&&session.Batch.State=="Undone","closed reverse mapping");session.Batch.Confirm(RecycleFiles.Send);
         Package(t1,a);session=JournalSession(b,new[]{t1},a,c,true);var open=((LinkFakeApp)session.App).Workbooks.Items[1];open.Saved=false;result=session.Execute(null);
         Check(open.SaveCount>=2&&open.CloseCount==0&&XlsxLinkPackage.Scan(t1)[0].SourcePath==c,"open target autosaves never closes");
@@ -106,13 +106,13 @@ partial class WorkbookToolsProbe {
             session.Scan(new[]{t});string once=session.Operations.Text;
             Check(once.Contains("发现2条链接：")&&once.Contains(a)&&once.Contains(b)&&!form.LogView.Text.Contains(form.Guidance),"scan full paths replace initial guidance");
             session.Scan(new[]{t});Check(session.Operations.Text==once,"repeat scan replaces old user batch");
-            string disk=File.ReadAllText(session.Batch.LogPath(folder));Check(disk.Split(new[]{"开始扫描："},StringSplitOptions.None).Length==3,"diagnostic increment contains two scans without history duplication");
+            string disk=WpsShared.SourcePaths.ReadAllText(session.Batch.LogPath(folder));Check(disk.Split(new[]{"开始扫描："},StringSplitOptions.None).Length==3,"diagnostic increment contains two scans without history duplication");
             report.Values[1,2]=b;report.Values[2,2]="";session.Execute(null);
             Check(session.Operations.Text.Contains("尚未修改链接")&&!session.Operations.Text.Contains("成功："),"mapping conflict refuses with no false success");
             session.Batch.Confirm(RecycleFiles.Send);session.Batch=null;
             session.Scan(new[]{t});report.Values[1,2]=a;report.Values[2,2]="";session.Execute(null);
             Check(session.LastResult.Contains("成功0条，跳过2条")&&!session.Operations.Text.Contains("跳过链接：")&&!session.Operations.Text.Contains("待替换链接："),"blank and same mapping skip only in summary");
-            Check(!File.ReadAllText(session.Batch.LogPath(folder)).Contains("预检未通过"),"confirmed prior diagnostics are not copied into the new batch");
+            Check(!WpsShared.SourcePaths.ReadAllText(session.Batch.LogPath(folder)).Contains("预检未通过"),"confirmed prior diagnostics are not copied into the new batch");
             string copied=null;form.CopyText=text=>copied=text;
             typeof(System.Windows.Forms.Control).GetMethod("OnClick",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(form.CopyLog,new object[]{EventArgs.Empty});
             Check(copied==session.Operations.Text.Replace("\r","")&&copied==form.LogView.Text,"copy captures current concise batch without touching clipboard");
@@ -137,10 +137,10 @@ partial class WorkbookToolsProbe {
         Check(session.Batch.State=="UndoFailed"&&session.LastResult.Contains("仍有1条")&&session.Operations.Text.Contains("还原失败："),"undo failure exposes remaining link and prohibits confirmation");Reject(()=>session.Batch.Confirm(_=>{}),"failed undo cannot be confirmed");
         target.RefuseChange=false;foreach(string step in session.Steps(true,()=>false)){}
         Reject(()=>{foreach(string step in session.ConfirmSteps(_=>{throw new IOException("injected recycle failure");})){}},"confirmation failure retains remaining records");
-        string before=File.ReadAllText(session.Batch.LogPath(folder));session.ReportStopped(new IOException("injected cleanup failure"));Check(File.ReadAllText(session.Batch.LogPath(folder))==before&&session.Operations.Text.Contains("重试确认清理"),"cleanup failure does not recreate or append recycled log");
+        string before=WpsShared.SourcePaths.ReadAllText(session.Batch.LogPath(folder));session.ReportStopped(new IOException("injected cleanup failure"));Check(WpsShared.SourcePaths.ReadAllText(session.Batch.LogPath(folder))==before&&session.Operations.Text.Contains("重试确认清理"),"cleanup failure does not recreate or append recycled log");
         string journal=session.Batch.Journal,log=session.Batch.LogPath(folder),display=session.Operations.Text;
         foreach(string step in session.ConfirmSteps(RecycleFiles.Send)){}
-        Check(session.Batch==null&&!File.Exists(journal)&&!File.Exists(log)&&session.Operations.Text==display+"已确认，本批日志和恢复记录已清理。\r\n","successful retry appends only confirmation and does not recreate logs");
+        Check(session.Batch==null&&!WpsShared.SourcePaths.Exists(journal)&&!WpsShared.SourcePaths.Exists(log)&&session.Operations.Text==display+"已确认，本批日志和恢复记录已清理。\r\n","successful retry appends only confirmation and does not recreate logs");
         Check(XlsxLinkPackage.Scan(t)[0].SourcePath==a,"confirmation preserves already restored file state");
         Package(t);session=JournalSession(c,new[]{t},a,b,true);session.Scan(new[]{t});Check(session.Operations.Text.Contains("未发现可替换链接")&&!session.Operations.Text.Contains("再点击「执行替换」"),"zero-link scan omits replacement suggestion");session.Batch.Confirm(RecycleFiles.Send);
     }
@@ -319,7 +319,7 @@ partial class WorkbookToolsProbe {
             Check(XlsxLinkPackage.Hash(original)==originalHash,"prepare never changes original");
             XlsxLinkPackage.VerifyRewrite(original,stage,new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){{a,b},{b,c}});checks++;
             string backup=XlsxLinkPackage.Commit(original,stage,originalHash);
-            Check(File.Exists(backup)&&XlsxLinkPackage.Hash(backup)==originalHash,"backup exact bytes before commit");
+            Check(WpsShared.SourcePaths.Exists(backup)&&XlsxLinkPackage.Hash(backup)==originalHash,"backup exact bytes before commit");
             Check(XlsxLinkPackage.Scan(original)[0].SourcePath==b,"commit writes only staged result");
             stage=XlsxLinkPackage.Prepare(original,new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){{b,c}});
             var same=XlsxLinkPackage.Scan(stage);Check(same.All(x=>x.SourcePath==c),"many-to-one mapping supported");
@@ -327,12 +327,12 @@ partial class WorkbookToolsProbe {
             Reject(()=>XlsxLinkPackage.Prepare(original,new Dictionary<string,string>{{b,original}}),"self link refused");
             Reject(()=>XlsxLinkPackage.Prepare(original,new Dictionary<string,string>{{b,Path.Combine(folder,"missing.xlsx")}}),"missing new source refused");
             Reject(()=>XlsxLinkPackage.Prepare(original,new Dictionary<string,string>{{a,c}}),"stale mapping refused");
-            Check(!Directory.GetFiles(folder,".EI_LinkStage_*.xlsx").Any(),"failed preparation cleans stage");
+            Check(!WpsShared.SourcePaths.GetFiles(folder,".EI_LinkStage_*.xlsx").Any(),"failed preparation cleans stage");
             string unicode=Path.Combine(folder,"中文空格 #100%.xlsx");Package(unicode);
             stage=XlsxLinkPackage.Prepare(original,new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){{b,unicode}});
             Check(XlsxLinkPackage.Scan(stage).Count(l=>l.SourcePath==unicode)==2,"Unicode/reserved URI round-trip without double decode");
             Reject(()=>XlsxLinkPackage.Commit(original,stage,"stale hash"),"changed original aborts commit");
-            Check(File.Exists(stage),"failed commit leaves stage recoverable");File.Delete(stage);
+            Check(WpsShared.SourcePaths.Exists(stage),"failed commit leaves stage recoverable");File.Delete(stage);
             string bad=Path.Combine(folder,"bad.xlsx");File.WriteAllText(bad,"not a zip");
             Reject(()=>XlsxLinkPackage.Scan(bad),"extension alone insufficient");
             string signed=Path.Combine(folder,"signed.xlsx");Package(signed);using(var stream=File.Open(signed,FileMode.Open,FileAccess.ReadWrite))using(var zip=new ZipArchive(stream,ZipArchiveMode.Update))Part(zip,"_xmlsignatures/sig1.xml","<signed/>");

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -116,12 +116,12 @@ class MergeLiveProbe
                 string savedPath = WorkbookSaving.Save(targetHandle.Book, true);
                 string backupPath = MergeBackup.Create(savedPath);
                 session.TrackFile(backupPath);
-                Check(File.Exists(backupPath), "backup file created at " + backupPath);
+                Check(WpsShared.SourcePaths.Exists(backupPath), "backup file created at " + backupPath);
                 MergeSnapshot snap = MergeSnapshot.Capture(targetHandle.Sheet, plan2);
                 Check(snap != null, "snapshot captured");
                 MergeTargetWriter.Write(app, targetHandle.Sheet, plan2, null);
                 WorkbookSaving.Save(targetHandle.Book, true);
-                Check(File.Exists(savedPath), "target saved after write");
+                Check(WpsShared.SourcePaths.Exists(savedPath), "target saved after write");
 
                 // 3. 读回断言。注意「各列独立追加」：A/B/C 原有 5 行数据→从第 7 行起写；
                 // D/E 原本只有表头（空列）→从第 2 行起写。

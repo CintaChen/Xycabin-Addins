@@ -16,8 +16,8 @@
   "legacy_name": "WpsLinkUpdater",
   "sources": [
     "AssemblyInfo.cs",
-    "InteropDefs.cs",
-    "UiKit.cs",
+    "@shared/src/addin/InteropDefs.cs",
+    "@shared/src/addin/UiKit.cs",
     "Ribbon.g.cs",
     "Connect.cs",
     "ThisAddIn.cs",
@@ -30,24 +30,25 @@
     "FlashHighlighter.cs",
     "LinkViewForm.cs",
     "TableSelectEngine.cs",
-    "Connect.Agent.cs",
-    "AgentDocumentForm.cs",
-    "AgentLocalFiles.cs",
-    "DialogSizes.cs",
-    "DialogPreviewFactory.cs",
-    "DialogSizeEditor.cs",
-    "AgentCustomization.cs",
-    "DialogFormatting.cs",
-    "Connect.Customization.cs",
+    "@shared/src/addin/Connect.Agent.cs",
+    "@shared/src/addin/AgentDocumentForm.cs",
+    "@shared/src/addin/AgentLocalFiles.cs",
+    "@shared/src/addin/DialogSizes.cs",
+    "@shared/src/addin/DialogPreviewFactory.cs",
+    "@shared/src/addin/DialogSizeEditor.cs",
+    "@shared/src/addin/AgentCustomization.cs",
+    "@shared/src/addin/DialogFormatting.cs",
+    "@shared/src/addin/Connect.Customization.cs",
     "CustomizationCallbacks.g.cs",
-    "FormatSession.cs",
-    "FormatEditorThread.cs",
-    "CustomizationSaving.cs",
-    "UiDiagnostics.cs",
-    "HostDialogService.cs",
-    "Connect.Pdf.cs",
-    "PdfToolsForm.cs",
-    "PdfCurrentDocument.cs"
+    "@shared/src/addin/FormatSession.cs",
+    "@shared/src/addin/FormatEditorThread.cs",
+    "@shared/src/addin/CustomizationSaving.cs",
+    "@shared/src/addin/UiDiagnostics.cs",
+    "@shared/src/addin/HostDialogService.cs",
+    "@shared/src/addin/Connect.Pdf.cs",
+    "@shared/src/addin/PdfToolsForm.cs",
+    "@shared/src/addin/PdfCurrentDocument.cs",
+    "WordHostStateScope.cs"
   ],
   "tools": [
     {
@@ -77,7 +78,7 @@
       "name": "LinkPasteTest",
       "source": "src/testharness/LinkPasteTest.cs",
       "additional_sources": [
-        "src/tools/LiveProbeSafety.cs"
+        "@shared/src/tools/LiveProbeSafety.cs"
       ],
       "references": [
         "System.Windows.Forms.dll",
@@ -89,7 +90,7 @@
       "name": "CtrlSelectionLiveProbe",
       "source": "src/testharness/CtrlSelectionLiveProbe.cs",
       "additional_sources": [
-        "src/tools/LiveProbeSafety.cs"
+        "@shared/src/tools/LiveProbeSafety.cs"
       ],
       "references": [
         "System.Windows.Forms.dll",
@@ -102,7 +103,7 @@
       "name": "ClipboardAreaProbe",
       "source": "src/tools/ClipboardAreaProbe.cs",
       "additional_sources": [
-        "src/tools/LiveProbeSafety.cs"
+        "@shared/src/tools/LiveProbeSafety.cs"
       ],
       "references": [
         "System.Windows.Forms.dll",
@@ -148,7 +149,7 @@
     },
     {
       "name": "Feature099Probe",
-      "source": "src/testharness/Feature099Probe.cs",
+      "source": "@shared/src/testharness/Feature099Probe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -156,12 +157,12 @@
       ],
       "offline": true,
       "additional_sources": [
-        "src/testharness/GridHeadersProbe.cs"
+        "@shared/src/testharness/GridHeadersProbe.cs"
       ]
     },
     {
       "name": "HostDialogProbe",
-      "source": "src/testharness/HostDialogProbe.cs",
+      "source": "@shared/src/testharness/HostDialogProbe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -172,7 +173,7 @@
     },
     {
       "name": "PdfToolsProbe",
-      "source": "src/testharness/PdfToolsProbe.cs",
+      "source": "@shared/src/testharness/PdfToolsProbe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -183,7 +184,7 @@
     },
     {
       "name": "PdfCurrentDocumentProbe",
-      "source": "src/testharness/PdfCurrentDocumentProbe.cs",
+      "source": "@shared/src/testharness/PdfCurrentDocumentProbe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -191,6 +192,18 @@
         "Microsoft.CSharp.dll"
       ],
       "offline": false
+    },
+    {
+      "name": "RuntimeQualityProbe",
+      "source": "@shared/src/testharness/RuntimeQualityProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "build/UpdateProbe.exe",
+        "build/LinkViewProbe.exe"
+      ],
+      "offline": true
     }
   ],
   "pdf_worker": true

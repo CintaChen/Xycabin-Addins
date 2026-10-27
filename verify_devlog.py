@@ -28,7 +28,7 @@ RULE_MARK = re.compile(r'rule=(R-\d{2})')
 RULES = {
     'R-01': ('L1', 'verify_shared.py', 'check_documents'),
     'R-02': ('L1', 'C-03-Website·Xycabin/src/tools/layout_probe.py', 'verify/layout'),
-    'R-03': ('L1', 'C-01-ExcelIterate/src/tools/markdown_gate.py', 'hierarchy'),
+    'R-03': ('L1', 'C-00-Shared/src/tools/markdown_gate.py', 'hierarchy'),
     'R-04': ('L1', 'verify_devlog.py', 'check_dates'),
     'R-05': ('L1', 'verify_devlog.py', 'version_rows'),
     'R-06': ('L1', 'verify_devlog.py', 'verify_file/guide'),
@@ -41,20 +41,20 @@ RULES = {
     'R-13': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', '_regular_asset'),
     'R-14': ('L1', 'C-03-Website·Xycabin/src/document_assets.py', 'collect'),
     'R-15': ('L2', 'verify_shared.py', 'main/shared'),
-    'R-16': ('L2', 'C-01-ExcelIterate/src/configuration/configure_core.py', 'get_version'),
-    'R-17': ('L2', 'C-01-ExcelIterate/rebuild.py', 'main'),
-    'R-18': ('L2', 'C-01-ExcelIterate/build_installer.py', 'main'),
-    'R-19': ('L2', 'C-01-ExcelIterate/resign.py', 'main'),
+    'R-16': ('L2', 'C-00-Shared/src/configuration/configure_core.py', 'get_version'),
+    'R-17': ('L2', 'C-00-Shared/rebuild.py', 'main'),
+    'R-18': ('L2', 'C-00-Shared/build_installer.py', 'main'),
+    'R-19': ('L2', 'C-00-Shared/resign.py', 'main'),
     'R-20': ('L2', 'verify_devlog.py', 'check_gate_inventory'),
     'R-21': ('L2', 'C-03-Website·Xycabin/src/tools/cleanup.py', 'main'),
     'R-22': ('L2', 'C-03-Website·Xycabin/src/tools/site_probe.py', 'main'),
     'R-23': ('L2', 'C-03-Website·Xycabin/src/tools/workflow_probe.py', 'main'),
     'R-24': ('L2', 'C-03-Website·Xycabin/src/tools/PayloadProbe.cs', 'Main'),
     'R-25': ('L2', 'C-01-ExcelIterate/src/testharness/DisciplineProbe.cs', 'Main'),
-    'R-26': ('L2', 'C-01-ExcelIterate/src/tools/dialog_catalog_probe.py', 'main'),
-    'R-27': ('L2', 'C-01-ExcelIterate/src/testharness/GridHeadersProbe.cs', 'GridHeaderChecks'),
-    'R-28': ('L2', 'C-01-ExcelIterate/src/testharness/Feature099Probe.cs', 'OutputFormatChecks'),
-    'R-29': ('L2', 'C-01-ExcelIterate/src/testharness/LiveProbeSafetyFixture.cs', 'Main'),
+    'R-26': ('L2', 'C-00-Shared/src/tools/dialog_catalog_probe.py', 'main'),
+    'R-27': ('L2', 'C-00-Shared/src/testharness/GridHeadersProbe.cs', 'GridHeaderChecks'),
+    'R-28': ('L2', 'C-00-Shared/src/testharness/Feature099Probe.cs', 'OutputFormatChecks'),
+    'R-29': ('L2', 'C-00-Shared/src/testharness/LiveProbeSafetyFixture.cs', 'Main'),
 }
 
 H_LINE = re.compile(r'(?m)^\*\*(H-\d{2})\*\*')
@@ -134,7 +134,7 @@ def check_rules(text):
         marker = check.split('/')[0]
         if not function_exists(path, marker):
             errors.append(rule + ': ' + relative + ' 缺少检查点 ' + marker)
-    for folder in ('C-01-ExcelIterate', 'C-02-WordUpdater', 'C-03-Website·Xycabin'):
+    for folder in ('C-00-Shared', 'C-01-ExcelIterate', 'C-02-WordUpdater', 'C-03-Website·Xycabin'):
         for path in (ROOT / folder).rglob('*'):
             if not path.is_file() or path.suffix.lower() not in ('.py', '.cs'):
                 continue

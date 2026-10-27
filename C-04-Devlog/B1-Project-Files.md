@@ -1,6 +1,6 @@
 **三项目档案与版本**
 
-最后更新：2026-10-26 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-27 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
@@ -26,7 +26,7 @@
 
 ## 3. 源码与资源目录
 
-三个项目统一为 `AA-Program`（配置器、启动器、正式产物）与 `AB-Graphic`（界面截图、功能区图标、示意 SVG）；源码在 `src/`，构建中间物与验证证据在 `build/`。文档只在仓库根 `C-04-Devlog` 维护，项目内不再保留副本。
+三个项目统一为 `AA-Program`（配置器、启动器、正式产物）与 `AB-Graphic`（界面截图、功能区图标、示意 SVG）；专属源码在产品 `src/`，公共实现只在同级 `C-00-Shared`，构建中间物与验证证据在各产品 `build/`。文档只在仓库根 `C-04-Devlog` 维护，项目内不再保留副本。
 
 # 二. Excel-Iterate 项目档案
 
@@ -34,7 +34,7 @@
 
 WPS表格VSTO加载项：引用/从属追踪、公式、筛选、链接、目录、文件整理/命名、文件名称/OCR、表头匹配合并及合并抵消。命名空间/程序集 `Excel_Iterate`，唯一安装器[AA-Program/Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，内嵌五载荷；用户需完整VSTO运行库及官方授权。Agent-Evo同一DLL提供网站、离线文档、四项自定配置和需求记录，实验OCR占位灰色。
 
-AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、功能区图标和示意SVG；文档统一在仓库根C-04-Devlog维护；build是工具、中间产物和验证证据。C-01/C-02各保留完整公共源码，C-03是网站唯一源码及联合交付入口，不建立网站副本。
+AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、功能区图标和示意SVG；文档统一在仓库根C-04-Devlog维护；build是工具、中间产物和验证证据。C-01/C-02直接编译引用C-00-Shared公共实现，C-03是网站唯一源码及联合交付入口，不建立网站副本。
 
 ## 2. 版本摘要
 
@@ -105,22 +105,25 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
 
+本轮沿用版本与发布身份，公共源码迁至C-00-Shared，项目清单直接引用，生成文件与产品入口保留原位置。抵消窗口在首次可见前应用最大化，来源事件先订阅再回填；局部缓冲覆盖布局、网格和拖柄，尺寸预览保持普通窗口。默认布局按窗口及DPI延迟测量；从属扫描和抵消预检通过原宿主线程分块读取、后台纯数据运算，来源变化时中止。宿主不支持变化监听时回退同步读取并记录兼容路径。EliminationSession统一持有目标、快照和任务，大结果预览按需取值，仍完整测宽、支持复制；取消与失败重试保留尚未还原的目标。实际WPS黑影、键入、菜单、跨屏DPI与写入还原由用户验收，离线检查不能代替。
+
 ### (2). 本轮交付证据
 
-本轮单独更新Excel-Iterate 0.9.9.3的状态文案为“仅名称管理器定义引用（X 个名称）”，同步现有精确断言、实机探针及说明文档；其他状态、数量统计、依赖判断与断链逻辑沿用。本轮完整391项离线检查及24项后台任务通过，原证书重签、五载荷和内嵌资产校验通过。此前名称外链及A1误判修复的49项实机结果保留为历史证据，本轮文案调整未重复连接WPS；安装和真实按钮待人工验收。非审计正文在构建前固定，本节在全部验证后回填。
+后续本地完整重建后的包摘要已变化，当前安装包以[发布准备清单](../C-03-Website·Xycabin/build/github-release-preparation/assets.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
-| 检查    | 结果                                                                                                                                                              |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [Excel\_Iterate\_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,837,376字节，版本0.9.9.3，SHA-256前缀6280624B；[交付摘要](../C-01-ExcelIterate/build/name-status-label-delivery.json)记录安装包、DLL、两清单摘要、当前验证及边界 |
-| 历史失败 | [离线旧DLL失败](../C-01-ExcelIterate/build/name-address-red.log)、[旧DLL复验](../C-01-ExcelIterate/build/name-address-red-confirm.log)及[实机旧DLL失败](../C-01-ExcelIterate/build/name-address-live-red.log)：此前实际生产会话在删除前报告相同的局部Y依赖，来源仍在；旧DLL与失败样本保留 |
-| 历史定位 | [旧判断](../C-01-ExcelIterate/build/name-address-observation-red.log)记录局部Y 360处、全局Y 1处假依赖；[修复后](../C-01-ExcelIterate/build/name-address-observation-green.log)同一原件、同一内部分析均为0处。两份证据只读原件，本轮未重测 |
-| 离线回归 | [background-validation.log](../C-01-ExcelIterate/build/background-validation.log)中的WorkbookToolsProbe为391 PASS，已使用新文案精确断言；包括此前的来源/作用域、地址/名称、指令、读取/保存失败、完整会话与恢复回归，本轮不新增重复测试 |
-| 历史COM | [name-address-live-final.log](../C-01-ExcelIterate/build/name-address-live-final.log)：此前正式DLL 49项PASS，含审核2.XLS及其两个Y名称断链；其他来源、名称含筛选范围、数据表值/公式/已使用样式/几何均保留，保存重开不重现、取消逐字节还原，原件摘要未变。本轮仅改文案，未重复实机操作 |
-| 工具入口 | [NameLinksLiveProbe.cs](../C-01-ExcelIterate/src/tools/NameLinksLiveProbe.cs)以LiveProbeSafety管理临时副本；[NameLinksProbe.cs](../C-01-ExcelIterate/src/testharness/NameLinksProbe.cs)加入既有WorkbookToolsProbe，原四列清单、LinkAction及旧批次XML兼容 |
-| 构建与后台 | [name-status-label-build.log](../C-01-ExcelIterate/build/name-status-label-build.log)完整编译/重签/打包PASS；[name-status-label-validation.log](../C-01-ExcelIterate/build/name-status-label-validation.log)完整24项后台任务PASS；使用validate.py --background --mode full --site-html build/site-embedded.snapshot.html |
-| 签名与载荷 | [name-status-label-package.log](../C-01-ExcelIterate/build/name-status-label-package.log)：固定发布者、两清单SHA-256双签名、五载荷、两份完整文档、14份图片与内嵌HTML全部PASS；交付脚本核对五份非审计正文在构建前后未变 |
-| 前轮证据 | [名称残留交付](../C-01-ExcelIterate/build/name-link-delivery.json)、[地址误判交付](../C-01-ExcelIterate/build/name-address-delivery.json)、[地址修复后台原日志](../C-01-ExcelIterate/build/name-address-background-validation.log)及[原实机记录](../C-01-ExcelIterate/build/name-link-live-final.log)保留为历史证据；当前安装包及后台结果以name-status-label交付为准 |
-| 文档与边界 | B1、B2、A使用说明及网站Excel摘要/指南已同步；最终按用户要求联合重建，两个安装包与网站正式产物一并更新，摘要以current-delivery.json为准。本次未自动安装，安装后真实按钮点击、焦点与弹窗外观待人工验收；不把实机COM或后台结果当作已完成安装验收 |
+本轮完成公共源码单源迁移、抵消弹窗初显时序和局部绘制修复、会话生命周期、宿主线程分块读取与后台纯计算、大结果预览及恢复边界优化。沿用0.9.9.3、原命令ID、配置和固定发布者；非审计正文固定后完成重建、重签与打包，本节在验证后回填。真实黑影、宿主交互和跨屏DPI仍待用户实机验收，本轮未安装或连接WPS；随后按用户要求准备本地提交，并生成内含最新两包的HTML，远端push和Release附件上传留待后续。
+
+| 检查 | 结果 |
+|---|---|
+| 安装包 | [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,869,632字节，版本0.9.9.3，SHA-256前缀514B442185DFA27D |
+| 交付摘要 | [完整摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)、[质量评估、性能与验收步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)记录两包、DLL、清单、边界与本轮证据 |
+| 构建与后台 | [最终重建](../C-01-ExcelIterate/build/optimization-audit/final-rebuild.log)、[最终完整验证](../C-01-ExcelIterate/build/optimization-audit/final-validation.log)：26项任务全部通过、缓存复用0项；抵消222、从属130、工作簿391、文件189、Feature099共10064项及新增运行质量60项均通过 |
+| 公共迁移 | [负向检查](../C-01-ExcelIterate/build/optimization-audit/shared-negative-probe.log)5项通过；两产品SourceLayoutProbe各7项通过，拒绝旧实现副本、非薄入口、缺失及越界引用；公共修改影响两产品缓存 |
+| 弹窗与异步 | [独立桌面日志](../C-01-ExcelIterate/build/optimization-audit/ui-render.log)：12组默认/自定义宽度和100%/150%/200%控件缩放，另有两类生产窗体最大化/还原；实际设备DPI为96，未冒充真实跨屏验收。运行质量覆盖取消、来源通知、同名重开、模拟COM失败、迟到回调和双表还原重试 |
+| 性能 | [五次计时汇总](../C-01-ExcelIterate/build/optimization-audit/benchmark-summary.json)：1千/1万/10万行全部比较，12组结果签名一致；10万行预览中位87.910→33.973秒，峰值工作集404.2→116.9MiB。扫描为离线宿主替身，不代表真实COM延迟 |
+| 签名与载荷 | [最终签名](../C-01-ExcelIterate/build/optimization-audit/Excel_Iterate-final-signatures.log)、[五载荷及资源](../C-01-ExcelIterate/build/optimization-audit/final-payload.log)：固定发布者及SHA-256清单双签名、五载荷、两整份文档及14份图片通过；两DLL内嵌网页一致 |
+| 兼容与恢复 | [公开接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Excel原670条记录保留、无新增公开类型。[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)与[源码基线](../C-01-ExcelIterate/build/optimization-audit/baseline.json)保留；源码和说明纳入本地提交，尚未push或上传Release；未清理历史或重置配置 |
+| 验收边界 | 原路径已事务替换；实际WPS黑影、键入、菜单、Esc、跨屏及真实写入还原待用户按报告验收。此前外链实机记录保留为历史证据，本轮未重复运行 |
 
 # 三. WordUpdater 项目档案
 
@@ -128,7 +131,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 WPS文字VSTO加载项：逐格链接Excel、更新/查看链接及选择正文顶层表格。曾用名WpsLinkUpdater，仅迁移自身旧身份。命名空间/程序集 `WordUpdater`，唯一安装器[AA-Program/WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，内嵌五载荷；用户需完整VSTO运行库及官方授权。Agent-Evo同一DLL提供网站、离线文档、四项自定配置和需求记录，实验OCR占位灰色。
 
-AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、功能区图标和示意SVG；文档统一在仓库根C-04-Devlog维护；build是工具、中间产物和验证证据。C-01/C-02各保留完整公共源码，C-03是网站唯一源码及联合交付入口，不建立网站副本。
+AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、功能区图标和示意SVG；文档统一在仓库根C-04-Devlog维护；build是工具、中间产物和验证证据。C-01/C-02直接编译引用C-00-Shared公共实现，C-03是网站唯一源码及联合交付入口，不建立网站副本。
 
 ## 2. 版本摘要
 
@@ -189,21 +192,22 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 原命令ID、用户设置格式、程序集与安装路径沿用。名称/排序即刻刷新；格式/控件/窗口尺寸下次开窗生效，旧窗口保留快照。共享确认隔离、字体所有权与安全预览方法见第三章，不将后台通过认作真实WPS键入/菜单/焦点问题已解决。本轮安装、宿主点击和云端调用单独验收。
 
+本轮沿用版本、原证书及稳定命令，公共实现改为C-00-Shared单源引用。更新链接与链接查看统一使用WordHostStateScope：完整取得提示、刷新状态后才修改，设置失败时恢复已触碰状态，恢复失败明确报告；移除诊断前固定等待，不关闭非自有进程。共享窗口尺寸和网格测宽采用统一生命周期与缓存。原逐格链接、Ctrl来源定位、表格结构、数值变化标黄及配置继续回归；本轮不连接实际宿主、不自动安装或关闭WPS。
+
 ### (2). 本轮交付证据
 
-10月24日本轮用用户新提供的两个样本副本复现并修复Ctrl来源实例漏查：上一版已安装文件摘要与前次交付一致，真实按钮仍报源12、目标6；默认COM Application为空的隐藏实例，而实际来源仅通过工作簿文件ROT可取得。修复后无论是否已有Application候选，都核对来源文件登记并取得真实Workbook.Application。沿用0.9.9.3、原证书及产品身份；最终交付按用户要求做联合重建，两个安装包与网站正式产物一并更新，Word 包因重新签名与打包导致摘要变化，已在最终摘要与本表中同步；项目档案、开发经验、使用说明与Word内嵌网站正文在构建前固定，构建后只回填本审计节。
+后续本地完整重建后的包摘要已变化，当前安装包以[发布准备清单](../C-03-Website·Xycabin/build/github-release-preparation/assets.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
-| 检查    | 结果                                                                                                                                                      |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 安装器   | [WordUpdater\_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,235,776字节，版本0.9.9.3，SHA-256前缀039663FB；[最终摘要](../C-02-WordUpdater/build/source-instance-delivery.json)记录安装包、DLL、两清单完整摘要与验收状态 |
-| 真实失败 | [source-instance-user-failure.json](../C-02-WordUpdater/build/source-instance-user-failure.json)：保留实际按钮12/6失败事件、安装DLL与旧交付一致的证据、样本摘要及根因排除过程；用户来源路径脱敏 |
-| 失败回归 | [source-instance-red.log](../C-02-WordUpdater/build/source-instance-red.log)与[旧DLL复验](../C-02-WordUpdater/build/source-instance-red-confirm.log)：正常关联打开样本副本，默认实例0簿、真实实例1簿且选中6格；旧读取器来源候选0，完整引擎稳定返回SizeMismatch源12、目标6、写入0 |
-| 离线检查 | [background-validation.log](../C-02-WordUpdater/build/background-validation.log)：映射67 PASS、读取及引用80 PASS、剪贴板边界19 PASS；新增来源工作簿归一、隐藏候选已存在、双反斜杠/错路径/接口失败及借用引用释放检查，保留原陈旧/错簿/错表/重叠/歧义与局部选区回归 |
-| 新样本实机COM | [source-instance-live.log](../C-02-WordUpdater/build/source-instance-live.log)：正式DLL54项PASS；第1/4行及第1/3行分别形成6条LINK并全部刷新，逐格引用与显示值、后续更新、合并表头内容/格式和表格结构均通过，两个原件摘要未变；工具源码[CtrlSelectionLiveProbe.cs](../C-02-WordUpdater/src/testharness/CtrlSelectionLiveProbe.cs) |
-| 既有实机回归 | [source-instance-live-regression.log](../C-02-WordUpdater/build/source-instance-live-regression.log)：正式DLL原112项全部PASS，涵盖整表、局部四格、Ctrl H1/H3、第2/4行8格、合并表头、左侧合并错列及更新；不以默认实例内创建样本代替本轮跨实例用例 |
-| 构建及后台 | [source-instance-build.log](../C-02-WordUpdater/build/source-instance-build.log)完整构建/重签/打包PASS；[source-instance-validation-run.log](../C-02-WordUpdater/build/source-instance-validation-run.log)完整22项后台任务PASS；使用validate.py --background --mode full --site-html build/site-embedded.snapshot.html |
-| 签名与载荷 | [source-instance-package.log](../C-02-WordUpdater/build/source-instance-package.log)：两清单SHA-256双签名、固定发布者、安装器五载荷、两份完整文档、14份图片与内嵌HTML全部PASS；交付记录核对构建前后的非审计正文摘要一致 |
-| 验收边界 | 本轮新包未自动安装，安装后真实功能区按钮点击、键入焦点及弹窗外观待人工验收；正常文件关联打开副本后的实机COM通过，不冒充已完成新包按钮点击。本轮按用户要求联合交付，两个安装包与网站正式产物均已更新并同步为当前摘要 |
+本轮完成公共源码单源迁移及共享界面优化，更新链接和链接查看统一使用完整状态捕获、独立恢复及恢复核对；移除两处500ms固定等待并保留非自有实例边界。沿用0.9.9.3、原身份、配置及固定证书，非审计正文固定后完成重建、重签、打包及后台验证，本节随后回填。原逐格、局部及多选来源行为继续回归；此前Ctrl跨实例实机结果属于历史证据，本轮没有连接WPS。
+
+| 检查 | 结果 |
+|---|---|
+| 安装包 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,246,016字节，版本0.9.9.3，SHA-256前缀9F3748BC7E83D869；[当前摘要](../C-02-WordUpdater/build/optimization-delivery.json) |
+| 构建与后台 | [最终重建](../C-02-WordUpdater/build/optimization-final-rebuild.log)、[完整验证](../C-02-WordUpdater/build/optimization-final-validation.log)：24项后台任务全部通过、缓存复用0项；包括映射67、更新65、查看窗体55、尺寸核心67及原读取/引用、剪贴板等回归 |
+| 状态恢复 | 新增RuntimeQualityProbe 19项通过：两状态读取、设置和恢复失败分别注入；捕获失败零修改，部分设置失败不更新链接，恢复失败明确报告；链接查看捕获边界亦覆盖 |
+| 签名与载荷 | [最终签名](../C-01-ExcelIterate/build/optimization-audit/WordUpdater-final-signatures.log)、[五载荷及内嵌资源](../C-01-ExcelIterate/build/optimization-audit/final-payload.log)均通过，固定发布者、清单双签名和原五载荷结构沿用 |
+| 兼容与交付 | [接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Word原327条公开记录保留，无新增公开类型；[联合交付摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)和[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)保留 |
+| 验收边界 | 已替换原路径安装包，未自动安装或关闭宿主，未重置配置或清理历史；源码整理为本地提交，配套HTML已更新，push和Release附件上传仍待后续；真实按钮、字段更新、宿主状态、键入、菜单与跨屏操作按[实机步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)由用户验收 |
 
 # 四. XyCabin 项目档案
 
@@ -240,10 +244,14 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-10月20日发布 0.9.9.3：网站按新版本号重新生成，下载页携带 0.9.9.3 两包，站点版本摘要与 B1 版本表逐字一致；加载项内嵌文档改为整份导出，两个 DLL 网页同步重新打包。
+按用户后续要求，将优化后的全部源码与说明整理为本地Git提交，并准备两个EXE和一个HTML作为后续GitHub Release附件。当前沿用0.9.9.3；只在本地更新独立网页与交付记录，尚未push、创建远端提交、移动标签或上传Release附件。
 
-| 检查   | 结果                                                                                                                                                                    |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，13,321,994 字节                                                                                         |
-| 站点验证 | [site-validation.log](../C-03-Website·Xycabin/build/site-validation.log)、[site-downloads-validation.log](../C-03-Website·Xycabin/build/site-downloads-validation.log) |
-| 联合交付 | [current-delivery.json](../C-03-Website·Xycabin/build/current-delivery.json)                                                                                          |
+本次复用已验证安装包及两DLL相同的空包网页快照，生成带最新两包的独立HTML；未重新编译加载项，EXE与优化交付摘要保持一致。已核对网页内嵌安装包逐字节、SHA-256、版本及移除包数据后的正文一致；原五载荷、文档和图片校验继续通过。
+
+| 检查 | 结果 |
+|---|---|
+| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，13,378,654字节，SHA-256前缀951AF60416B463D8 |
+| 三附件清单 | [本地发布准备记录](../C-03-Website·Xycabin/build/github-release-preparation/assets.json)记录两个EXE和HTML的完整摘要；[当前交付记录](../C-03-Website·Xycabin/build/current-delivery.json)与实际文件一致 |
+| 页面与附件验证 | [网页检查](../C-03-Website·Xycabin/build/github-release-preparation/site-validation.log)、[两包与页面一致性](../C-03-Website·Xycabin/build/github-release-preparation/assets-validation.log)；使用优化交付已通过的50项完整后台任务，不声称本次重跑 |
+| 源码与入口 | README补入C-00-Shared单源引用、同级目录携带及源码push与Release附件分发流程；本地AI工作记录、构建缓存、签名私钥和生成的EXE/HTML仍按忽略规则保留在本机 |
+| 后续发布 | 用户已选择稍后与代码一起上传附件。本轮不push、不替换远端附件、不移动现有v0.9.9.3标签；发布时须核对标签与源码提交，附件上传不会自动改变标签指向 |

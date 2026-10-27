@@ -82,9 +82,7 @@ namespace WordUpdater
             }
 
             dynamic app = application;
-            object oldAlerts = null;
-            object oldScreen = null;
-            bool stateSaved = false;
+            WordHostStateScope state = null;
 
             try
             {
@@ -151,17 +149,7 @@ namespace WordUpdater
                 }
 
                 // ---------- 4. 抑制弹窗，逐个更新 ----------
-                try
-                {
-                    oldAlerts = app.DisplayAlerts;
-                    oldScreen = app.ScreenUpdating;
-                    stateSaved = true;
-                }
-                catch { }
-                try { app.DisplayAlerts = WdAlertsNone; }
-                catch { }
-                try { app.ScreenUpdating = false; }
-                catch { }
+                state = WordHostStateScope.Enter(application);
 
                 // 快照更新前的 et.exe（WPS 表格）进程，用于事后识别
                 // 本次更新新拉起的隐藏 DDE/OLE 源程序实例。
@@ -217,11 +205,7 @@ namespace WordUpdater
                     }
                 }
 
-                // DDE/OLE 更新可能在源文件未打开时拉起隐藏的 et.exe 充当
-                // DDE 服务器且不自行退出，导致源文件长期被占用（实测：
-                // 隐藏实例 32 个顶层窗口全部不可见）。稍作等待让其完成
-                // 启动握手，再清理"本次新出现且无可见窗口"的实例。
-                try { System.Threading.Thread.Sleep(500); } catch { }
+                // 只诊断本次新出现的隐藏实例；不等待，也不关闭非自有进程。
                 r.CleanedHiddenHosts = EtCleanup.CleanupSpawnedHiddenEt(etBefore);
 
                 r.Status = RunStatus.Completed;
@@ -235,12 +219,12 @@ namespace WordUpdater
             }
             finally
             {
-                if (stateSaved)
+                if (state != null) try { state.Dispose(); }
+                catch (Exception error)
                 {
-                    try { app.DisplayAlerts = oldAlerts; }
-                    catch { }
-                    try { app.ScreenUpdating = oldScreen; }
-                    catch { }
+                    r.Status = RunStatus.Error;
+                    r.ErrorMessage = (r.ErrorMessage == null ? "" : r.ErrorMessage + "\r\n") + error.Message;
+                    UiDiagnostics.Record("word-update-state", error);
                 }
             }
         }

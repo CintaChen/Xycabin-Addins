@@ -26,3 +26,5 @@ using System.Runtime.InteropServices;
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("MergeLiveProbe")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("TrackerProbe")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("EliminationProbe")]
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("RuntimeQualityProbe")]

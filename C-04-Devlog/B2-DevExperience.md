@@ -45,6 +45,10 @@ ThisAddIn使用 `[StartupObject(0)]`、FullTrust，继承 `Microsoft.Office.Tool
 
 首次全新产品发布者由 src/tools/MakeCertCapi.cs独立编译生成，所需引用取project_support.CSC/COMMON_REF和write_project_info；先确认唯一配置可导入且固定指纹为空，再显式运行工具，核对CurrentUser/My中的主题、有效期和HasPrivateKey，回填准确指纹并保留私钥。失败先查是否已创建，避免重复建证书。已有产品只导入原证书及私钥，绝不静默换发布者；公开.cer不能用于签名。
 
+### (4). 公共源码单源与产品上下文
+
+公共实现只在C-00-Shared维护，产品project.json通过@shared/引用。source_layout.resolve_source限制访问产品目录或公共目录，拒绝缺失及越界引用；共享Python通过产品薄入口显式取得PROJECT_ROOT，不能按共享文件位置推导产品。产品身份、生成文件、库依赖和输出保持产品隔离；不新增运行时公共DLL。源码探针读取与编译相同的物理实现；缓存和构建期指纹包含公共输入。SourceLayoutProbe用摘要注入验证公共改动使两产品缓存同时失效，不在构建中修改真实源文件。
+
 ## 2. 功能区按钮、图标与菜单
 
 ### (1). 配置与接线
@@ -125,10 +129,10 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 | 准确称呼（对应图号）      | 实例或使用状态                               | 实现、修改范围及源码入口                                                                                                                                                                                        |
 | --------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)、[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)                              |
+| 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)、[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)                              |
 | 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](../C-01-ExcelIterate/src/addin/ColumnFilterForm.cs)                                                                             |
 | 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)                                                                                                 |
-| 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)、[DialogSizeEditor.cs](../C-01-ExcelIterate/src/addin/DialogSizeEditor.cs) |
+| 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)、[DialogSizeEditor.cs](../C-00-Shared/src/addin/DialogSizeEditor.cs) |
 
 **图4：树与分区。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-tree-map.svg)。
 
@@ -136,8 +140,8 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 | 准确称呼（对应图号）   | 实例或使用状态                        | 实现、修改范围及源码入口                                                                                                                                                                                               |
 | ------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 树形控件／树节点（22） | “自定格式”的控件树、“自定名称／自定排序”的命令树     | TreeView／TreeNode；层级、展开折叠、选中、节点身份和同父排序；六点排序柄是节点子部件；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)、[AgentCustomization.cs](../C-01-ExcelIterate/src/addin/AgentCustomization.cs) |
-| 分区容器／分隔条（23） | “自定格式”中formatSplit的左侧控件区和右侧预览区 | SplitContainer及其分隔条；SplitterDistance、分区最小宽度、拖动后布局；与13号独立宽度拖柄分别命名；[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)                                                                 |
+| 树形控件／树节点（22） | “自定格式”的控件树、“自定名称／自定排序”的命令树     | TreeView／TreeNode；层级、展开折叠、选中、节点身份和同父排序；六点排序柄是节点子部件；[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)、[AgentCustomization.cs](../C-00-Shared/src/addin/AgentCustomization.cs) |
+| 分区容器／分隔条（23） | “自定格式”中formatSplit的左侧控件区和右侧预览区 | SplitContainer及其分隔条；SplitterDistance、分区最小宽度、拖动后布局；与13号独立宽度拖柄分别命名；[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)                                                                 |
 
 **图5：反馈与临时菜单。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-feedback-map.svg)。
 
@@ -176,7 +180,7 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 **滚动与尺寸调整要分别描述。** 滚动条用于查看更多内容，13／14号拖柄用于调整控件或区域尺寸。合并窗日志logView当前为只读RichTextBox，WordWrap=true（自动换行）、ScrollBars=Vertical（仅启用纵向滚动）；长行通过换行显示，未启用横向滚动。内容未溢出时可能看不到滚动条；图2的滚动部件用独立网格构造样例展示，未给日志增加横向滚动条。若要求左右查看完整长行，应明确提出关闭自动换行、启用双向滚动，这是新增需求，不能描述为修复已有横向滚动条。该窗口三张数据网格已配置ScrollBars.Both，网格的滚动能力不能当作日志的既有能力。
 
-两图中的合并窗对象集中在[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)：构造函数组装布局和卡片，BuildSourcesGrid配置来源列，AppendLog添加时间戳。卡片与控件外观见[UiKit.cs](../C-01-ExcelIterate/src/addin/UiKit.cs)；另窗数值控件分别见[AgentCustomization.cs](../C-01-ExcelIterate/src/addin/AgentCustomization.cs)的CommandCustomizationForm和[DialogFormatting.cs](../C-01-ExcelIterate/src/addin/DialogFormatting.cs)的DialogFormatEditor。这些源码入口供两项目共享参考，不表示Word加载项具有Excel合并业务。
+两图中的合并窗对象集中在[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)：构造函数组装布局和卡片，BuildSourcesGrid配置来源列，AppendLog添加时间戳。卡片与控件外观见[UiKit.cs](../C-00-Shared/src/addin/UiKit.cs)；另窗数值控件分别见[AgentCustomization.cs](../C-00-Shared/src/addin/AgentCustomization.cs)的CommandCustomizationForm和[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)的DialogFormatEditor。这些源码入口供两项目共享参考，不表示Word加载项具有Excel合并业务。
 
 典型关系为“窗口→布局容器→卡片→输入控件／日志文本框／数据网格”；仅数据网格继续区分数据行、列和单元格。布局容器也可直接放控件。TableLayoutPanel的布局行列用于排列，DataGridView的行列用于展示业务数据；界面网格单元格与宿主工作表单元格、Word文档表格单元格分别命名。“来源网格中的‘表头行’列”是输入工作表行号的数据列，“来源网格的列标题”才是顶部列名栏。涉及单条记录时用文件名、工作表名等业务身份定位，不能只靠排序后的可视行号。
 
@@ -206,6 +210,8 @@ RoundedButton不透明父色覆盖整区，禁系统默认按钮绘制，保留�
 
 同一控件不混用手工坐标和Dock控制；短标签按真实字体测宽，长说明按实际可用宽度测高，加粗后重测。状态、说明与动作区独立，窄窗换行或滚动，主区域可选择复制；长公式放列表单元格而非无空格Label。固定坐标窗自行Arrange并按真实Bottom推进后续区域，不能布局后强盖尺寸。
 
+抵消窗口初始状态由DialogSizing在Load内、可见之前应用；Shown只定位分隔条，不重复修改ClientSize或Location。尺寸和格式预览均保持普通窗口；不通过改变TopMost或工具窗样式处理绘制问题。根布局、ResultGrid、WidthGrip及RowGrip局部缓冲并完整铺底；Opaque控件的OnPaint必须覆盖背景。来源和目标字段组按实际可用宽度换行，保留各输入框拖柄和配置身份。默认布局按窗口、DPI和字体条件延迟测量，尺寸编辑器显式请求完整目录。离线静态渲染只能证明该控件树能绘制，短暂黑影与真实跨屏仍须宿主验收。
+
 ### (3). 列表填充与身份
 
 搜索只改可见行，不改勾选；全选只作用当前结果。行Tag绑定原对象/列身份，排序后提交、恢复仍按身份，特殊自身行不混入业务计数。Rows.Add首行可能在Tag赋值前触发选中事件，填完显式同步明细/按钮；右键先选鼠标所指行。
@@ -213,6 +219,8 @@ RoundedButton不透明父色覆盖整区，禁系统默认按钮绘制，保留�
 行高默认约34、表头约38，关闭EnableHeadersVisualStyles；添加行前设RowTemplate，句柄创建及格式应用后复核DPI。表头完整单行、居中且默认加粗，显式自定格式可关闭粗体；实际字体、字号、Padding和排序图标决定最小列宽与单行表头高度，不启用表头换行。短列AllCells、长列Tag存逻辑上限、末列Fill，均须先满足完整表头宽度；手动缩窄不低于该下限，窄窗横滚。文件提取名称另按正文30个“0”限宽，表头所需宽度优先，不能被局部策略或后续格式应用覆盖。DataGridViewColumn没有MaximumWidth。特殊行同时设普通/选中背景；全文提示用未受EndEllipsis限制的真实测量。规范与维护范围见\[格式维护规范\](B3-Gate Control.md#5-格式维护规范)。
 
 保留原生Ctrl+C，扩展快捷键采用Ctrl+Shift。Clipboard.SetDataObject(text,true)支持宿主退出后粘贴，保留业务已有占用重试。界面或日志显示失败不改变已提交业务事实；诊断与用户结果分流。
+
+结果填充先批量准备行；抵消结果达到5000行时用矩阵作为稳定数据源，CellValueNeeded按需提供所有单元格值，原生复制仍读取完整值。列宽继续按全部数据和完整表头计算，数据、字体、表头或样式变化使缓存失效；同批无变化时跳过重复测宽并保留手调列宽。不能用只测可见行代替完整宽度要求。
 
 ## 4. 宿主线程、窗口寿命与安全预览
 
@@ -223,6 +231,8 @@ RoundedButton不透明父色覆盖整区，禁系统默认按钮绘制，保留�
 信息/浏览/结果窗通常非模态Show，并按有效宿主同进程HWND指定Owner；同类窗单实例，重复命令刷新/激活，FormClosed只清对应实例。纯参数窗使用独立STA、Application.Run和非模态Show；宿主登记会话、明确应用后复查原目标，等待期间不占全局忙碌。卸载在所属线程关闭自有窗/字体并清引用，重复或迟到回调不写入。
 
 Owner候选需HostDialogService.ValidateOwner核对同进程、调用线程、可见顶层窗，不能借其他应用前台句柄。保留各类窗口的合理原生样式；某个样式差异只能作为排查线索，不能断言ShowInTaskbar/MinimizeBox设置必然造成菜单故障。
+
+同一宿主的从属扫描与抵消预检由HostBatchRunner驱动：宿主STA每批读取最多4096行及65536个单元格，待解析队列最多两批，后台只接收数据块和复制请求；进度合并通知。SourceChangeWatch通过应用事件监听相关来源修改、重算、关闭及删表，块间及提交前复查原对象；关闭重开同名工作簿不能冒充原对象。监听不可用时回退原线程同步读取、后台计算并记录。纯运算取消检查不改变公开引擎签名；关窗、卸载取消会话并拒绝迟到回调。
 
 ### (2). 同步确认隔离
 
@@ -469,6 +479,8 @@ EliminationProbe 92 项锁定金额/比例解析、角色猜测、映射校验�
 
 探针扩到 144 项（92 项原样保留 + §10 三组真实数据验算 + §11 写入计划与锚点平移）。真实底稿的两点提醒：源表第 1 行常是 SUBTOTAL 汇总行、真表头在第 2 行，故表头行默认改为 2；年份列须能被 `(19|20)\d{2}` 识别，不接受 Excel 日期序列号，避免误当年度。待验收：真实 WPS 内选列→预检→写入整表（含第 1 行 SUBTOTAL、第 2/3 行合并表头）、公式重算正确、跨簿引用与大数据量时的写入耗时。
 
+EliminationSession集中持有网关、预检、目标、双表快照和备份路径，状态区分读取、计算、可执行、写入和可还原。预检与执行前重算使用复制请求及后台纯计算；提交前重新读取并核对来源，确认取消不创建输出表，进入写入后沿用原子写入与快照还原边界。取消操作逆序恢复结果表和差异表；部分还原成功后保留剩余目标与快照以供重试，失败不误报已完成。差异表和结果表不允许选为同一个现有工作表。
+
 ### (4). 写入空行与往来抵消
 
 「写入空行」：目标区新增输入框，每个交易对（核算主体→客商）之间空 N 行，0 不空。空行留在写入块内写 null，与「覆盖写入」语义一致（`PrepareTargetRegion` 本就 `ClearContents` 整个矩形）。行号推导统一走 `TemplateCount + GroupGap`，三处必须同步：`Emit`（组首行）、`VerifyIdentity`（恒等式校验）、`Balanced`（借贷平衡）——漏改任一处会把空行后的一组误判为前一组。组内 RowRef 引用 `Top+index` 自动跟随。
@@ -490,8 +502,8 @@ EliminationProbe 92 项锁定金额/比例解析、角色猜测、映射校验�
 - **差异表新增四列展示净额过程**（11→15 列）：在「资产端账面净额」前插**债权方资产余额/债权方负债余额**、在「负债端账面净额」前插**债务方资产余额/债务方负债余额**，四列即双向四口径 `aAsset/aLiab/bAsset/bLiab` 按债权方/债务方映射（`EliminationDiffRow` 加 `CreditorAsset/CreditorLiability/DebtorAsset/DebtorLiability`）；净额列改引用本行四列做减法——资产端 `=G?-H?`、负债端 `=K?-J?`（删合并净额式 `NetFormula`，改 `DirectionalSumFormula` 方向合计 + `NetSubFormula`）；抵消金额列 I→M、差额 J→N、备注→O，结果表跨表引用随改 `=差异表!M`。生产 `StaticValues` 恒 true 仍写静态值，四列在生产也是数值（公式仅探针/活公式模式生效）
 - **格式接入 (2) 规范**：新增 `EliminationHost.FinishMatrixOutput`——金额列会计格式（含千位分隔）、数据区垂直居中、指定列水平居中（差异表序号/年度、结果表调整事项/会计科目）、列宽 AutoFit（含表头+数据）、表头行高 26 下限、表头不换行。差异表/往来结果表/收入成本结果表三处共用。**两个结果表另按用户「格式参考」样张**：表头填充 `#4874CB`（主题色 accent1，theme1.xml 实测值）+ 白字、表头与数据区宋体 11、边框 left=medium + 其余 slantDashDot（xlSlantDashDot=13，左缘/顶缘 xlMedium=-4138）、**会计格式从 R1 SUBTOTAL 行起铺设**（fmtTop=headerRow−1）
 - **「写数值不写公式」复选框删除**：写公式多次在宿主核对环节报错（跨表引用 `$` 规范化等），`request.StaticValues` 恒 true、金额恒写静态数值；确认文案同步
-- **拖柄加固 + 留白根除**：`WidthGrip.OnPaintBackground` 由空改为铺底色（双保险）；删除 `gripSource/gripTarget` 两个行拖柄；`Ui.Grip` 包按钮时清其底边距，前导 Label 上边距 8→6、非按钮输入框上下边距归零、hint 上下边距 8→2、来源/目标间隔行 8→2、两卡片纵向 Padding 8→4。**多轮压缩无效的真根因（新增 LayoutProbe 离线测量证实）**：AutoSize 行里放 `Dock=Fill` 的子控件时，TLP 读的是子控件「当前实际高度」而非期望高度（循环依赖），卡片渲染高 100px 而内容仅需 46/38px——改 `AutoSize=true + Dock=Top` 后卡片高度由内容决定（46/38px），留白彻底消失。`UiKit.cs` 共享，改后同步 C-02
-- **公式写入核对失败（G4）修复**：结果表跨表引用 `='差异表(2)'!I3` 写入后，宿主把相对引用规范化为 `$I$3` 回读，`NormalizeFormula` 不去 `$` 致逐字符比对失败。修复：NormalizeFormula 追加 `Replace("$","")`；核对失败消息附带期望/实际公式便于诊断；写入顺序改为**先写差异表、后写结果表**（引用目标先有数据）。`MergeHeadersHost.cs` 共享，改后同步 C-02
+- **拖柄加固 + 留白根除**：`WidthGrip.OnPaintBackground` 由空改为铺底色（双保险）；删除 `gripSource/gripTarget` 两个行拖柄；`Ui.Grip` 包按钮时清其底边距，前导 Label 上边距 8→6、非按钮输入框上下边距归零、hint 上下边距 8→2、来源/目标间隔行 8→2、两卡片纵向 Padding 8→4。**多轮压缩无效的真根因（新增 LayoutProbe 离线测量证实）**：AutoSize 行里放 `Dock=Fill` 的子控件时，TLP 读的是子控件「当前实际高度」而非期望高度（循环依赖），卡片渲染高 100px 而内容仅需 46/38px——改 `AutoSize=true + Dock=Top` 后卡片高度由内容决定（46/38px），留白彻底消失。`UiKit.cs` 现由 C-00-Shared 单源维护
+- **公式写入核对失败（G4）修复**：结果表跨表引用 `='差异表(2)'!I3` 写入后，宿主把相对引用规范化为 `$I$3` 回读，`NormalizeFormula` 不去 `$` 致逐字符比对失败。修复：NormalizeFormula 追加 `Replace("$","")`；核对失败消息附带期望/实际公式便于诊断；写入顺序改为**先写差异表、后写结果表**（引用目标先有数据）。`MergeHeadersHost.cs` 的宿主专属差异按两产品契约分别验证
 
 # 三. WordUpdater 专属开发经验
 
@@ -530,6 +542,8 @@ Selection.Information(12)判断表内；Table.Uniform与整表Columns.Count不�
 ### (1). 更新与变化比对
 
 UpdateEngine扫描当前选区，ShapeRange/InlineShapes按锚点去重；只有成功更新的LINK文本参与变化比对，图片/OLE单列无文本可比，失败不算变化/不标黄。Ordinal字符串比较，不解析数字；先Trim空格/制表/CR/LF/单元格结束符\a及\0。位置依表格行列、段落、页码、兜底描述，合并格异常可降级。
+
+WordHostStateScope先完整捕获DisplayAlerts和ScreenUpdating，再记录每项触碰和恢复；任一捕获失败零修改、零链接更新，设置部分失败也恢复已触碰状态，恢复错误进入结果及诊断。更新链接与链接查看共用这一边界。EtCleanup只诊断非自有实例，移除两处固定500ms等待，不关闭用户进程。
 
 ### (2). 重新定位对象
 

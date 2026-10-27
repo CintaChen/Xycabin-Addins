@@ -215,7 +215,7 @@ namespace Excel_Iterate.TestHarness
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
             string root = null;
             for (var d = dir; d != null; d = d.Parent)
-                if (File.Exists(Path.Combine(d.FullName, "project.json"))) { root = d.FullName; break; }
+                if (WpsShared.SourcePaths.Exists(Path.Combine(d.FullName, "project.json"))) { root = d.FullName; break; }
             if (root == null)
             {
                 Assert("定位仓库根（含 project.json）", false, "从 " + dir.FullName + " 向上未找到");
@@ -223,7 +223,7 @@ namespace Excel_Iterate.TestHarness
             }
             var regex = new Regex(@"TopMost\s*=\s*true");
             int hits = 0; string detail = "";
-            foreach (string file in Directory.GetFiles(Path.Combine(root, "src", "addin"), "*.cs", SearchOption.AllDirectories))
+            foreach (string file in WpsShared.SourcePaths.GetFiles(Path.Combine(root, "src", "addin"), "*.cs", SearchOption.AllDirectories))
             {
                 foreach (string raw in File.ReadAllLines(file))
                 {
@@ -244,7 +244,7 @@ namespace Excel_Iterate.TestHarness
             var toolRegex = new Regex(@"ShowInTaskbar\s*=\s*false|MinimizeBox\s*=\s*false");
             string trackerFile = Path.Combine(root, "src", "addin", "TrackerForm.cs");
             int toolHits = 0; string toolDetail = "";
-            if (File.Exists(trackerFile))
+            if (WpsShared.SourcePaths.Exists(trackerFile))
             {
                 foreach (string raw in File.ReadAllLines(trackerFile))
                 {

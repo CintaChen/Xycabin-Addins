@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
@@ -445,7 +445,7 @@ internal static class LinkPasteTest
         try
         {
             string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WordUpdater", "WordUpdater.log");
-            if (!File.Exists(path)) return;
+            if (!WpsShared.SourcePaths.Exists(path)) return;
             string[] lines = File.ReadAllLines(path);
             for (int i = Math.Max(0, lines.Length - 12); i < lines.Length; i++) Console.WriteLine(lines[i]);
         }

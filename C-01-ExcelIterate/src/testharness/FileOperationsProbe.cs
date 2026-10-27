@@ -15,7 +15,7 @@ class FileOperationsProbe
     static FileOperationResult Organize(OrganizePlan plan,Action<string> recycle,Func<bool> cancel,Action<string,string> move) { return FileOrganizer.Execute(plan,recycle,cancel??(()=>false),_=>{},move); }
     static RenamePlan Rename(string root,params string[] names) { var notes=new List<string>();var files=FilePaths.Scan(root,false,notes);return new RenamePlan{Root=root,Items=files.Select((f,i)=>new RenameItem{Source=f,Input=names[i]}).ToList()}; }
     static FileOperationResult RunRename(RenamePlan plan,Func<bool> cancel,Action<string,string> move) { return FileRenamer.Execute(plan,cancel??(()=>false),_=>{},move); }
-    static Dictionary<string,string> Contents(string root){return FilePaths.Scan(root,true,new List<string>()).ToDictionary(f=>f.Path,f=>File.ReadAllText(f.Path),StringComparer.OrdinalIgnoreCase);}
+    static Dictionary<string,string> Contents(string root){return FilePaths.Scan(root,true,new List<string>()).ToDictionary(f=>f.Path,f=>WpsShared.SourcePaths.ReadAllText(f.Path),StringComparer.OrdinalIgnoreCase);}
     static void Same(string root,Dictionary<string,string> before,string label){var now=Contents(root);Check(before.Count==now.Count&&before.All(p=>now.ContainsKey(p.Key)&&now[p.Key]==p.Value),label);}
     static void OrganizerChecks()
     {
@@ -32,27 +32,27 @@ class FileOperationsProbe
             var plan=FileOrganizer.Plan(root,options);Check(plan.Preview.Contains("暂存")&&plan.Preview.Contains("确认操作"),"deferred backup preview "+mask);
             var result=Organize(plan,_=>{throw new Exception("must not recycle before confirmation");},null,null);
             Check(result.Failed==0,"all option combinations "+mask);Check(Directory.Exists(Path.Combine(root,"deep")),"source folders retained");
-            string dest=options.Classify?Path.Combine(root,"xlsx"):root;Check(File.Exists(Path.Combine(dest,"a.xlsx")),"destination "+mask);
-            if(options.Replace)Check(File.ReadAllText(Path.Combine(dest,"a.xlsx"))=="latest","latest wins");else Check(Directory.GetFiles(dest,"*.xlsx").Length==2,"numbering retains all");
-            Check(result.Batch.Journal.StartsWith(root+"\\")&&File.Exists(result.Batch.LogPath),"journal and log local");
+            string dest=options.Classify?Path.Combine(root,"xlsx"):root;Check(WpsShared.SourcePaths.Exists(Path.Combine(dest,"a.xlsx")),"destination "+mask);
+            if(options.Replace)Check(WpsShared.SourcePaths.ReadAllText(Path.Combine(dest,"a.xlsx"))=="latest","latest wins");else Check(WpsShared.SourcePaths.GetFiles(dest,"*.xlsx").Length==2,"numbering retains all");
+            Check(result.Batch.Journal.StartsWith(root+"\\")&&WpsShared.SourcePaths.Exists(result.Batch.LogPath),"journal and log local");
             Reject(()=>Organize(FileOrganizer.Plan(root,options),null,null,null),"pending batch blocks repeat");
             var restored=OperationBatch.Find(root);Check(restored!=null&&restored.CanUndo,"reopen restores pending batch");
             var undo=restored.Undo(null);Check(!undo.RecoveryIncomplete,"complete inverse "+mask);Same(root,before,"all original paths and contents restored "+mask);
             Check(!options.Classify||!Directory.Exists(Path.Combine(root,"xlsx")),"new classification directory removed on undo "+mask);
-            restored.Confirm(RecycleFiles.Send);Check(OperationBatch.Find(root)==null,"confirmation removes only owned logs");Check(File.ReadAllText(Path.Combine(root,"备份/user.txt"))=="user-owned","user backup retained");
+            restored.Confirm(RecycleFiles.Send);Check(OperationBatch.Find(root)==null,"confirmation removes only owned logs");Check(WpsShared.SourcePaths.ReadAllText(Path.Combine(root,"备份/user.txt"))=="user-owned","user backup retained");
         }
         string r=Root();Put(r,"a.txt","existing");Put(r,"one/a.txt","child");Put(r,"two/a.txt","child2");Put(r,"a（1）.txt","reserved");
-        var plan1=FileOrganizer.Plan(r,new OrganizeOptions());var res=Organize(plan1,null,null,null);Check(File.Exists(Path.Combine(r,"a（2）.txt"))&&File.Exists(Path.Combine(r,"a（3）.txt")),"Chinese collision suffix");res.Batch.Undo(null);res.Batch.Confirm(RecycleFiles.Send);
+        var plan1=FileOrganizer.Plan(r,new OrganizeOptions());var res=Organize(plan1,null,null,null);Check(WpsShared.SourcePaths.Exists(Path.Combine(r,"a（2）.txt"))&&WpsShared.SourcePaths.Exists(Path.Combine(r,"a（3）.txt")),"Chinese collision suffix");res.Batch.Undo(null);res.Batch.Confirm(RecycleFiles.Send);
         r=Root();string old=Put(r,"a.txt","existing"),nw=Put(r,"sub/a.txt","newer");File.SetLastWriteTimeUtc(old,DateTime.UtcNow.AddDays(-1));var plan2=FileOrganizer.Plan(r,new OrganizeOptions {Replace=true});
-        res=Organize(plan2,null,null,(x,y)=>{throw new IOException("backup denied");});Check(res.Failed==1&&File.ReadAllText(old)=="existing"&&File.Exists(nw),"failed backup never overwrites");res.Batch.Confirm(RecycleFiles.Send);
-        r=Root();old=Put(r,"sub/a.txt","content");plan2=FileOrganizer.Plan(r,new OrganizeOptions());File.AppendAllText(old,"changed");res=Organize(plan2,null,null,null);Check(res.Failed==1&&File.Exists(old),"changed source not moved");res.Batch.Confirm(RecycleFiles.Send);
+        res=Organize(plan2,null,null,(x,y)=>{throw new IOException("backup denied");});Check(res.Failed==1&&WpsShared.SourcePaths.ReadAllText(old)=="existing"&&WpsShared.SourcePaths.Exists(nw),"failed backup never overwrites");res.Batch.Confirm(RecycleFiles.Send);
+        r=Root();old=Put(r,"sub/a.txt","content");plan2=FileOrganizer.Plan(r,new OrganizeOptions());File.AppendAllText(old,"changed");res=Organize(plan2,null,null,null);Check(res.Failed==1&&WpsShared.SourcePaths.Exists(old),"changed source not moved");res.Batch.Confirm(RecycleFiles.Send);
         r=Root();old=Put(r,"a.txt","old");nw=Put(r,"sub/a.txt","new");File.SetLastWriteTimeUtc(old,DateTime.UtcNow.AddDays(-1));var original=Contents(r);bool stop=false;
         res=Organize(FileOrganizer.Plan(r,new OrganizeOptions{Replace=true}),null,()=>stop,(x,y)=>{File.Move(x,y);stop=true;});Check(res.Cancelled&&!res.RecoveryIncomplete,"cancel after backup rolls back");Same(r,original,"cancel restored original files");res.Batch.Confirm(RecycleFiles.Send);
-        r=Root();old=Put(r,"sub/a.txt","content");res=Organize(FileOrganizer.Plan(r,new OrganizeOptions()),null,null,null);File.AppendAllText(Path.Combine(r,"a.txt"),"external edit");var failed=res.Batch.Undo(null);Check(failed.RecoveryIncomplete&&File.Exists(Path.Combine(r,"a.txt")),"external edit blocks undo");Reject(()=>res.Batch.Confirm(RecycleFiles.Send),"incomplete undo blocks confirmation");
+        r=Root();old=Put(r,"sub/a.txt","content");res=Organize(FileOrganizer.Plan(r,new OrganizeOptions()),null,null,null);File.AppendAllText(Path.Combine(r,"a.txt"),"external edit");var failed=res.Batch.Undo(null);Check(failed.RecoveryIncomplete&&WpsShared.SourcePaths.Exists(Path.Combine(r,"a.txt")),"external edit blocks undo");Reject(()=>res.Batch.Confirm(RecycleFiles.Send),"incomplete undo blocks confirmation");
         Reject(()=>FileOrganizer.Plan(r,new OrganizeOptions {Filter=true}),"filter requires a type");
         var sink=new RecycleSink();Check(sink.PreDeleteItem(0,null)<0&&sink.PreDeleteItem(0x80,null)==0,"strict recycle no permanent fallback");
-        r=Root();old=Put(r,"sub/excluded.txt","excluded");var filter=new OrganizeOptions {Filter=true};filter.Types.Add("xlsx");res=Organize(FileOrganizer.Plan(r,filter),null,null,null);Check(!File.Exists(old)&&File.Exists(res.Batch.Files.Single().Current),"excluded file held in reversible backup");
-        string journal=res.Batch.Journal;Reject(()=>res.Batch.Confirm(_=>{throw new IOException("recycle denied");}),"recycle failure reported");Check(File.Exists(journal)&&OperationBatch.Find(r).State=="Cleaning","cleanup failure retains retry record");res.Batch.Confirm(RecycleFiles.Send);Check(!File.Exists(journal),"real recycle retry succeeds isolated batch only");
+        r=Root();old=Put(r,"sub/excluded.txt","excluded");var filter=new OrganizeOptions {Filter=true};filter.Types.Add("xlsx");res=Organize(FileOrganizer.Plan(r,filter),null,null,null);Check(!WpsShared.SourcePaths.Exists(old)&&WpsShared.SourcePaths.Exists(res.Batch.Files.Single().Current),"excluded file held in reversible backup");
+        string journal=res.Batch.Journal;Reject(()=>res.Batch.Confirm(_=>{throw new IOException("recycle denied");}),"recycle failure reported");Check(WpsShared.SourcePaths.Exists(journal)&&OperationBatch.Find(r).State=="Cleaning","cleanup failure retains retry record");res.Batch.Confirm(RecycleFiles.Send);Check(!WpsShared.SourcePaths.Exists(journal),"real recycle retry succeeds isolated batch only");
     }
     static void DirectoryChecks()
     {
@@ -61,13 +61,13 @@ class FileOperationsProbe
         string root=Root();Put(root,"A/a.xlsx","a");Put(root,"B/b.docx","b");Directory.CreateDirectory(Path.Combine(root,"C"));Put(root,"备份/user.txt","owned");
         var result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,null,null);
         Check(result.Batch.OriginalDirectories.Count==3,"snapshot original first-level directories including empty C");
-        Check(File.Exists(Path.Combine(root,"备份/user.txt")),"existing backup excluded from scanning");
+        Check(WpsShared.SourcePaths.Exists(Path.Combine(root,"备份/user.txt")),"existing backup excluded from scanning");
         Check(result.Batch.ConfirmationText().Contains("后来新增内容")&&result.Batch.ConfirmationText().Contains(Path.Combine(root,"A")),"confirmation names complete directory recycle");
         Put(root,"A/late.txt","late");Directory.CreateDirectory(Path.Combine(root,"later"));
         result.Batch.Confirm(RecycleFiles.Send);
         Check(!Directory.Exists(Path.Combine(root,"A"))&&!Directory.Exists(Path.Combine(root,"B"))&&!Directory.Exists(Path.Combine(root,"C")),"actual recycle original A B C with remaining content");
-        Check(File.Exists(Path.Combine(root,"xlsx/a.xlsx"))&&File.Exists(Path.Combine(root,"docx/b.docx")),"classified results retained");
-        Check(Directory.Exists(Path.Combine(root,"later"))&&File.Exists(Path.Combine(root,"备份/user.txt")),"later directory and original backup protected");
+        Check(WpsShared.SourcePaths.Exists(Path.Combine(root,"xlsx/a.xlsx"))&&WpsShared.SourcePaths.Exists(Path.Combine(root,"docx/b.docx")),"classified results retained");
+        Check(Directory.Exists(Path.Combine(root,"later"))&&WpsShared.SourcePaths.Exists(Path.Combine(root,"备份/user.txt")),"later directory and original backup protected");
         root=Root();Put(root,"A/a.xlsx","a");Put(root,"docx/existing.docx","b");
         result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,null,null);
         Check(!result.Batch.OriginalDirectories.Any(d=>d.Path==Path.Combine(root,"docx")),"existing classification result excluded from original cleanup");
@@ -75,7 +75,7 @@ class FileOperationsProbe
         result.Batch.Confirm(RecycleFiles.Send);Check(Directory.Exists(Path.Combine(root,"A")),"confirm undone keeps original directories");
         root=Root();Put(root,"A/a.xlsx","a");result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,null,null);
         Put(root,"xlsx/outsider.txt","outside");undo=result.Batch.Undo(null);
-        Check(undo.RecoveryIncomplete&&File.Exists(Path.Combine(root,"A/a.xlsx"))&&File.Exists(Path.Combine(root,"xlsx/outsider.txt")),"restore files but preserve outsider directory content");
+        Check(undo.RecoveryIncomplete&&WpsShared.SourcePaths.Exists(Path.Combine(root,"A/a.xlsx"))&&WpsShared.SourcePaths.Exists(Path.Combine(root,"xlsx/outsider.txt")),"restore files but preserve outsider directory content");
         var reopened=OperationBatch.Find(root);Check(reopened.CanUndo&&reopened.State=="UndoFailed","directory-only undo retry survives reopening");
         Reject(()=>reopened.Confirm(RecycleFiles.Send),"incomplete directory undo blocks confirmation");
         File.Move(Path.Combine(root,"xlsx/outsider.txt"),Path.Combine(root,"outsider.txt"));undo=reopened.Undo(null);
@@ -88,33 +88,33 @@ class FileOperationsProbe
         undo=result.Batch.Undo(null);Check(undo.RecoveryIncomplete&&Directory.Exists(Path.Combine(root,"xlsx")),"replacement created directory protected even when empty after restoring file");
         root=Root();Put(root,"A/a.xlsx","a");result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,null,null);
         Directory.Move(Path.Combine(root,"A"),Path.Combine(root,"replacement-old"));Directory.CreateDirectory(Path.Combine(root,"A"));Put(root,"A/new.txt","new");
-        Reject(()=>result.Batch.Confirm(RecycleFiles.Send),"same-path original replacement stops recycling");Check(File.Exists(Path.Combine(root,"A/new.txt"))&&File.Exists(result.Batch.Journal),"replacement and cleanup record retained");
+        Reject(()=>result.Batch.Confirm(RecycleFiles.Send),"same-path original replacement stops recycling");Check(WpsShared.SourcePaths.Exists(Path.Combine(root,"A/new.txt"))&&WpsShared.SourcePaths.Exists(result.Batch.Journal),"replacement and cleanup record retained");
         root=Root();Put(root,"A/a.xlsx","a");Put(root,"B/b.docx","b");result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,null,null);
         string a=Path.Combine(root,"A"),b=Path.Combine(root,"B");Reject(()=>result.Batch.Confirm(p=>{if(p==b)throw new IOException("injected recycle denial");RecycleFiles.Send(p);}),"partial cleanup failure");
         var retry=OperationBatch.Find(root);Check(!Directory.Exists(a)&&Directory.Exists(b)&&retry.OriginalDirectories.First(d=>d.Path==a).Done,"per-directory cleanup progress persisted");
-        Directory.CreateDirectory(a);Put(root,"A/new.txt","new");retry.Confirm(RecycleFiles.Send);Check(File.Exists(Path.Combine(root,"A/new.txt"))&&!Directory.Exists(b),"cleanup retry never touches replacement of already recycled directory");
+        Directory.CreateDirectory(a);Put(root,"A/new.txt","new");retry.Confirm(RecycleFiles.Send);Check(WpsShared.SourcePaths.Exists(Path.Combine(root,"A/new.txt"))&&!Directory.Exists(b),"cleanup retry never touches replacement of already recycled directory");
         root=Root();Put(root,"A/a.xlsx","a");result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,null,null);result.Batch.OriginalDirectories.Clear();result.Batch.Persist();OperationBatch.Find(root).Confirm(RecycleFiles.Send);
         Check(Directory.Exists(Path.Combine(root,"A")),"old record without original snapshot never infers cleanup scope");
         root=Root();Put(root,"A/a.xlsx","a");bool stop=false;result=Organize(FileOrganizer.Plan(root,new OrganizeOptions{Classify=true}),null,()=>stop,(x,y)=>{File.Move(x,y);stop=true;});
-        Check(result.Cancelled&&!result.RecoveryIncomplete&&!Directory.Exists(Path.Combine(root,"xlsx"))&&File.Exists(Path.Combine(root,"A/a.xlsx")),"in-flight cancellation removes new category");result.Batch.Confirm(RecycleFiles.Send);
+        Check(result.Cancelled&&!result.RecoveryIncomplete&&!Directory.Exists(Path.Combine(root,"xlsx"))&&WpsShared.SourcePaths.Exists(Path.Combine(root,"A/a.xlsx")),"in-flight cancellation removes new category");result.Batch.Confirm(RecycleFiles.Send);
     }
     static void RenameChecks()
     {
         Check(FileRenamer.NewName("新文件","old.xlsx")=="新文件.xlsx","stem keeps suffix");Check(FileRenamer.NewName("new.docx","old.xlsx")=="new.docx","explicit suffix");
         foreach(string name in new[]{"../x","CON","nul.txt","a/b","bad:","trailing.","LPT1.pdf"})Reject(()=>FileRenamer.NewName(name,"old.txt"),"invalid name "+name);
         string root=Root();Put(root,"A.txt","A");Put(root,"B.txt","B");Put(root,"C.txt","C");Put(root,"sub/ignored.txt","ignored");var original=Contents(root);
-        var plan=Rename(root,"B.txt","C.txt","A.txt");Check(plan.Items.Count==3,"first layer only");var result=RunRename(plan,null,null);Check(result.Success==3&&File.ReadAllText(Path.Combine(root,"A.txt"))=="C","cycle commit");
+        var plan=Rename(root,"B.txt","C.txt","A.txt");Check(plan.Items.Count==3,"first layer only");var result=RunRename(plan,null,null);Check(result.Success==3&&WpsShared.SourcePaths.ReadAllText(Path.Combine(root,"A.txt"))=="C","cycle commit");
         var reopened=OperationBatch.Find(root);Check(reopened.CanUndo,"reopen rename pending");Check(!reopened.Undo(null).RecoveryIncomplete,"inverse cycle");Same(root,original,"cycle rollback original bytes");reopened.Confirm(RecycleFiles.Send);
-        plan=Rename(root,"a.txt","","");result=RunRename(plan,null,null);Check(result.Success==1&&result.Skipped==2&&Directory.GetFiles(root).Any(f=>Path.GetFileName(f)=="a.txt"),"case-only forward");result.Batch.Undo(null);Check(Directory.GetFiles(root).Any(f=>Path.GetFileName(f)=="A.txt"),"case-only inverse exact casing");result.Batch.Confirm(RecycleFiles.Send);
+        plan=Rename(root,"a.txt","","");result=RunRename(plan,null,null);Check(result.Success==1&&result.Skipped==2&&WpsShared.SourcePaths.GetFiles(root).Any(f=>Path.GetFileName(f)=="a.txt"),"case-only forward");result.Batch.Undo(null);Check(WpsShared.SourcePaths.GetFiles(root).Any(f=>Path.GetFileName(f)=="A.txt"),"case-only inverse exact casing");result.Batch.Confirm(RecycleFiles.Send);
         plan=Rename(root,"dup","dup","");Check(RunRename(plan,null,null).Failed>0,"duplicate target pauses");plan=Rename(root,"B.txt","","");Check(RunRename(plan,null,null).Failed>0,"untouched target occupied");
         plan=Rename(root,"new1","new2","new3");using(File.Open(plan.Items[0].Source.Path,FileMode.Open,FileAccess.ReadWrite,FileShare.None))Check(RunRename(plan,null,null).Failed>0,"locked source pauses");
         foreach(int failAt in new[]{2,4,6})
         {
             root=Root();Put(root,"A.txt","A");Put(root,"B.txt","B");Put(root,"C.txt","C");original=Contents(root);plan=Rename(root,"B.txt","C.txt","A.txt");int n=0;
-            result=RunRename(plan,null,(x,y)=>{if(++n==failAt)throw new IOException("injected move failure");File.Move(x,y);});Check(result.Failed>0&&!result.RecoveryIncomplete,"failed submit restores "+failAt);Same(root,original,"whole rollback "+failAt);Check(File.Exists(result.RecoveryPath),"local recovery retained");result.Batch.Confirm(RecycleFiles.Send);
+            result=RunRename(plan,null,(x,y)=>{if(++n==failAt)throw new IOException("injected move failure");File.Move(x,y);});Check(result.Failed>0&&!result.RecoveryIncomplete,"failed submit restores "+failAt);Same(root,original,"whole rollback "+failAt);Check(WpsShared.SourcePaths.Exists(result.RecoveryPath),"local recovery retained");result.Batch.Confirm(RecycleFiles.Send);
         }
         root=Root();Put(root,"A.txt","A");Put(root,"B.txt","B");original=Contents(root);int polls=0;result=RunRename(Rename(root,"B.txt","A.txt"),()=>++polls==3,null);Check(result.Cancelled&&!result.RecoveryIncomplete,"cancel staging inverse");Same(root,original,"cancel restores originals");result.Batch.Confirm(RecycleFiles.Send);
-        int calls=0;result=RunRename(Rename(root,"B.txt","A.txt"),null,(x,y)=>{if(++calls>=3)throw new IOException("blocked commit and restore");File.Move(x,y);});Check(result.RecoveryIncomplete&&File.Exists(result.RecoveryPath),"failed inverse retains record");Reject(()=>result.Batch.Confirm(RecycleFiles.Send),"incomplete rename refuses cleanup");
+        int calls=0;result=RunRename(Rename(root,"B.txt","A.txt"),null,(x,y)=>{if(++calls>=3)throw new IOException("blocked commit and restore");File.Move(x,y);});Check(result.RecoveryIncomplete&&WpsShared.SourcePaths.Exists(result.RecoveryPath),"failed inverse retains record");Reject(()=>result.Batch.Confirm(RecycleFiles.Send),"incomplete rename refuses cleanup");
         root=Root();Put(root,"A.xlsx","A");Put(root,"B.docx","B");plan=Rename(root,"newA","newB.docx");object[,] values=new object[3,4];for(int c=0;c<4;c++)values[0,c]=RenameWorkbookSession.Headers[c];for(int i=0;i<2;i++){values[i+1,0]=plan.Items[1-i].Source.Path;values[i+1,1]=plan.Items[1-i].Source.Name;values[i+1,2]="new"+i;}
         Check(RenameWorkbookSession.Parse(root,plan.Items.Select(i=>i.Source).ToList(),values).Items[0].Source.Name=="B.docx","sorted identities");values[0,1]="edit";Reject(()=>RenameWorkbookSession.Parse(root,plan.Items.Select(i=>i.Source).ToList(),values),"edited header refused");values[0,1]=RenameWorkbookSession.Headers[1];values[1,0]="changed";Reject(()=>RenameWorkbookSession.Parse(root,plan.Items.Select(i=>i.Source).ToList(),values),"edited original refused");
     }
@@ -124,7 +124,7 @@ class FileOperationsProbe
         book.Saved=false;book.Fail=true;Reject(()=>WorkbookSaving.Save(book,true),"save failure propagated");book.Fail=false;book.StillDirty=true;Reject(()=>WorkbookSaving.Save(book,true),"dirty after save refused");
         book.ReadOnly=true;Reject(()=>WorkbookSaving.Save(book,true),"readonly refused");
         book=new SavingFake{FullName="Book1",Saved=false};WorkbookSaving.ChooseNewPath=()=>null;Reject(()=>WorkbookSaving.Save(book,true),"new workbook save cancellation");
-        WorkbookSaving.ChooseNewPath=()=>Path.Combine(root,"first.xlsx");WorkbookSaving.Save(book,true);Check(book.SaveAsCount==1&&File.Exists(book.FullName),"new workbook native-choice seam SaveAs format51");WorkbookSaving.ChooseNewPath=null;
+        WorkbookSaving.ChooseNewPath=()=>Path.Combine(root,"first.xlsx");WorkbookSaving.Save(book,true);Check(book.SaveAsCount==1&&WpsShared.SourcePaths.Exists(book.FullName),"new workbook native-choice seam SaveAs format51");WorkbookSaving.ChooseNewPath=null;
         using(var form=new OrganizeFilesForm())Check(!form.Replace.Checked&&!form.Classify.Checked&&!form.Filter.Checked,"all organize options default off");
         root=Root();string original=Put(root,"sub/a.txt","UI pending restore");var batchResult=Organize(FileOrganizer.Plan(root,new OrganizeOptions()),null,null,null);
         using(var form=new OrganizeFilesForm())
@@ -133,10 +133,10 @@ class FileOperationsProbe
             Check(form.Stop.Enabled&&form.Confirm.Enabled&&!form.Preview.Enabled,"reopened completed form enables undo and confirm, blocks next batch");
             typeof(Button).GetMethod("OnClick",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(form.Stop,new object[]{EventArgs.Empty});
             DateTime until=DateTime.UtcNow.AddSeconds(10);
-            while(!File.Exists(original)&&DateTime.UtcNow<until){Application.DoEvents();System.Threading.Thread.Sleep(10);}
+            while(!WpsShared.SourcePaths.Exists(original)&&DateTime.UtcNow<until){Application.DoEvents();System.Threading.Thread.Sleep(10);}
             // The worker's file move can precede its posted UI completion.
             for(int i=0;i<30;i++){Application.DoEvents();System.Threading.Thread.Sleep(10);}
-            Check(File.Exists(original)&&!form.Stop.Enabled&&form.Confirm.Enabled,"actual cancel click restores completed batch and keeps confirmation available");
+            Check(WpsShared.SourcePaths.Exists(original)&&!form.Stop.Enabled&&form.Confirm.Enabled,"actual cancel click restores completed batch and keeps confirmation available");
         }
         OperationBatch.Find(root).Confirm(RecycleFiles.Send);
     }
@@ -144,7 +144,7 @@ class FileOperationsProbe
     {
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
             throw new IOException("Do not traverse a test reparse point: " + path);
-        foreach (string file in Directory.GetFiles(path))
+        foreach (string file in WpsShared.SourcePaths.GetFiles(path))
         {
             if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0)
                 throw new IOException("Do not delete a test link: " + file);

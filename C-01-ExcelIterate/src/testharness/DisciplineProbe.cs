@@ -51,13 +51,13 @@ internal static class DisciplineProbe
         Console.WriteLine("--- A. 格式：写入后必套样式 ---");
         string[] styleMethods = { "StyleMatrixHeader", "StyleDiffHeader", "FinishMatrixOutput", "StyleEntryHeader", "StyleHeader" };
         string[] writeTriggers = { "gateway.Write(", ".Write(target,", "BuildMatrixPlan(", "BuildDiffPlan(", "EliminationGateway.BuildMatrixPlan", "EliminationGateway.BuildDiffPlan" };
-        var connectFiles = Directory.GetFiles(addin, "Connect.*.cs", SearchOption.AllDirectories)
-            .Concat(Directory.GetFiles(addin, "EliminationHost.cs", SearchOption.AllDirectories));
+        var connectFiles = WpsShared.SourcePaths.GetFiles(addin, "Connect.*.cs", SearchOption.AllDirectories)
+            .Concat(WpsShared.SourcePaths.GetFiles(addin, "EliminationHost.cs", SearchOption.AllDirectories));
         // 也扫 EliminationGateway 内部的 Write 实现
-        foreach (string f in connectFiles.Concat(Directory.GetFiles(addin, "*.cs", SearchOption.AllDirectories)
+        foreach (string f in connectFiles.Concat(WpsShared.SourcePaths.GetFiles(addin, "*.cs", SearchOption.AllDirectories)
             .Where(x => Path.GetFileName(x).StartsWith("Elimination") || Path.GetFileName(x).StartsWith("Merge"))))
         {
-            string text = File.ReadAllText(f);
+            string text = WpsShared.SourcePaths.ReadAllText(f);
             // 简化：按方法块切分（大括号配对粗略）
             var blocks = SplitMethods(text);
             foreach (var block in blocks)
@@ -75,10 +75,10 @@ internal static class DisciplineProbe
         Console.WriteLine("--- B. 弹窗盘点（登记由 dialog_catalog_probe 守，此处不 FAIL）---");
         HashSet<string> formClasses = new HashSet<string>();
         Regex formRe = new Regex(@"(?:internal|public)\s+(?:sealed\s+)?class\s+(\w+)\s*:\s*(?:System\.Windows\.Forms\.)?Form\b");
-        foreach (string f in Directory.GetFiles(addin, "*.cs", SearchOption.AllDirectories))
+        foreach (string f in WpsShared.SourcePaths.GetFiles(addin, "*.cs", SearchOption.AllDirectories))
         {
             if (Path.GetFileName(f).Contains(".g.cs") || Path.GetFileName(f).Contains("Designer")) continue;
-            string text = File.ReadAllText(f);
+            string text = WpsShared.SourcePaths.ReadAllText(f);
             foreach (Match m in formRe.Matches(text))
             {
                 formClasses.Add(m.Groups[1].Value);
@@ -98,11 +98,11 @@ internal static class DisciplineProbe
         };
         Regex assignRe = new Regex(@"^\s*(?:this\.)?(ShowInTaskbar|MinimizeBox)\s*=\s*false\s*;", RegexOptions.Multiline);
         Regex topMostRe = new Regex(@"^\s*(?:this\.)?TopMost\s*=\s*true\s*;", RegexOptions.Multiline);
-        foreach (string f in Directory.GetFiles(addin, "*.cs", SearchOption.AllDirectories))
+        foreach (string f in WpsShared.SourcePaths.GetFiles(addin, "*.cs", SearchOption.AllDirectories))
         {
             string fname = Path.GetFileName(f);
             if (!interactiveFiles.Contains(fname)) continue;
-            string text = File.ReadAllText(f);
+            string text = WpsShared.SourcePaths.ReadAllText(f);
             StringBuilder code = new StringBuilder();
             foreach (string line in text.Split('\n'))
             {

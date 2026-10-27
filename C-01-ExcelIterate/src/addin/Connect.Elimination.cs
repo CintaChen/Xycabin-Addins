@@ -27,17 +27,7 @@ namespace Excel_Iterate
     public partial class Connect
     {
         private static EliminationForm _eliminationForm;
-        private static EliminationGateway _eliminationGateway;
-        private static EliminationTargetHandle _eliminationTarget;
-        private static MergeSnapshot _eliminationSnapshot;
-        // 往来抵消会同时产出「差异表」与「结果表」两张表，各自维护目标句柄与快照
-        private static EliminationTargetHandle _eliminationDiffTarget;
-        private static MergeSnapshot _eliminationDiffSnapshot;
-        // 预检产出的往来抵消结果（供预览网格与执行写入共用）
-        private static EliminationDiffTable _eliminationDiff;
-        private static string _eliminationBackupPath;
-        // 上次建列映射网格的来源键（路径|工作表|表头行）；相同则保留用户改过的角色。
-        private static string _eliminationHeadersKey = "";
+        private static EliminationSession _eliminationSession;
 
         public IPictureDisp GetImage_menuElimination(object control)
         { return GetButtonImageCore("menuElimination"); }
@@ -62,12 +52,16 @@ namespace Excel_Iterate
                 if (_app == null) return;
                 dynamic app = _app;
                 HashSet<string> open = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                dynamic books = app.Workbooks;
-                int count = Convert.ToInt32(books.Count);
-                for (int i = 1; i <= count; i++)
+                using(var owned=new ComBag())
                 {
-                    string path = Convert.ToString(books.Item(i).FullName);
-                    if (!string.IsNullOrEmpty(path)) open.Add(path);
+                    dynamic books=owned.Own(app.Workbooks);
+                    int count=Convert.ToInt32(books.Count);
+                    for(int i=1;i<=count;i++)using(var item=new ComBag())
+                    {
+                        dynamic book=item.Own(MergeWorkbookGateway.GetItem(books,i));
+                        string path=Convert.ToString(book.FullName);
+                        if(!string.IsNullOrEmpty(path))open.Add(path);
+                    }
                 }
                 EliminationForm.EliminationMapStore.CleanupExcept(open);
             }
@@ -101,15 +95,15 @@ namespace Excel_Iterate
             try
             {
                 if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格。");
-                _eliminationHeadersKey = "";
                 CleanupStaleMemory();
                 EliminationForm form = new EliminationForm(kind);
-                ApplyActiveSource(form);
+                _eliminationSession = new EliminationSession(_app);
                 form.PreviewRequested += delegate { RunEliminationPreview(form); };
                 form.ExecuteRequested += delegate { RunEliminationExecute(form); };
                 form.UndoRequested += delegate { RunEliminationUndo(form); };
                 form.ConfirmRequested += delegate { RunEliminationConfirm(form); };
                 form.SheetsRequested += delegate(string path) { RunLoadEliminationSheets(form, path); };
+                ApplyActiveSource(form);
                 form.FormClosed += delegate
                 {
                     bool mine = ReferenceEquals(_eliminationForm, form);
@@ -159,26 +153,17 @@ namespace Excel_Iterate
         /// <summary>释放抵消功能持有的网关与写入态（关窗/换窗/卸载共用；幂等）。</summary>
         private static void ReleaseEliminationState()
         {
-            EliminationGateway gateway = _eliminationGateway;
-            _eliminationGateway = null;
-            _eliminationTarget = null;
-            _eliminationSnapshot = null;
-            _eliminationDiffTarget = null;
-            _eliminationDiffSnapshot = null;
-            _eliminationDiff = null;
-            _eliminationBackupPath = null;
-            _eliminationHeadersKey = "";
-            if (gateway != null)
-            {
-                try { gateway.Dispose(); }
-                catch (Exception ex) { Log("合并抵消：释放工作簿引用失败 " + ex.Message); }
-            }
+            EliminationSession state=_eliminationSession;_eliminationSession=null;
+            if(state==null)return;
+            try {state.Dispose();}
+            catch(Exception error){Log("合并抵消释放会话："+error.Message);}
+            finally {if(state.OwnsBusy)_busy=false;}
         }
 
         private static EliminationGateway Gateway()
         {
-            if (_eliminationGateway == null) _eliminationGateway = new EliminationGateway(_app);
-            return _eliminationGateway;
+            if(_eliminationSession==null)throw new InvalidOperationException("抵消会话已结束，请重新打开窗口。");
+            return _eliminationSession.EnsureGateway();
         }
 
         // ---------------------------- 来源 ----------------------------
@@ -244,105 +229,71 @@ namespace Excel_Iterate
         // ---------------------------- 预检 ----------------------------
 
         private static void RunEliminationPreview(EliminationForm form)
+        { StartEliminationPreflight(form,false); }
+
+        private static void StartEliminationPreflight(EliminationForm form,bool execute)
         {
-            if (_busy) return;
-            _busy = true;
-            form.SetBusy(true);
+            if(_busy)return;
+            var session=_eliminationSession;if(session==null||session.IsDisposed)return;
+            _busy=true;session.OwnsBusy=true;session.Phase=EliminationPhase.Reading;form.SetBusy(true);form.ClearPreview();
+            bool started=false;
             try
             {
-                EliminationRequest request = form.BuildRequest();
-                string invalid = ValidateEliminationRequest(request);
-                if (invalid != null) { form.SetLog(invalid); return; }
-
-                EliminationGateway gateway = Gateway();
-
-                form.SetStatus("正在读取来源表头…");
-                MergeHeaderSet headers = gateway.ReadHeaders(request.Path, request.SheetName, request.HeaderRow);
-                string headerError = headers.Validate("来源工作簿");
-                if (headerError != null) { form.SetHeaders(null, 0, headerError); return; }
-                int dataRows = headers.LastUsedRow - request.HeaderRow;
-                if (dataRows < 0) dataRows = 0;
-
-                // 同一来源重复预检时保留用户在列映射网格里改过的角色；
-                // 换了来源/工作表/表头行/业务种类（或网格被清空）才按表头重建。
-                // 键里必须含 kind：两种业务的角色集合不同，共用缓存会串。
-                string key = request.Kind + "|" + request.Path + "|" + request.SheetName + "|"
-                    + request.HeaderRow.ToString(CultureInfo.InvariantCulture);
-                if (form.MapRowCount == 0 || key != _eliminationHeadersKey)
+                EliminationRequest request=form.BuildRequest();
+                string invalid=ValidateEliminationRequest(request);if(invalid!=null){form.SetLog(invalid);return;}
+                var gateway=session.EnsureGateway();form.SetStatus("正在读取来源表头…");
+                var headers=gateway.ReadHeaders(request.Path,request.SheetName,request.HeaderRow);
+                string headerError=headers.Validate("来源工作簿");if(headerError!=null){form.SetHeaders(null,0,headerError);return;}
+                string key=request.Kind+"|"+request.Path+"|"+request.SheetName+"|"+request.HeaderRow.ToString(CultureInfo.InvariantCulture);
+                if(form.MapRowCount==0||key!=session.HeadersKey)
+                {form.SetHeaders(BuildColumns(headers,request.Kind),Math.Max(0,headers.LastUsedRow-request.HeaderRow),null);session.HeadersKey=key;request=form.BuildRequest();}
+                invalid=EliminationEngine.ValidateMapping(request.Kind,request.Columns);
+                if(invalid==null&&request.Kind==EliminationKind.RevenueCost)invalid=EliminationEngine.ValidateMatrixMapping(request.Kind,request.Columns);
+                if(invalid!=null){form.SetLog(invalid+"\r\n请调整列映射后重新预检。");return;}
+                request=request.Copy();
+                var options=BuildMatrixOptions(request,headers);
+                if(execute)
                 {
-                    form.SetHeaders(BuildColumns(headers, request.Kind), dataRows, null);
-                    _eliminationHeadersKey = key;
-                    request = form.BuildRequest();
-                    if (request.Error != null) { form.SetLog(request.Error); return; }
+                    int row,column;if(!EliminationGateway.TryParseCell(request.StartCell,out row,out column)){form.SetLog("起始单元格无法解析。");return;}
+                    options.StartRow=row;options.StartColumn=column;
                 }
-
-                string mappingError = EliminationEngine.ValidateMapping(request.Kind, request.Columns);
-                if (mappingError != null)
-                {
-                    form.SetLog(mappingError + "\r\n请在列映射网格中修改角色后重新点「读取表头并预检」；"
-                        + "映射修改完成前「执行写入」不可用。");
-                    return;
-                }
-
-                if (request.Kind == EliminationKind.RevenueCost)
-                {
-                    // 收入成本抵消走矩阵式底稿
-                    string matrixError = EliminationEngine.ValidateMatrixMapping(request.Kind, request.Columns);
-                    if (matrixError != null)
+                var reader=gateway.BeginReadRows(request,headers);reader.KeepMonitor=true;session.SourceWatch=reader.Monitor;
+                var computation=new EliminationComputation(request,headers,options);
+                var task=new HostBatchRunner<EliminationRowsBlock,EliminationPrepared>(reader,computation.Accept,computation.Finish,
+                    delegate(EliminationPrepared prepared,Exception failure,bool cancelled)
                     {
-                        form.SetLog(matrixError + "\r\n请在列映射网格中修改角色后重新点「读取表头并预检」；"
-                            + "映射修改完成前「执行写入」不可用。");
-                        return;
-                    }
-
-                    form.SetStatus("正在读取源数据…");
-                    List<EliminationRow> matrixRows = gateway.ReadRows(
-                        request.Path, request.SheetName, request.HeaderRow, request.Columns,
-                        headers.LastUsedRow, false);
-                    MatrixOptions options = BuildMatrixOptions(request, headers);
-                    EliminationMatrix matrix = EliminationMatrixBuilder.Build(matrixRows, request.Columns, options);
-                    form.SetPreviewMatrix(matrix);
-                    if (matrix.Errors.Count == 0 && matrix.Rows.Count > 0)
-                        EliminationForm.EliminationMapStore.Save(
-                            EliminationForm.EliminationMapStore.Key(request.Kind, request.Path), request.Columns);
-                    Log("合并抵消预检：收入成本抵消（矩阵底稿） 来源 " + request.Path + " [" + request.SheetName
-                        + "] 交易对 " + matrix.GroupCount + " 组 / 年度 " + matrix.Years.Count + " 个");
-                    return;
-                }
-
-                // 往来抵消（Receivable）：走「差异表 + 结果表」两张表的矩阵式流程
-                form.SetStatus("正在读取源数据…");
-                List<EliminationRow> rows = gateway.ReadRows(
-                    request.Path, request.SheetName, request.HeaderRow, request.Columns, headers.LastUsedRow, false);
-                MatrixOptions wlOptions = BuildMatrixOptions(request, headers);
-                EliminationDiffTable diff = null;
-                EliminationMatrix wlResult = null;
-                EliminationDiffBuilder.Build(rows, request.Columns, wlOptions, out diff, out wlResult);
-                _eliminationDiff = diff;
-                // 预览网格展示结果表（矩阵式，与收入成本一致的观感）；差异表统计写进日志
-                form.SetPreviewMatrix(wlResult);
-                if (diff != null)
-                    form.AppendLog("往来抵消差异表：" + diff.Rows.Count + " 行 = 主体对 " + diff.GroupCount
-                        + " 组 × 年度 " + diff.Years.Count + " 个 × 科目对 " + diff.RowsPerYear + "；"
-                        + "条件列筛掉 " + diff.FilteredRows + " 行、跳过 " + diff.SkippedRows + " 行。");
-                if (diff != null && diff.Errors.Count == 0 && diff.Rows.Count > 0)
-                    EliminationForm.EliminationMapStore.Save(
-                        EliminationForm.EliminationMapStore.Key(request.Kind, request.Path), request.Columns);
-                Log("合并抵消预检：往来抵消 来源 " + request.Path + " [" + request.SheetName + "] 主体对 "
-                    + (diff == null ? 0 : diff.GroupCount) + " 组 / 差异行 "
-                    + (diff == null ? 0 : diff.Rows.Count) + " 行 / 结果行 "
-                    + (wlResult == null ? 0 : wlResult.Rows.Count) + " 行");
+                        if(!ReferenceEquals(_eliminationSession,session)||session.IsDisposed||form.IsDisposed)return;
+                        session.PreviewTask=null;form.CancelPreview=null;
+                        try
+                        {
+                            if(failure!=null)throw failure;
+                            if(cancelled){form.SetLog("已取消，本次未写入任何内容。");session.Phase=EliminationPhase.Idle;return;}
+                            session.SourceWatch.Validate();
+                            if(execute){session.Phase=EliminationPhase.Writing;CommitElimination(form,prepared);}
+                            else
+                            {
+                                session.Diff=prepared.Diff;form.SetPreviewMatrix(prepared.Matrix);
+                                if(prepared.Diff!=null)form.AppendLog("往来抵消差异表："+prepared.Diff.Rows.Count+" 行 / 主体对 "+prepared.Diff.GroupCount+" 组。");
+                                session.Phase=prepared.Matrix.Errors.Count==0&&prepared.Matrix.Rows.Count>0?EliminationPhase.PreviewReady:EliminationPhase.Idle;
+                                if(session.Phase==EliminationPhase.PreviewReady)EliminationForm.EliminationMapStore.Save(EliminationForm.EliminationMapStore.Key(prepared.Request.Kind,prepared.Request.Path),prepared.Request.Columns);
+                            }
+                        }
+                        catch(Exception error){session.Phase=EliminationPhase.Idle;form.ClearPreview();form.SetLog("预检失败："+error.Message);Log("抵消预检："+error);}
+                        finally
+                        {session.StopWatch();session.OwnsBusy=false;form.SetBusy(false);_busy=false;}
+                    },delegate(EliminationRowsBlock block){if(!form.IsDisposed)form.SetStatus("正在读取来源："+block.Completed+" / "+block.Total+" 行…");});
+                task.Captured=delegate{session.Phase=EliminationPhase.Calculating;if(!form.IsDisposed)form.SetStatus("正在计算抵消结果…");};
+                session.PreviewTask=task;form.CancelPreview=session.CancelPreview;started=true;
+                if(!reader.CanYield)form.AppendLog("宿主不支持来源变化监听，采用同步读取、后台计算的兼容路径。");
+                task.Start();
             }
-            catch (Exception ex)
+            catch(Exception error)
             {
-                Log("合并抵消预检：" + ex);
-                form.SetLog("预检失败：" + ex.Message);
+                if(session.PreviewTask!=null){session.PreviewTask.Dispose();session.PreviewTask=null;}
+                started=false;form.SetLog("预检失败："+error.Message);session.Phase=EliminationPhase.Idle;
             }
             finally
-            {
-                form.SetBusy(false);
-                _busy = false;
-            }
+            {if(!started){session.StopWatch();session.OwnsBusy=false;session.Phase=EliminationPhase.Idle;form.CancelPreview=null;form.SetBusy(false);_busy=false;}}
         }
 
         /// <summary>表头快照 → 列映射（角色按表头文本猜，用户可在网格覆盖）。</summary>
@@ -378,97 +329,41 @@ namespace Excel_Iterate
             if (!File.Exists(request.Path)) return "来源文件不存在：" + request.Path;
             if (!string.Equals(Path.GetExtension(request.Path), ".xlsx", StringComparison.OrdinalIgnoreCase))
                 return "来源工作簿需为 .xlsx：" + request.Path;
+            if(request.Kind==EliminationKind.Receivable&&request.DiffSheetItem!=EliminationGateway.NewSheetItem&&request.DiffSheetItem==request.TargetSheetItem)
+                return "差异表和结果表必须使用不同的工作表，避免互相覆盖。";
             return null;
         }
 
         // ---------------------------- 执行 ----------------------------
 
         private static void RunEliminationExecute(EliminationForm form)
+        { StartEliminationPreflight(form,true); }
+
+        private static void CommitElimination(EliminationForm form,EliminationPrepared prepared)
         {
-            if (_busy) return;
-            _busy = true;
-            form.SetBusy(true);
             try
             {
-                EliminationRequest request = form.BuildRequest();
-                string invalid = ValidateEliminationRequest(request);
-                if (invalid != null) { form.SetLog(invalid); return; }
-
-                int startRow, startColumn;
-                if (!EliminationGateway.TryParseCell(request.StartCell, out startRow, out startColumn))
-                {
-                    form.SetLog("起始单元格无法解析：" + request.StartCell + "（示例：A1、B3）。");
-                    return;
-                }
-
-                EliminationGateway gateway = Gateway();
-
-                // 执行时以当前界面状态重算，不依赖上次预检缓存（与表头匹配合并一致）。
-                form.SetStatus("正在计算分录…");
-                MergeHeaderSet headers = gateway.ReadHeaders(request.Path, request.SheetName, request.HeaderRow);
-                string headerError = headers.Validate("来源工作簿");
-                if (headerError != null) throw new InvalidOperationException(headerError);
-                string mappingError = EliminationEngine.ValidateMapping(request.Kind, request.Columns);
-                if (mappingError != null) { form.SetLog(mappingError); return; }
-
-                // 两种业务的写入计划都走矩阵式（BuildMatrixPlan），样式链也统一走矩阵样式
-                // （MergeMatrixHeader/StyleMatrixHeader/FinishMatrixOutput）。
-                // 旧代码此处按 kind 分流，往来抵消走了「分录式」else 样式（StyleEntryHeader），
-                // 导致结果表无合并/无填充/无边框/无千分位（实机验收发现）。
-                bool receivable = request.Kind == EliminationKind.Receivable;
-                EliminationMatrix built = null;
-                EliminationResult result = null;
-                MergeWritePlan plan;
-                // 往来抵消需要「先建差异表取得真实表名 → 再重算」（结果表金额是跨表引用）
-                MatrixOptions wlOptions = null;
-                List<EliminationRow> wlRows = null;
-
-                if (!receivable)
-                {
-                    string matrixError2 = EliminationEngine.ValidateMatrixMapping(request.Kind, request.Columns);
-                    if (matrixError2 != null) { form.SetLog(matrixError2); return; }
-
-                    // 起始位置必须在 Build 前定好：公式锚点据此生成，之后不能再改。
-                    MatrixOptions options = BuildMatrixOptions(request, headers);
-                    options.StartRow = startRow;
-                    options.StartColumn = startColumn;
-                    List<EliminationRow> matrixRows = gateway.ReadRows(
-                        request.Path, request.SheetName, request.HeaderRow, request.Columns,
-                        headers.LastUsedRow, false);
-                    built = EliminationMatrixBuilder.Build(matrixRows, request.Columns, options);
-                    if (built.Rows.Count == 0) { form.SetLog("没有可写入的内容。"); return; }
-                    if (built.Errors.Count > 0)
-                    {
-                        form.SetLog(string.Join("\r\n", built.Errors.ToArray()));
-                        return;
-                    }
-                    plan = EliminationGateway.BuildMatrixPlan(built, options);
-                }
-                else
-                {
-                    // 往来抵消：同时产出「差异表」与「结果表」两张表（矩阵式）。
-                    // 确认前用默认差异表名粗算一次供确认文案；确认后建差异表拿到真实表名再重算
-                    // （结果表金额 = 跨表引用差异表的抵消金额格，表名重名自动编号时必须用实际名）。
-                    wlOptions = BuildMatrixOptions(request, headers);
-                    wlOptions.StartRow = startRow;
-                    wlOptions.StartColumn = startColumn;
-                    wlRows = gateway.ReadRows(
-                        request.Path, request.SheetName, request.HeaderRow, request.Columns,
-                        headers.LastUsedRow, false);
-                    EliminationDiffTable diff = null;
-                    EliminationDiffBuilder.Build(wlRows, request.Columns, wlOptions, out diff, out built);
-                    _eliminationDiff = diff;
-                    if (diff == null || diff.Rows.Count == 0) { form.SetLog("没有可写入的内容。"); return; }
-                    if (diff.Errors.Count > 0)
-                    {
-                        form.SetLog(string.Join("\r\n", diff.Errors.ToArray()));
-                        return;
-                    }
-                    plan = EliminationGateway.BuildMatrixPlan(built, wlOptions);
-                }
-
+                EliminationRequest request=prepared.Request;
+                MergeHeaderSet headers=prepared.Headers;
+                EliminationGateway gateway=Gateway();
+                int startRow=prepared.Options.StartRow,startColumn=prepared.Options.StartColumn;
+                bool receivable=request.Kind==EliminationKind.Receivable;
+                EliminationMatrix built=prepared.Matrix;
+                MatrixOptions wlOptions=prepared.Options;
+                List<EliminationRow> wlRows=prepared.FormulaRows;
+                _eliminationSession.Diff=prepared.Diff;
+                if(built==null||built.Rows.Count==0){form.SetLog("没有可写入的内容。");return;}
+                if(built.Errors.Count>0){form.SetLog(string.Join("\r\n",built.Errors.ToArray()));return;}
+                MergeWritePlan plan=EliminationGateway.BuildMatrixPlan(built,wlOptions);
                 string guard = MergePlanner.Guard(plan);
                 if (guard != null) { form.SetLog(guard); return; }
+                // Validate both outputs before creating sheets or clearing any region.
+                MergeWritePlan diffPlan=receivable?EliminationGateway.BuildDiffPlan(prepared.Diff,wlOptions):null;
+                if(receivable)
+                {
+                    string diffGuard=MergePlanner.Guard(diffPlan);
+                    if(diffGuard!=null){form.SetLog(diffGuard);return;}
+                }
 
                 string defaultName = EliminationGateway.MatrixSheetNameFor(request.Kind);
                 string targetDesc = request.TargetSheetItem == EliminationGateway.NewSheetItem
@@ -478,7 +373,7 @@ namespace Excel_Iterate
 
                 if (UiDialog.Show(form, !receivable
                         ? ConfirmationText(request, built, plan, targetDesc, sameSheet)
-                        : ConfirmationText(request, _eliminationDiff, built, plan, targetDesc, sameSheet),
+                        : ConfirmationText(request, _eliminationSession.Diff, built, plan, targetDesc, sameSheet),
                     "确认执行" + form.Text,
                     MessageBoxButtons.OKCancel, MessageBoxIcon.Warning,
                     MessageBoxDefaultButton.Button2) != DialogResult.OK)
@@ -487,6 +382,8 @@ namespace Excel_Iterate
                     return;
                 }
 
+                if(_eliminationSession.SourceWatch!=null)_eliminationSession.SourceWatch.Validate();
+                _eliminationSession.StopWatch();
                 // 确认后才建目标：用户取消不留下空表。
                 form.SetStatus("正在定位目标工作表…");
                 // 往来抵消：先建「差异表」拿真实表名（重名自动编号），再据此重算两张表
@@ -494,30 +391,30 @@ namespace Excel_Iterate
                 {
                     EliminationTargetHandle diffTarget = gateway.CreateTarget(
                         request.Path, request.DiffSheetItem, EliminationGateway.DiffDefaultSheetName);
-                    _eliminationDiffTarget = diffTarget;
+                    _eliminationSession.DiffTarget = diffTarget;
                     if (request.DiffSheetItem == EliminationGateway.NewSheetItem
                         && !string.Equals(diffTarget.SheetName, EliminationGateway.DiffDefaultSheetName, StringComparison.Ordinal))
                         form.AppendLog("差异表重名，已自动编号为「" + diffTarget.SheetName + "」。");
                     wlOptions.DiffSheetName = diffTarget.SheetName;
-                    EliminationDiffTable diff2 = null;
-                    EliminationMatrix rebuilt = null;
-                    EliminationDiffBuilder.Build(wlRows, request.Columns, wlOptions, out diff2, out rebuilt);
-                    _eliminationDiff = diff2;
-                    built = rebuilt;
-                    plan = EliminationGateway.BuildMatrixPlan(built, wlOptions);
+                    if(!request.StaticValues)
+                    {
+                        EliminationDiffTable diff2=null;EliminationMatrix rebuilt=null;
+                        EliminationDiffBuilder.Build(wlRows,request.Columns,wlOptions,out diff2,out rebuilt);
+                        _eliminationSession.Diff=diff2;built=rebuilt;plan=EliminationGateway.BuildMatrixPlan(built,wlOptions);
+                    }
                 }
                 EliminationTargetHandle target = gateway.CreateTarget(request.Path, request.TargetSheetItem, defaultName);
-                _eliminationTarget = target;
+                _eliminationSession.Target = target;
                 if (sameSheet && !target.IsNewSheet)
                     form.AppendLog("注意：目标工作表与来源相同，请确认写入区域未覆盖源数据。");
 
                 form.SetStatus("正在保存并备份目标工作簿…");
                 string saved = gateway.SaveTargetBookPath(target.Book);
-                _eliminationBackupPath = gateway.CreateBackup(saved);
+                _eliminationSession.BackupPath = gateway.CreateBackup(saved);
 
                 // 快照先取，再清区域：这样「取消操作」能还原到写入前的原样。
                 form.SetStatus("正在快照写入区域…");
-                _eliminationSnapshot = gateway.Capture(target, plan);
+                _eliminationSession.Snapshot = gateway.Capture(target, plan);
                 // 目标若之前写过矩阵，残留的合并单元格会让批量赋值失败，先拆掉。
                 gateway.PrepareTargetRegion(target, plan);
 
@@ -527,23 +424,20 @@ namespace Excel_Iterate
                 int diffCells = 0;
                 if (receivable)
                 {
-                    MergeWritePlan diffPlan = EliminationGateway.BuildDiffPlan(_eliminationDiff, wlOptions);
-                    string diffGuard = MergePlanner.Guard(diffPlan);
-                    if (diffGuard != null) { form.SetLog(diffGuard); return; }
-                    EliminationTargetHandle diffTarget = _eliminationDiffTarget;
-                    _eliminationDiffSnapshot = gateway.Capture(diffTarget, diffPlan);
+                    EliminationTargetHandle diffTarget = _eliminationSession.DiffTarget;
+                    _eliminationSession.DiffSnapshot = gateway.Capture(diffTarget, diffPlan);
                     gateway.PrepareTargetRegion(diffTarget, diffPlan);
                     gateway.Write(diffTarget, diffPlan);
-                    gateway.StyleDiffHeader(diffTarget, startRow, startColumn, _eliminationDiff.ColumnCount);
+                    gateway.StyleDiffHeader(diffTarget, startRow, startColumn, _eliminationSession.Diff.ColumnCount);
                     // 差异表：第 1 行表头、第 2 行起数据；金额列 G-N（索引 6-13）；序号 A/年度 B 居中
                     int diffDataTop = startRow + 1;
-                    int diffDataRows = _eliminationDiff.Rows.Count > 0
-                        ? (_eliminationDiff.Rows[_eliminationDiff.Rows.Count - 1].RowNumber - diffDataTop + 1) : 0;
+                    int diffDataRows = _eliminationSession.Diff.Rows.Count > 0
+                        ? (_eliminationSession.Diff.Rows[_eliminationSession.Diff.Rows.Count - 1].RowNumber - diffDataTop + 1) : 0;
                     int diffGap = wlOptions.GroupGap > 0 ? wlOptions.GroupGap : 0;
-                    int diffGaps = diffGap > 0 && _eliminationDiff.GroupCount > 1
-                        ? (_eliminationDiff.GroupCount - 1) * diffGap : 0;
+                    int diffGaps = diffGap > 0 && _eliminationSession.Diff.GroupCount > 1
+                        ? (_eliminationSession.Diff.GroupCount - 1) * diffGap : 0;
                     gateway.FinishMatrixOutput(diffTarget, startRow, 1, diffDataTop, startColumn,
-                        _eliminationDiff.ColumnCount, diffDataRows + diffGaps,
+                        _eliminationSession.Diff.ColumnCount, diffDataRows + diffGaps,
                         new int[] { 6, 7, 8, 9, 10, 11, 12, 13 }, new int[] { 0, 1 });
                     diffCells = diffPlan.TotalCells;
                     form.AppendLog("已写入 " + diffCells + " 格到「" + diffTarget.SheetName + "」（往来抵消差异）");
@@ -567,23 +461,26 @@ namespace Excel_Iterate
                 }
                 gateway.SaveTargetBook(target.Book);
 
+                _eliminationSession.Phase=EliminationPhase.UndoAvailable;
                 form.MarkWritten();
                 form.AppendLog("已写入 " + plan.TotalCells + " 格到「" + target.SheetName + "」"
-                    + (target.IsNewSheet ? "（本次新建）" : "") + "；备份 " + _eliminationBackupPath);
+                    + (target.IsNewSheet ? "（本次新建）" : "") + "；备份 " + _eliminationSession.BackupPath);
                 form.SetStatus("写入完成；如需还原请点「取消操作」，确认无误请点「确认操作」。");
                 Log("合并抵消写入：" + plan.TotalCells + " 格 → " + request.Path + " [" + target.SheetName + "]");
             }
             catch (Exception ex)
             {
                 Log("合并抵消执行：" + ex);
-                form.AppendLog("执行失败：" + ex.Message + "（目标工作表未改动或已按快照还原）");
-                TryEliminationRollback(form);
+                bool recovered=TryEliminationRollback(form);
+                string recovery=recovered?"目标内容未改动或已还原，保存状态见日志。":"回滚尚未完成，请重试取消操作或使用备份恢复。";
+                form.AppendLog("执行失败："+ex.Message+"；"+recovery);
                 // 日志区不显眼；用模态框把真实失败原因直接端到用户面前，避免"以为执行了"。
-                UiDialog.Show(form, "执行失败：" + ex.Message + "\r\n（目标工作表未改动或已按快照还原；详见日志。）",
+                UiDialog.Show(form, "执行失败：" + ex.Message + "\r\n"+recovery,
                     form.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             finally
             {
+                if(_eliminationSession!=null&&_eliminationSession.Phase==EliminationPhase.Writing)_eliminationSession.Phase=EliminationPhase.Idle;
                 form.SetBusy(false);
                 _busy = false;
             }
@@ -704,38 +601,23 @@ namespace Excel_Iterate
             return text.ToString();
         }
 
-        private static void TryEliminationRollback(EliminationForm form)
+        private static bool TryEliminationRollback(EliminationForm form)
         {
-            EliminationTargetHandle target = _eliminationTarget;
-            if (target == null || target.Sheet == null) return;
-            // 没有快照说明还没动笔（Capture 之前失败），已存在的表无需还原。
-            if (!target.IsNewSheet && _eliminationSnapshot == null) return;
+            var session=_eliminationSession;if(session==null)return true;
+            var target=session.Target??session.DiffTarget;
+            if(target==null)return true;
             try
             {
-                EliminationGateway gateway = Gateway();
-                gateway.Restore(target, _eliminationSnapshot);
-                // 往来抵消的差异表一并还原
-                if (_eliminationDiffTarget != null && _eliminationDiffSnapshot != null)
-                {
-                    gateway.Restore(_eliminationDiffTarget, _eliminationDiffSnapshot);
-                    form.AppendLog("已删除/还原「" + _eliminationDiffTarget.SheetName + "」（往来抵消差异）。");
-                }
-                try { gateway.SaveTargetBook(target.Book); } catch { }
-                form.AppendLog(target.IsNewSheet
-                    ? "已删除本次新建的工作表「" + target.SheetName + "」。"
-                    : "已用写入前快照还原目标工作表。");
+                var gateway=session.EnsureGateway();session.RestoreTargets(gateway.Restore);form.MarkUndone();
+                try {gateway.SaveTargetBook(target.Book);}
+                catch(Exception save){form.AppendLog("内容已还原，但自动保存失败，请手动保存："+save.Message);}
+                form.AppendLog("已删除本次新建表或按快照还原目标内容。");return true;
             }
-            catch (Exception ex)
+            catch(Exception error)
             {
-                Log("合并抵消还原失败：" + ex);
-                form.AppendLog("还原失败：" + ex.Message + "；请用备份文件手动恢复：" + _eliminationBackupPath);
-            }
-            finally
-            {
-                _eliminationTarget = null;
-                _eliminationSnapshot = null;
-                _eliminationDiffTarget = null;
-                _eliminationDiffSnapshot = null;
+                session.Phase=EliminationPhase.UndoAvailable;form.MarkWritten();
+                Log("合并抵消还原失败："+error);
+                form.AppendLog("还原尚未完成，可点「取消操作」重试；备份："+session.BackupPath+"；"+error.Message);return false;
             }
         }
 
@@ -748,7 +630,7 @@ namespace Excel_Iterate
             form.SetBusy(true);
             try
             {
-                EliminationTargetHandle target = _eliminationTarget;
+                EliminationTargetHandle target = _eliminationSession.Target??_eliminationSession.DiffTarget;
                 if (target == null || target.Sheet == null)
                 {
                     form.AppendLog("没有可还原的批次。");
@@ -764,20 +646,22 @@ namespace Excel_Iterate
                     return;
                 }
                 EliminationGateway gateway = Gateway();
-                gateway.Restore(target, _eliminationSnapshot);
-                gateway.SaveTargetBook(target.Book);
+                _eliminationSession.RestoreTargets(gateway.Restore);
+                _eliminationSession.Phase=EliminationPhase.Idle;
                 form.MarkUndone();
+                try {gateway.SaveTargetBook(target.Book);}
+                catch(Exception save){form.AppendLog("内容已还原，但自动保存失败，请手动保存："+save.Message);}
                 form.AppendLog(target.IsNewSheet
-                    ? "已删除新建工作表「" + target.SheetName + "」。文件备份保留：" + _eliminationBackupPath
-                    : "已还原到写入前状态。文件备份保留：" + _eliminationBackupPath);
+                    ? "已删除新建工作表「" + target.SheetName + "」。文件备份保留：" + _eliminationSession.BackupPath
+                    : "已还原到写入前状态。文件备份保留：" + _eliminationSession.BackupPath);
                 Log("合并抵消：已还原");
-                _eliminationTarget = null;
-                _eliminationSnapshot = null;
+                _eliminationSession.Target = null;
+                _eliminationSession.Snapshot = null;
             }
             catch (Exception ex)
             {
                 Log("合并抵消取消操作：" + ex);
-                form.AppendLog("还原失败：" + ex.Message + "；请用备份文件手动恢复：" + _eliminationBackupPath);
+                form.AppendLog("还原失败：" + ex.Message + "；请用备份文件手动恢复：" + _eliminationSession.BackupPath);
             }
             finally
             {
@@ -788,8 +672,12 @@ namespace Excel_Iterate
 
         private static void RunEliminationConfirm(EliminationForm form)
         {
-            _eliminationSnapshot = null;
-            Log("合并抵消：已确认，本批结束。备份保留于 " + _eliminationBackupPath);
+            _eliminationSession.Snapshot = null;
+            _eliminationSession.DiffSnapshot=null;
+            _eliminationSession.Target=null;
+            _eliminationSession.DiffTarget=null;
+            _eliminationSession.Phase=EliminationPhase.Idle;
+            Log("合并抵消：已确认，本批结束。备份保留于 " + _eliminationSession.BackupPath);
         }
     }
 }

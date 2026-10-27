@@ -66,7 +66,7 @@ partial class Feature099Probe
         var initial=OcrPrefixStore.Read();var saved=OcrPrefixStore.Save(initial,rules);Check(saved.Writable&&saved.Rules.Select(r=>r.Text).SequenceEqual(rules.Select(r=>r.Text)),"rules persist atomically in isolated XML");Reject(()=>OcrPrefixStore.Save(initial,rules),"stale editor cannot overwrite newer rules");
         var flipped=saved.Rules.AsEnumerable().Reverse().Select(r=>r.Copy()).ToList();flipped[0].Enabled=false;var savedAgain=OcrPrefixStore.Save(saved,flipped);Check(!savedAgain.Rules[0].Enabled&&savedAgain.Rules[1].Id==rules[1].Id,"order enabled state and identities survive reopening");
         using(var form=(OcrPrefixesForm)DialogPreviewFactory.Create("file.ocrprefixes",DialogCatalog.Find("file.ocrprefixes").Default))
-        {string before=File.ReadAllText(OcrPrefixStore.PathForUser);form.Submit();Check(form.Result==null&&File.ReadAllText(OcrPrefixStore.PathForUser)==before&&!form.Visible,"prefix preview does not save");}
+        {string before=WpsShared.SourcePaths.ReadAllText(OcrPrefixStore.PathForUser);form.Submit();Check(form.Result==null&&WpsShared.SourcePaths.ReadAllText(OcrPrefixStore.PathForUser)==before&&!form.Visible,"prefix preview does not save");}
         using(var form=(OcrFieldsForm)DialogPreviewFactory.Create("file.ocrfields",DialogCatalog.Find("file.ocrfields").Default))
         {form.Submit();Check(form.Result==null&&!form.Visible&&!((Control)form.AcceptButton).Enabled,"field preview cannot accept business action");}
         int saves=0;using(var form=new OcrPrefixesForm(rules,rows=>{saves++;return "";}))
@@ -136,12 +136,12 @@ partial class Feature099Probe
     {
         string path=OcrPrefixStore.PathForUser;
         string legacy="<OcrPrefixRules version=\"1\"><Prefix id=\""+rules[0].Id+"\" enabled=\"true\" text=\"磅单号：\"/><Prefix id=\""+rules[1].Id+"\" enabled=\"false\" text=\"毛重：\"/></OcrPrefixRules>";
-        File.WriteAllText(path,legacy);var migrated=OcrPrefixStore.Read();Check(migrated.Writable&&migrated.Rules.Count==2&&migrated.Rules.All(r=>r.Kinds==OcrCharacterKinds.All),"version 1 settings migrate in memory to all character categories");Check(File.ReadAllText(path)==legacy,"reading old rules does not rewrite the user's file");
+        File.WriteAllText(path,legacy);var migrated=OcrPrefixStore.Read();Check(migrated.Writable&&migrated.Rules.Count==2&&migrated.Rules.All(r=>r.Kinds==OcrCharacterKinds.All),"version 1 settings migrate in memory to all character categories");Check(WpsShared.SourcePaths.ReadAllText(path)==legacy,"reading old rules does not rewrite the user's file");
         migrated.Rules[0].Kinds=OcrCharacterKinds.Digits|OcrCharacterKinds.Letters;migrated.Rules[1].Kinds=OcrCharacterKinds.None;
-        var updated=OcrPrefixStore.Save(migrated,migrated.Rules);Check(updated.Writable&&updated.Rules[0].Kinds==(OcrCharacterKinds.Digits|OcrCharacterKinds.Letters)&&updated.Rules[1].Kinds==OcrCharacterKinds.None,"version 2 settings preserve per-prefix categories and disabled zero mask after reopening");Check(File.ReadAllText(path).Contains("version=\"2\"")&&File.ReadAllText(path).Contains("kinds=\"6\""),"saving migrated settings writes version 2 with explicit category masks");
+        var updated=OcrPrefixStore.Save(migrated,migrated.Rules);Check(updated.Writable&&updated.Rules[0].Kinds==(OcrCharacterKinds.Digits|OcrCharacterKinds.Letters)&&updated.Rules[1].Kinds==OcrCharacterKinds.None,"version 2 settings preserve per-prefix categories and disabled zero mask after reopening");Check(WpsShared.SourcePaths.ReadAllText(path).Contains("version=\"2\"")&&WpsShared.SourcePaths.ReadAllText(path).Contains("kinds=\"6\""),"saving migrated settings writes version 2 with explicit category masks");
         foreach(string attr in new[]{""," kinds=\"abc\""," kinds=\"16\""," kinds=\"-1\""," kinds=\"0\""})
         {
-            string bad="<OcrPrefixRules version=\"2\"><Prefix id=\""+rules[0].Id+"\" enabled=\"true\" text=\"磅单号：\""+attr+"/></OcrPrefixRules>";File.WriteAllText(path,bad);var rejected=OcrPrefixStore.Read();Check(!rejected.Writable&&rejected.Rules.Count==0,"invalid version 2 character setting "+attr+" is not accepted");Reject(()=>OcrPrefixStore.Save(rejected,rules),"invalid character setting original cannot be overwritten");Check(File.ReadAllText(path)==bad,"invalid character setting bytes are preserved");
+            string bad="<OcrPrefixRules version=\"2\"><Prefix id=\""+rules[0].Id+"\" enabled=\"true\" text=\"磅单号：\""+attr+"/></OcrPrefixRules>";File.WriteAllText(path,bad);var rejected=OcrPrefixStore.Read();Check(!rejected.Writable&&rejected.Rules.Count==0,"invalid version 2 character setting "+attr+" is not accepted");Reject(()=>OcrPrefixStore.Save(rejected,rules),"invalid character setting original cannot be overwritten");Check(WpsShared.SourcePaths.ReadAllText(path)==bad,"invalid character setting bytes are preserved");
         }
     }
 }

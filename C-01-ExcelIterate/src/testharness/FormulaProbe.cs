@@ -237,8 +237,8 @@ internal static class FormulaProbe
         {
             h = new Host(); a = new Cell("A1", "=A2") { ThrowAfterMutation = true, FailRestore = !badReadback, BadRestore = badReadback }; h.Cells.Add(a);
             r = Run(h, FormulaOperation.Abs);
-            Check("incomplete recovery reported " + badReadback, r.Failed && r.RollbackIncomplete && r.Details.Contains("A1") && r.Details.Contains("=A2") && File.Exists(r.RecoveryLog));
-            Check("saved original formula " + badReadback, File.ReadAllText(r.RecoveryLog).Contains("原公式：=A2"));
+            Check("incomplete recovery reported " + badReadback, r.Failed && r.RollbackIncomplete && r.Details.Contains("A1") && r.Details.Contains("=A2") && WpsShared.SourcePaths.Exists(r.RecoveryLog));
+            Check("saved original formula " + badReadback, WpsShared.SourcePaths.ReadAllText(r.RecoveryLog).Contains("原公式：=A2"));
         }
         h = new Host(); a = new Cell("A1", "=A2"); b = new Cell("B1", "=B2"); b.BeforeRead = delegate(Cell c) { c.Current = "=999"; }; h.Cells.AddRange(new[] { a, b }); r = Run(h, FormulaOperation.Abs);
         Check("stale snapshot before first write", r.Failed && a.Writes == 0 && b.Writes == 0 && h.Events && h.Screen);
@@ -296,7 +296,7 @@ internal static class FormulaProbe
         r = Execute(app, FormulaOperation.Abs);
         Check("COM late write rollback", r.Failed && r.Details.Contains("late write failure") && !r.RollbackIncomplete && (string)app.Sheet.Cell(1, 1).Value == "=B1" && (string)app.Sheet.Cell(2, 1).Value == "=B2");
         app = One(); app.Sheet.Cell(1, 1).FailWrite = app.Sheet.Cell(1, 1).FailRestore = true; r = Execute(app, FormulaOperation.Abs);
-        Check("COM recovery failure carries workbook and sheet", r.RollbackIncomplete && r.Details.Contains("测试工作簿.xlsx") && r.Details.Contains("工作表：测试表") && r.Details.Contains("原公式：=B1") && File.Exists(r.RecoveryLog));
+        Check("COM recovery failure carries workbook and sheet", r.RollbackIncomplete && r.Details.Contains("测试工作簿.xlsx") && r.Details.Contains("工作表：测试表") && r.Details.Contains("原公式：=B1") && WpsShared.SourcePaths.Exists(r.RecoveryLog));
         app = new FakeApp(); for (int row = 1; row <= 34; row++) for (int col = 1; col <= 260; col++) app.Sheet.Set(row, col, row == 34 && col == 260 ? (object)"=B1" : (object)1, row == 34 && col == 260);
         app.Selection = new FakeRange(app.Sheet, 1, 1, 1048576, 16384); r = Execute(app, FormulaOperation.Abs);
         Check("large UsedRange chunking", !r.Failed && r.Changed == 1 && app.Sheet.MaxBlock <= 4096 && app.Sheet.BlockReads >= 2);
@@ -344,7 +344,7 @@ internal static class FormulaProbe
             var result=Calculate(app,FormulaRequest.Default(FormulaOperation.Multiply));
             Check("mixed rollback " + incomplete,result.Failed && result.RollbackIncomplete==incomplete && app.EnableEvents && app.ScreenUpdating);
             if(!incomplete) Check("numeric restored via Value2",app.Sheet.Cell(1,1).Value is double && (double)app.Sheet.Cell(1,1).Value==20 && !app.Sheet.Cell(1,1).IsFormula && app.Sheet.ValueWrites==1 && (string)app.Sheet.Cell(1,2).Value=="=C1");
-            else Check("numeric recovery log includes type and value",File.ReadAllText(result.RecoveryLog).Contains("原数值（System.Double）：20"));
+            else Check("numeric recovery log includes type and value",WpsShared.SourcePaths.ReadAllText(result.RecoveryLog).Contains("原数值（System.Double）：20"));
         }
         FakeApp changed=One(); changed.Sheet.Set(1,1,20.0,false); ComFormulaHost host=new ComFormulaHost(changed,true); host.Collect(); changed.Sheet.Cell(1,1).Value="20";
         var r=FormulaCommandEngine.Run(host,FormulaRequest.Default(FormulaOperation.Add),delegate{},Recovery);
@@ -441,7 +441,7 @@ internal static class FormulaProbe
                 var list=host.Collect(); list[2].Visible=list[3].Visible=false; app.Sheet.HiddenFail=4; app.Sheet.HiddenRestoreFail=incomplete?3:0;
                 var result=ColumnVisibilityEngine.Apply(host,list,Recovery);
                 Check("column verified rollback " + incomplete,result.Failed && result.RollbackIncomplete==incomplete && app.EnableEvents && app.ScreenUpdating);
-                if(incomplete)Check("column recovery log",File.Exists(result.RecoveryLog) && result.Details.Contains("C 列"));
+                if(incomplete)Check("column recovery log",WpsShared.SourcePaths.Exists(result.RecoveryLog) && result.Details.Contains("C 列"));
                 else Check("both attempted columns restored",!app.Sheet.Hidden[3] && !app.Sheet.Hidden[4]);
             }
         }

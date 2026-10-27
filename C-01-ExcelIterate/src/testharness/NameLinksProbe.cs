@@ -92,7 +92,7 @@ partial class WorkbookToolsProbe
                 if (mode == "used") Check(session.Batch.Checkpoints.Count == 0 && book.NameDeletes == 0, "unsafe dependency is rejected before checkpoint or deletion");
                 if (mode == "read" || mode == "identity" || mode == "formula") Check(book.NameDeletes == 0, "all native name handles are verified before first deletion: " + mode);
                 if (mode == "edit") Check(book.NameDeletes == 0 && !book.Saved && book.SaveCount == 0, "new edits during native name reads are not saved or overwritten");
-                if (mode == "delete" || mode == "save") Check(session.Batch.CanUndo && File.Exists(session.Batch.Checkpoints[0].Backup), "partial native mutation/save failure retains recovery intent: " + mode);
+                if (mode == "delete" || mode == "save") Check(session.Batch.CanUndo && WpsShared.SourcePaths.Exists(session.Batch.Checkpoints[0].Backup), "partial native mutation/save failure retains recovery intent: " + mode);
                 Check(!session.Links[0].Status.Contains("原链接未改变"), "failure status makes no unsupported unchanged claim: " + mode);
             }
             book.Close(false); foreach (string step in session.Steps(true, () => false)) { }

@@ -54,7 +54,7 @@ namespace Excel_Iterate
         private ErrorSourceForm _errorForm;
 
         // 后台扫描（Dependents）
-        private Thread _scanThread;
+        private HostBatchRunner<FormulaBlock,DependentResult> _scanSession;
         private volatile bool _cancelRequested;
 
         /// <summary>当前窗口的追踪模式（供 Connect 判断已开窗口是否同模式）。</summary>
@@ -83,6 +83,7 @@ namespace Excel_Iterate
             FormClosed += delegate
             {
                 _cancelRequested = true;
+                if(_scanSession!=null){try{_scanSession.Dispose();}catch(Exception error){UiDiagnostics.Record("scan-close",error);}_scanSession=null;}
                 if (_tipTimer != null) _tipTimer.Stop();
                 if(!preview)ClearPendingFlash();
                 // 兜底：万一关闭路径上有异常把宿主根窗口留在禁用态
@@ -273,7 +274,7 @@ namespace Excel_Iterate
             if (!green)
             { _btnRefresh = Ui.Button("刷新", 96); _btnRefresh.Click += delegate { RefreshPrecedents(); }; bar.Controls.Add(_btnRefresh); }
             else
-            { _btnCancel = Ui.Button("取消扫描", 110); _btnCancel.Click += delegate { _cancelRequested = true; }; bar.Controls.Add(_btnCancel); }
+            { _btnCancel = Ui.Button("取消扫描", 110); _btnCancel.Click += delegate { _cancelRequested = true; if(_scanSession!=null)_scanSession.Cancel(); }; bar.Controls.Add(_btnCancel); }
             _btnClose = Ui.Button("关闭", 96); _btnClose.Click += delegate { Close(); }; bar.Controls.Add(_btnClose);
             _root.Controls.Add(bar, 0, 4); Controls.Add(_root);
             UpdateEmptyState();
@@ -534,49 +535,31 @@ namespace Excel_Iterate
             if (_btnCancel != null) _btnCancel.Enabled = true;
             _lblSummary.Text = "正在扫描所有已打开工作簿…";
 
-            _scanThread = new Thread(() =>
-            {
-                // 后台 STA 线程重新获取独立 COM 连接
-                object app = null;
-                string[] progIds = { "KET.Application", "et.Application", "Excel.Application" };
-                for (int i = 0; i < progIds.Length && app == null; i++)
-                {
-                    try { app = Marshal.GetActiveObject(progIds[i]); } catch { }
-                }
-                if (app == null)
-                {
-                    BeginInvoke((MethodInvoker)delegate
-                    {
-                        _lblSummary.Text = "无法连接 WPS 表格。";
-                        DoneScan();
-                    });
-                    return;
-                }
-                DependentResult result = DependentTrackerEngine.TraceDependents(app,
-                    OnScanProgress, () => _cancelRequested);
-                BeginInvoke((MethodInvoker)delegate { FillDependents(result); });
-            });
-            _scanThread.SetApartmentState(ApartmentState.STA);
-            _scanThread.IsBackground = true;
-            _scanThread.Start();
-        }
-
-        private void OnScanProgress(int wbIndex, int wbCount, int sheetIndex, int sheetCount,
-            string sheetName, int foundSoFar)
-        {
-            if (!IsHandleCreated) return;
+            if(_scanSession!=null)_scanSession.Dispose();
+            var result = new DependentResult();
             try
             {
-                BeginInvoke((MethodInvoker)delegate
-                {
-                    if (_progress != null && wbCount > 0)
-                        _progress.Value = Math.Max(0, Math.Min(100, (int)(100.0 * (wbIndex - 1 + (sheetCount > 0 ? (double)sheetIndex / sheetCount : 0)) / wbCount)));
-                    _lblSummary.Text = string.Format(
-                        "正在扫描：工作簿 {0}/{1} · 工作表 {2}/{3} · {4} · 已找到 {5} 处",
-                        wbIndex, wbCount, sheetIndex, sheetCount, sheetName, foundSoFar);
-                });
+                var reader = new DependentSnapshotReader(_app,result);
+                if(!reader.Valid){reader.Dispose();FillDependents(result);return;}
+                if(!reader.CanYield)_lblSummary.Text="宿主不支持来源变化监听，正在同步读取；随后后台解析…";
+                var accumulator = new DependentAccumulator(result);
+                HostBatchRunner<FormulaBlock,DependentResult> session=null;
+                session=new HostBatchRunner<FormulaBlock,DependentResult>(reader,accumulator.Accept,accumulator.Finish,
+                    delegate(DependentResult found,Exception error,bool cancelled)
+                    {
+                        if(IsDisposed||!ReferenceEquals(_scanSession,session))return;
+                        _scanSession=null;found=found??result;
+                        if(error!=null){found.Status=TrackerStatus.Error;found.ErrorMessage=error.Message;}
+                        found.Cancelled=cancelled;FillDependents(found);
+                    },delegate(FormulaBlock block)
+                    {
+                        if(IsDisposed)return;
+                        if(_progress!=null&&block.WorkbookCount>0)_progress.Value=Math.Max(0,Math.Min(100,(int)(100.0*(block.WorkbookIndex-1+(double)block.SheetIndex/block.SheetCount)/block.WorkbookCount)));
+                        _lblSummary.Text="正在扫描："+block.SheetName;
+                    });
+                _scanSession=session;_btnRefresh.Enabled=false;session.Start();
             }
-            catch { }
+            catch(Exception error){result.Status=TrackerStatus.Error;result.ErrorMessage=error.Message;FillDependents(result);}
         }
 
         private void FillDependents(DependentResult result)
@@ -588,34 +571,25 @@ namespace Excel_Iterate
             if (result.Cancelled)
             {
                 _lblSummary.Text = "已取消扫描（已找到 " + result.Items.Count + " 处）。";
-                return;
             }
-            if (result.Status != TrackerStatus.Completed)
+            else if (result.Status != TrackerStatus.Completed)
             {
                 _lblSummary.Text = result.Status == TrackerStatus.Error
                     ? "扫描出错：" + (result.ErrorMessage ?? "未知")
                     : StatusToText(result.Status);
-                return;
             }
-
-            _lblSummary.Text = string.Format(
+            else _lblSummary.Text = string.Format(
                 "目标单元格：{0} | {1} | {2}  —  从属 {3} 处（扫描 {4} 格 / {5} 个公式）",
                 result.TargetWorkbookName, result.TargetSheetName,
                 result.TargetCellAddress, result.Items.Count,
                 result.ScannedCells, result.ScannedFormulas);
 
-            foreach (DependentItem item in result.Items)
+            var batch=new List<DataGridViewRow>();
+            foreach(DependentItem item in result.Items)
             {
-                int r = _grid.Rows.Add(
-                    item.Index,
-                    item.WorkbookName,
-                    item.SheetName,
-                    item.CellAddressA1,
-                    OneLine(item.MatchFragment),
-                    OneLine(item.SourceFormula),
-                    item.WorkbookPath);
-                _grid.Rows[r].Tag = item;
+                var row=new DataGridViewRow();row.CreateCells(_grid,item.Index,item.WorkbookName,item.SheetName,item.CellAddressA1,OneLine(item.MatchFragment),OneLine(item.SourceFormula),item.WorkbookPath);row.Tag=item;batch.Add(row);
             }
+            _grid.SuspendLayout();try{_grid.Rows.AddRange(batch.ToArray());}finally{_grid.ResumeLayout(false);}
             if (_grid.Rows.Count > 0) _grid.Rows[0].Selected = true;
             AutoFitColumns();
         }
@@ -624,6 +598,7 @@ namespace Excel_Iterate
         {
             if (_progress != null) _progress.Visible = false;
             if (_btnCancel != null) _btnCancel.Enabled = false;
+            if (_btnRefresh != null) _btnRefresh.Enabled = true;
         }
 
         // ---------------- 复制 ----------------
@@ -856,9 +831,9 @@ namespace Excel_Iterate
 
         internal bool CleanupForWorkbook(string path)
         {
-            if (_scanThread != null && _scanThread.IsAlive)
+            if (_scanSession != null && _scanSession.IsRunning)
             {
-                _cancelRequested = true;
+                _cancelRequested = true; _scanSession.Cancel();
                 throw new InvalidOperationException("从属扫描正在取消；等待扫描结束后重试，本阶段未保存或替换文件。");
             }
             bool related = _precResult != null && string.Equals(_precResult.WorkbookPath,path,StringComparison.OrdinalIgnoreCase);

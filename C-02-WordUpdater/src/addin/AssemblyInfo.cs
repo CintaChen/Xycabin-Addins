@@ -14,3 +14,5 @@ using System.Runtime.InteropServices;
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Feature099Probe")]
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("HostDialogProbe")]
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("RuntimeQualityProbe")]

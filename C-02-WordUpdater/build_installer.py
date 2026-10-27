@@ -1,48 +1,9 @@
-"""Package the five validated VSTO payloads into a standalone installer."""
-import subprocess
-import argparse
-from pathlib import Path
-import sys
-sys.dont_write_bytecode = True
-from project_support import ROOT, BUILD, OUT, SRC, CSC, PROJECT, PAYLOAD, DEFINES, load_configure, write_project_info
-from verify_package import verify
-sys.path.insert(0, str(ROOT.parent / "C-03-Website·Xycabin/src"))
-from build_cache import compile_cached
-
-
-# rule=R-18
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mode', choices=('incremental', 'full'), default='full')
-    parser.add_argument('--output', type=Path)
-    args = parser.parse_args()
-    mode = args.mode
-    OUT.mkdir(exist_ok=True)
-    config = load_configure()
-    config.main()
-    info = write_project_info()
-    verify()
-    version = config.get_version()
-    metadata = BUILD / 'InstallerAssemblyInfo.g.cs'
-    metadata.write_text('\n'.join([
-        '[assembly: System.Reflection.AssemblyVersion("%s")]' % version,
-        '[assembly: System.Reflection.AssemblyFileVersion("%s")]' % version,
-        '[assembly: System.Reflection.AssemblyInformationalVersion("%s")]' % version,
-        '',
-    ]), encoding='utf-8-sig')
-    target = args.output.resolve() if args.output else OUT / (PROJECT['assembly'] + '_Setup.exe')
-    target.parent.mkdir(parents=True, exist_ok=True)
-    args = [CSC, '/nologo', '/target:winexe', '/platform:anycpu', '/optimize+', '/codepage:65001', '/out:' + str(target)]
-    args += DEFINES + ['/r:' + r for r in ['System.dll', 'System.Core.dll', 'System.Drawing.dll', 'System.Windows.Forms.dll', 'System.Xml.dll', 'System.Security.dll']]
-    args += ['/resource:' + str(BUILD / n) + ',' + n for n in PAYLOAD]
-    args += [SRC / 'installer/Installer.cs', SRC / 'installer/InstallFlow.cs', SRC / 'installer/InstallerText.g.cs', SRC / 'addin/UiKit.cs', info, metadata]
-    compile_cached(args, ROOT, mode)
-    print('OK ->', target, '(' + str(target.stat().st_size) + ' bytes)')
-
-
-if __name__ == '__main__':
-    try:
-        main()
-    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
-        print('FAIL:', exc)
-        sys.exit(1)
+"""Product entry point; implementation is compiled/executed from C-00-Shared."""
+from pathlib import Path as _Path
+import sys as _sys
+_root = _Path(__file__).resolve().parents[0]
+_sys.dont_write_bytecode = True
+_sys.path.insert(0, str(_root))
+_sys.path.insert(1, str(_root.parent / "C-00-Shared"))
+from source_layout import run_entry as _run_entry
+_run_entry(globals(), 'build_installer.py', _root)

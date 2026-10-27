@@ -162,6 +162,7 @@ namespace Excel_Iterate
 
             for (int i = 0; i < rows.Count; i++)
             {
+                EliminationCancellation.Check();
                 EliminationRow row = rows[i];
                 if (options.HasConditionColumn)
                 {
@@ -237,12 +238,15 @@ namespace Excel_Iterate
 
             foreach (string[] pair in orderedPairs)
             {
+                EliminationCancellation.Check();
                 string first = pair[0];
                 string second = pair[1];
                 for (int y = 0; y < years.Count; y++)
                 {
+                    EliminationCancellation.Check();
                     for (int p = 0; p < pairs.Count; p++)
                     {
+                        EliminationCancellation.Check();
                         DiffAccountPair pairAcc = pairs[p];
                         string assetAcc = SourceAccount(accountValues, pairAcc.Asset, pairAcc.AssetAlias);
                         string liabAcc = SourceAccount(accountValues, pairAcc.Liability, pairAcc.LiabilityAlias);
@@ -346,6 +350,7 @@ namespace Excel_Iterate
 
             foreach (EliminationDiffRow line in diff.Rows)
             {
+                EliminationCancellation.Check();
                 if (line.Offset == null || line.Offset.Value == 0m) continue;
                 string key = line.GroupIndex + "\u0001" + line.Creditor + "\u0001" + line.Debtor + "\u0001" + line.AssetAccount;
                 List<EliminationDiffRow> list;
@@ -360,6 +365,7 @@ namespace Excel_Iterate
 
             foreach (string key in groupOrder)
             {
+                EliminationCancellation.Check();
                 List<EliminationDiffRow> lines = grouped[key];
                 EliminationDiffRow first = lines[0];
                 if (first.GroupIndex != lastGroup)
@@ -444,6 +450,7 @@ namespace Excel_Iterate
             decimal total = 0m;
             foreach (KeyValuePair<string, decimal> entry in sums)
             {
+                EliminationCancellation.Check();
                 string[] parts = entry.Key.Split('\u0001');
                 if (parts.Length < 4) continue;
                 if (parts[0] == from && parts[1] == to && parts[2] == year && parts[3] == account)

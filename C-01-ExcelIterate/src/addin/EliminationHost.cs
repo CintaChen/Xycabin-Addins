@@ -103,6 +103,12 @@ namespace Excel_Iterate
             return MergeSheetReader.ReadHeaders(handle.Sheet, headerRow, path);
         }
 
+        internal EliminationSnapshotReader BeginReadRows(EliminationRequest request,MergeHeaderSet headers)
+        {
+            var handle=Ensure().Resolve(request.Path,request.SheetName,true);
+            return new EliminationSnapshotReader(app,handle.Book,handle.Sheet,request.Columns,request.HeaderRow,headers.LastUsedRow);
+        }
+
         /// <summary>
         /// 按列映射读取数据行：只读值不搬公式（抵消要的是账面余额的数值口径）。
         /// fillMerged=true 时，数据区含合并单元格按锚点值向下填充（往来余额表的单位列依赖这个）；

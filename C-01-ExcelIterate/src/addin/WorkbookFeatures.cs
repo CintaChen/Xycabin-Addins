@@ -474,11 +474,24 @@ namespace Excel_Iterate
     public interface IDirectoryAppEvents
     {
         [DispId(1854)] void SheetFollowHyperlink([In, MarshalAs(UnmanagedType.IDispatch)] object sheet, [In, MarshalAs(UnmanagedType.IDispatch)] object hyperlink);
+        [DispId(1564)] void SheetChange([In,MarshalAs(UnmanagedType.IDispatch)] object sheet,[In,MarshalAs(UnmanagedType.IDispatch)] object target);
+        [DispId(1563)] void SheetCalculate([In,MarshalAs(UnmanagedType.IDispatch)] object sheet);
+        [DispId(1570)] void WorkbookBeforeClose([In,MarshalAs(UnmanagedType.IDispatch)] object book,[In,Out] ref bool cancel);
+        [DispId(1573)] void WorkbookNewSheet([In,MarshalAs(UnmanagedType.IDispatch)] object book,[In,MarshalAs(UnmanagedType.IDispatch)] object sheet);
+        // Verified against the installed Microsoft Excel 15.0 PIA metadata.
+        [DispId(3079)] void SheetBeforeDelete([In,MarshalAs(UnmanagedType.IDispatch)] object sheet);
     }
     [ComVisible(true), ClassInterface(ClassInterfaceType.None)]
     public sealed class DirectoryEventSink : IDirectoryAppEvents
     {
         internal object App;
+        // Reuse the existing public COM event contract; scanning adds no public types.
+        internal Action<object,bool> SourceChanged;
+        public void SheetChange(object sheet,object target){if(SourceChanged!=null)SourceChanged(sheet,false);}
+        public void SheetCalculate(object sheet){if(SourceChanged!=null)SourceChanged(sheet,false);}
+        public void WorkbookBeforeClose(object book,ref bool cancel){if(SourceChanged!=null)SourceChanged(book,true);}
+        public void WorkbookNewSheet(object book,object sheet){if(SourceChanged!=null)SourceChanged(book,true);}
+        public void SheetBeforeDelete(object sheet){if(SourceChanged!=null)SourceChanged(sheet,false);}
         private bool handling;
         public void SheetFollowHyperlink(object sheet, object hyperlink)
         {

@@ -16,8 +16,8 @@
   "legacy_name": "",
   "sources": [
     "AssemblyInfo.cs",
-    "InteropDefs.cs",
-    "UiKit.cs",
+    "@shared/src/addin/InteropDefs.cs",
+    "@shared/src/addin/UiKit.cs",
     "Ribbon.g.cs",
     "Connect.cs",
     "ThisAddIn.cs",
@@ -44,32 +44,32 @@
     "LinkBatch.cs",
     "LinkBreakActions.cs",
     "LinkNameAnalysis.cs",
-    "Connect.Agent.cs",
-    "AgentDocumentForm.cs",
-    "AgentLocalFiles.cs",
+    "@shared/src/addin/Connect.Agent.cs",
+    "@shared/src/addin/AgentDocumentForm.cs",
+    "@shared/src/addin/AgentLocalFiles.cs",
     "WorkbookSaving.cs",
     "FileOperations.cs",
     "OperationBatch.cs",
     "RecycleFiles.cs",
     "FileToolForms.cs",
-    "DialogSizes.cs",
-    "DialogPreviewFactory.cs",
-    "DialogSizeEditor.cs",
-    "AgentCustomization.cs",
-    "DialogFormatting.cs",
-    "Connect.Customization.cs",
+    "@shared/src/addin/DialogSizes.cs",
+    "@shared/src/addin/DialogPreviewFactory.cs",
+    "@shared/src/addin/DialogSizeEditor.cs",
+    "@shared/src/addin/AgentCustomization.cs",
+    "@shared/src/addin/DialogFormatting.cs",
+    "@shared/src/addin/Connect.Customization.cs",
     "CustomizationCallbacks.g.cs",
     "ApiPlatforms.g.cs",
     "Connect.FileNames.cs",
     "FileNamesLayout.cs",
     "FileOcr.cs",
     "FileOcrSelection.cs",
-    "FormatSession.cs",
-    "FormatEditorThread.cs",
+    "@shared/src/addin/FormatSession.cs",
+    "@shared/src/addin/FormatEditorThread.cs",
     "CloudOcr.cs",
-    "CustomizationSaving.cs",
-    "UiDiagnostics.cs",
-    "HostDialogService.cs",
+    "@shared/src/addin/CustomizationSaving.cs",
+    "@shared/src/addin/UiDiagnostics.cs",
+    "@shared/src/addin/HostDialogService.cs",
     "FormulaRefRewriter.cs",
     "MergeHeadersEngine.cs",
     "MergeHeadersHost.cs",
@@ -81,9 +81,13 @@
     "EliminationDiff.cs",
     "EliminationHost.cs",
     "EliminationForm.cs",
-    "Connect.Pdf.cs",
-    "PdfToolsForm.cs",
-    "PdfCurrentDocument.cs"
+    "@shared/src/addin/Connect.Pdf.cs",
+    "@shared/src/addin/PdfToolsForm.cs",
+    "@shared/src/addin/PdfCurrentDocument.cs",
+    "HostBatchRunner.cs",
+    "SourceChangeWatch.cs",
+    "DependentSnapshotReader.cs",
+    "EliminationSession.cs"
   ],
   "tools": [
     {
@@ -130,8 +134,14 @@
     {
       "name": "NameLinksLiveProbe",
       "source": "src/tools/NameLinksLiveProbe.cs",
-      "additional_sources": ["src/tools/LiveProbeSafety.cs"],
-      "references": ["@addin", "System.Xml.dll", "System.Windows.Forms.dll"],
+      "additional_sources": [
+        "@shared/src/tools/LiveProbeSafety.cs"
+      ],
+      "references": [
+        "@addin",
+        "System.Xml.dll",
+        "System.Windows.Forms.dll"
+      ],
       "offline": false
     },
     {
@@ -153,7 +163,7 @@
     },
     {
       "name": "Feature099Probe",
-      "source": "src/testharness/Feature099Probe.cs",
+      "source": "@shared/src/testharness/Feature099Probe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -163,7 +173,7 @@
       "additional_sources": [
         "src/testharness/MultiplePrefixesProbe.cs",
         "src/testharness/FileNamesLayoutProbe.cs",
-        "src/testharness/GridHeadersProbe.cs"
+        "@shared/src/testharness/GridHeadersProbe.cs"
       ]
     },
     {
@@ -179,7 +189,7 @@
     },
     {
       "name": "HostDialogProbe",
-      "source": "src/testharness/HostDialogProbe.cs",
+      "source": "@shared/src/testharness/HostDialogProbe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -202,7 +212,7 @@
       "name": "MergeLiveProbe",
       "source": "src/tools/MergeLiveProbe.cs",
       "additional_sources": [
-        "src/tools/LiveProbeSafety.cs"
+        "@shared/src/tools/LiveProbeSafety.cs"
       ],
       "references": [
         "@addin",
@@ -244,7 +254,7 @@
     },
     {
       "name": "PdfToolsProbe",
-      "source": "src/testharness/PdfToolsProbe.cs",
+      "source": "@shared/src/testharness/PdfToolsProbe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
@@ -255,12 +265,47 @@
     },
     {
       "name": "PdfCurrentDocumentProbe",
-      "source": "src/testharness/PdfCurrentDocumentProbe.cs",
+      "source": "@shared/src/testharness/PdfCurrentDocumentProbe.cs",
       "references": [
         "@addin",
         "System.Windows.Forms.dll",
         "System.Drawing.dll",
         "Microsoft.CSharp.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "RuntimeQualityProbe",
+      "source": "@shared/src/testharness/RuntimeQualityProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll"
+      ],
+      "offline": true,
+      "additional_sources": [
+        "src/testharness/ScanQualityChecks.cs"
+      ]
+    },
+    {
+      "name": "OptimizationBenchmark",
+      "source": "src/testharness/OptimizationBenchmark.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "OptimizationUiProbe",
+      "source": "src/tools/OptimizationUiProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "lib/Interop.Microsoft.Office.Core.dll"
       ],
       "offline": false
     }

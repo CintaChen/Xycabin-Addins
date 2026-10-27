@@ -32,7 +32,7 @@ namespace Excel_Iterate
         internal string Path = "";
         internal string SheetName = "";
         internal int HeaderRow = 1;
-        internal readonly List<EliminationColumn> Columns = new List<EliminationColumn>();
+        internal List<EliminationColumn> Columns = new List<EliminationColumn>();
         internal string TargetSheetItem = EliminationGateway.NewSheetItem;
         /// <summary>往来抵消「差异表」目标（下拉项：新建或指定工作表名）。</summary>
         internal string DiffSheetItem = EliminationGateway.NewSheetItem;
@@ -53,6 +53,13 @@ namespace Excel_Iterate
         internal bool AutoHeader = true;
         /// <summary>每个交易对之间空几行（0=不空行）。</summary>
         internal int GapRows;
+        internal EliminationRequest Copy()
+        {
+            var copy=(EliminationRequest)MemberwiseClone();
+            copy.Columns=new List<EliminationColumn>();
+            foreach(var column in Columns)copy.Columns.Add(new EliminationColumn {Number=column.Number,Letter=column.Letter,Header=column.Header,Role=column.Role});
+            return copy;
+        }
     }
 
     internal sealed class EliminationForm : Form, IDialogDefaultLayout
@@ -94,8 +101,11 @@ namespace Excel_Iterate
         private EliminationResult preview;
         /// <summary>收入成本抵消（矩阵式底稿）的预检结果；与 preview 并存，按 kind 取用。</summary>
         private EliminationMatrix previewMatrix;
+        private object[][] virtualValues;
+        private EliminationMatrix displayMatrix;
         private bool busy;
         private bool canUndo;
+        internal Action CancelPreview;
 
         internal event Action PreviewRequested;
         internal event Action ExecuteRequested;
@@ -107,13 +117,22 @@ namespace Excel_Iterate
         internal EliminationForm(EliminationKind kind)
         {
             this.kind = kind;
+            Entries.CellValueNeeded+=delegate(object sender,DataGridViewCellValueEventArgs cell)
+            {
+                if(virtualValues==null||displayMatrix==null||cell.RowIndex<0||cell.RowIndex>=virtualValues.Length)return;
+                var values=virtualValues[cell.RowIndex];
+                if(values==null)virtualValues[cell.RowIndex]=values=PreviewValues(displayMatrix.Rows[cell.RowIndex],displayMatrix);
+                if(cell.ColumnIndex>=0&&cell.ColumnIndex<values.Length)cell.Value=values[cell.ColumnIndex];
+            };
+            Entries.RowHeightInfoNeeded+=delegate(object sender,DataGridViewRowHeightInfoNeededEventArgs row)
+            {if(Entries.VirtualMode)row.Height=Entries.RowTemplate.Height;};
             Text = kind == EliminationKind.Receivable ? "往来抵消" : "收入成本抵消";
             DialogSizing.Prepare(this,
                 kind == EliminationKind.Receivable ? "elimination.receivable" : "elimination.revenuecost",
-                "table", Ui.Blue);
+                "table", Ui.Blue, FormWindowState.Maximized);
             KeyPreview = true;
 
-            root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Padding = new Padding(16) };
+            root = new BufferedTableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Padding = new Padding(16) };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));      // 0  来源区
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 2));   // 1  间隔：来源 ↔ 提示（已无拖柄）
@@ -133,39 +152,32 @@ namespace Excel_Iterate
             // 往来抵消 →「往来抵消差异」+「往来抵消结果」。故目标区选项与结果网格恒显示。
             bool matrix = true;
 
-            TableLayoutPanel sourceRow = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = matrix ? 5 : 4, Name = "sourceRow" };
-            sourceRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            // Keep each label/input/grip together, wrapping groups when DPI or restored
+            // widths exceed the available client area instead of hiding trailing fields.
+            FlowLayoutPanel sourceRow = new BufferedFlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Name = "sourceRow" };
             RoundedButton pickSource = Ui.Button("选择来源…", 108);
             pickSource.Name = "pickSourceButton";
             pickSource.Click += delegate { PickFile(); };
-            sourceRow.Controls.Add(Ui.Grip(sourcePath, "来源工作簿"), 0, 0);
-            sourceRow.Controls.Add(Ui.Grip(pickSource, (Control)null), 1, 0);
-            sourceRow.Controls.Add(Ui.Grip(sourceSheet, "工作表"), 2, 0);
-            sourceRow.Controls.Add(Ui.Grip(headerRow, "表头行"), 3, 0);
-            if (matrix) sourceRow.Controls.Add(Ui.Grip(conditionValue, "条件值"), 4, 0);
-            List<ColumnStyle> sourceStyles = new List<ColumnStyle>();
-            for (int i = 0; i < sourceRow.ColumnCount; i++) sourceStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            foreach (ColumnStyle style in sourceStyles) sourceRow.ColumnStyles.Add(style);
+            sourceRow.Controls.Add(Ui.Grip(sourcePath, "来源工作簿"));
+            sourceRow.Controls.Add(Ui.Grip(pickSource, (Control)null));
+            sourceRow.Controls.Add(Ui.Grip(sourceSheet, "工作表"));
+            sourceRow.Controls.Add(Ui.Grip(headerRow, "表头行"));
+            if (matrix) sourceRow.Controls.Add(Ui.Grip(conditionValue, "条件值"));
 
             // ---- 区域 2：目标 ----
             // 往来抵消产出两张表：差异表 + 结果表，各一个下拉，消除「一张下拉管两张表」的歧义；
             // 收入成本只有一张结果表，下拉标签仍是「写入工作表」。
             bool receivable = kind == EliminationKind.Receivable;
-            TableLayoutPanel targetRow = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = matrix ? (receivable ? 7 : 6) : 2, Name = "targetRow" };
-            targetRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            int targetCol = 0;
-            if (receivable) targetRow.Controls.Add(Ui.Grip(diffSheet, "差异表"), targetCol++, 0);
-            targetRow.Controls.Add(Ui.Grip(targetSheet, receivable ? "结果表" : "写入工作表"), targetCol++, 0);
-            targetRow.Controls.Add(Ui.Grip(startCell, "起始单元格"), targetCol++, 0);
+            FlowLayoutPanel targetRow = new BufferedFlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Name = "targetRow" };
+            if (receivable) targetRow.Controls.Add(Ui.Grip(diffSheet, "差异表"));
+            targetRow.Controls.Add(Ui.Grip(targetSheet, receivable ? "结果表" : "写入工作表"));
+            targetRow.Controls.Add(Ui.Grip(startCell, "起始单元格"));
             if (matrix)
             {
-                targetRow.Controls.Add(Ui.Grip(fullColumnRefs, (Control)null), targetCol++, 0);
-                targetRow.Controls.Add(Ui.Grip(totalRow, (Control)null), targetCol++, 0);
-                targetRow.Controls.Add(Ui.Grip(gapRows, "写入空行"), targetCol++, 0);
+                targetRow.Controls.Add(Ui.Grip(fullColumnRefs, (Control)null));
+                targetRow.Controls.Add(Ui.Grip(totalRow, (Control)null));
+                targetRow.Controls.Add(Ui.Grip(gapRows, "写入空行"));
             }
-            List<ColumnStyle> targetStyles = new List<ColumnStyle>();
-            for (int i = 0; i < targetRow.ColumnCount; i++) targetStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            foreach (ColumnStyle style in targetStyles) targetRow.ColumnStyles.Add(style);
 
             // 选项一改，上次预检结果即作废
             EventHandler invalidate = delegate { InvalidatePreview(); };
@@ -232,7 +244,7 @@ namespace Excel_Iterate
 
             Preview.Click += delegate { if (PreviewRequested != null) PreviewRequested(); };
             Execute.Click += delegate { if (ExecuteRequested != null) ExecuteRequested(); };
-            Stop.Click += delegate { if (busy) { UiDialog.Show(this, "正在处理，请等待当前步骤结束。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information); return; } if (UndoRequested != null) UndoRequested(); };
+            Stop.Click += delegate { if (busy) { if(CancelPreview!=null){CancelPreview();return;} UiDialog.Show(this, "正在处理，请等待当前步骤结束。", Text, MessageBoxButtons.OK, MessageBoxIcon.Information); return; } if (UndoRequested != null) UndoRequested(); };
             Confirm.Click += delegate
             {
                 if (UiDialog.Show(this, "确认后本批不再提供还原；程序生成的备份文件保留在目标工作簿同目录，可自行取用或删除。",
@@ -261,9 +273,9 @@ namespace Excel_Iterate
 
             // 关键：AutoSize 行里放 Dock=Fill 的子控件，TLP 会读子控件「当前实际高度」而不是期望高度（循环依赖），
 // 卡片永远缩不回去——这就是多轮压缩 Padding/Margin 都无效的根因。改 Dock=Top + AutoSize 让高度由内容决定。
-            UiCard sourceCard = new UiCard { AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(8, 4, 8, 4), Margin = new Padding(0, 0, 0, 4) };
+            UiCard sourceCard = new FieldRowCard(sourceRow) { AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(8, 4, 8, 4), Margin = new Padding(0, 0, 0, 4) };
             sourceCard.Controls.Add(sourceRow);
-            UiCard targetCard = new UiCard { AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(8, 4, 8, 4), Margin = new Padding(0, 0, 0, 4) };
+            UiCard targetCard = new FieldRowCard(targetRow) { AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(8, 4, 8, 4), Margin = new Padding(0, 0, 0, 4) };
             targetCard.Controls.Add(targetRow);
 
             root.Controls.Add(sourceCard, 0, 0);
@@ -279,6 +291,22 @@ namespace Excel_Iterate
             Controls.Add(root);
 
             RefreshActions();
+        }
+
+        internal void ClearPreview() {preview=null;previewMatrix=null;RefreshActions();}
+
+        private sealed class FieldRowCard : UiCard
+        {
+            private readonly FlowLayoutPanel fields;
+            internal FieldRowCard(FlowLayoutPanel row) {fields=row;}
+            public override Size GetPreferredSize(Size proposedSize)
+            {
+                // Panel's unbounded preferred size assumes one line. Measure at
+                // the allocated width so its parent reserves every wrapped row.
+                int width=proposedSize.Width>0&&proposedSize.Width<int.MaxValue?proposedSize.Width:Width;
+                var size=fields.GetPreferredSize(new Size(Math.Max(1,width-Padding.Horizontal),0));
+                return new Size(width,size.Height+Padding.Vertical);
+            }
         }
 
         // ------------------------ 网格 ------------------------
@@ -744,28 +772,29 @@ namespace Excel_Iterate
         internal void SetPreviewMatrix(EliminationMatrix matrix)
         {
             if (IsDisposed) return;
+            Entries.Rows.Clear();Entries.VirtualMode=false;virtualValues=null;
             previewMatrix = matrix;
+            displayMatrix = matrix;
             BuildResultGrid(matrix);
             Entries.Rows.Clear();
             if (matrix == null) { RefreshActions(); return; }
 
-            foreach (MatrixRow row in matrix.Rows)
+            if(matrix.Rows.Count>=5000)
             {
-                object[] values = new object[5 + matrix.Columns.Count];
-                values[0] = row.Entity;
-                values[1] = row.Customer;
-                values[2] = row.Note;
-                values[3] = row.Adjustment;
-                values[4] = row.Account;
-                foreach (string year in matrix.Years)
+                // Materialize only values, not one native-cell object per result cell.
+                // Full-data AutoFit and native copy still obtain every value through
+                // CellValueNeeded; the source matrix remains the stable row identity.
+                var handle=Entries.Handle;
+                virtualValues=new object[matrix.Rows.Count][];Entries.VirtualMode=true;Entries.RowCount=matrix.Rows.Count;
+            }
+            else
+            {
+                var batch=new List<DataGridViewRow>();
+                foreach(MatrixRow row in matrix.Rows)
                 {
-                    MatrixColumn debit = matrix.DebitColumn(year);
-                    MatrixColumn credit = matrix.CreditColumn(year);
-                    MatrixAmount amount;
-                    if (debit != null && row.Debit.TryGetValue(year, out amount)) values[5 + debit.Index] = amount.Value;
-                    if (credit != null && row.Credit.TryGetValue(year, out amount)) values[5 + credit.Index] = amount.Value;
+                    var display=new DataGridViewRow();display.CreateCells(Entries,PreviewValues(row,matrix));display.Tag=row;batch.Add(display);
                 }
-                Entries.Rows.Add(values);
+                Entries.SuspendLayout();try {if(batch.Count>0)Entries.Rows.AddRange(batch.ToArray());}finally {Entries.ResumeLayout(false);}
             }
             Ui.AutoFitColumns(Entries);
 
@@ -787,6 +816,19 @@ namespace Excel_Iterate
             }
             SetLog(text.ToString());
             RefreshActions();
+        }
+
+        private static object[] PreviewValues(MatrixRow row,EliminationMatrix matrix)
+        {
+            object[] values=new object[5+matrix.Columns.Count];
+            values[0]=row.Entity;values[1]=row.Customer;values[2]=row.Note;values[3]=row.Adjustment;values[4]=row.Account;
+            foreach(string year in matrix.Years)
+            {
+                var debit=matrix.DebitColumn(year);var credit=matrix.CreditColumn(year);MatrixAmount amount;
+                if(debit!=null&&row.Debit.TryGetValue(year,out amount))values[5+debit.Index]=amount.Value;
+                if(credit!=null&&row.Credit.TryGetValue(year,out amount))values[5+credit.Index]=amount.Value;
+            }
+            return values;
         }
 
         /// <summary>自动探测表头行后回写输入框。</summary>
@@ -813,8 +855,9 @@ namespace Excel_Iterate
 
         internal void SetStatus(string text)
         {
-            if (IsDisposed || !IsHandleCreated) return;
-            BeginInvoke((MethodInvoker)delegate { hint.Text = text; });
+            if (IsDisposed) return;
+            if(!InvokeRequired){hint.Text=text;return;}
+            if(IsHandleCreated)BeginInvoke((MethodInvoker)delegate {if(!IsDisposed)hint.Text=text;});
         }
 
         internal void AppendLog(string text)
@@ -837,7 +880,7 @@ namespace Excel_Iterate
         { busy = value; RefreshActions(); }
 
         internal void MarkUndone()
-        { canUndo = false; preview = null; previewMatrix = null; Entries.Rows.Clear(); RefreshActions(); }
+        { canUndo = false; preview = null; previewMatrix = null; Entries.Rows.Clear(); Entries.VirtualMode=false;virtualValues=null;displayMatrix=null;RefreshActions(); }
 
         internal bool IsBusy { get { return busy; } }
         internal bool CanUndo { get { return canUndo; } }
@@ -921,6 +964,7 @@ namespace Excel_Iterate
         {
             if (busy)
             {
+                if(CancelPreview!=null){CancelPreview();base.OnFormClosing(e);return;}
                 e.Cancel = true;
                 AppendLog("正在处理，请等待当前步骤结束再关闭。");
                 return;
@@ -931,21 +975,18 @@ namespace Excel_Iterate
         }
 
         /// <summary>
-        /// 打开即占满屏幕。放在 Shown 而不是构造/OnLoad——DialogSizing.ApplyFinal 会在
-        /// Load 与 Shown 两处写 ClientSize/Location，Shown 之后再设才不会被覆盖。
-        /// 预览构造必须短路：否则 DialogPreviewFactory 会造出最大化预览窗。
-        /// 不碰 ShowInTaskbar / MinimizeBox / TopMost（项目红线：工具窗样式会锁死宿主）。
+        /// 初始最大化由 DialogSizing 在 Load 完成、首次显示之前统一应用。
+        /// Shown 只定位分隔条，不再改变窗口尺寸；预览保持正常窗口状态。
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            if (Ui.IsInertPreview(this) || DialogPreviewFactory.IsConstructing)
+            if (Ui.IsInertPreview(this) || DialogPreviewFactory.IsPreview(this) || DialogPreviewFactory.IsConstructing)
             {
                 // 预览不最大化，但仍要让分隔条居中（宽度此时已确定）
                 CenterMapSplitter();
                 return;
             }
-            WindowState = FormWindowState.Maximized;
             // 最大化后宽度才是最终值，再居中一次
             CenterMapSplitter();
         }

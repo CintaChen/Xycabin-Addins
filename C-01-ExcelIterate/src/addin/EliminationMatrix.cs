@@ -272,12 +272,15 @@ namespace Excel_Iterate
                 int stride = GroupStride > 0 ? GroupStride : TemplateCount;
                 for (int g = 0; g < GroupCount; g++)
                 {
+                    EliminationCancellation.Check();
                     int top = dataTop + g * stride;
                     for (int y = 0; y < Years.Count; y++)
                     {
+                        EliminationCancellation.Check();
                         decimal debit = 0m, credit = 0m;
                         for (int r = 0; r < Rows.Count; r++)
                         {
+                            EliminationCancellation.Check();
                             MatrixRow row = Rows[r];
                             if (row.RowNumber < top || row.RowNumber >= top + TemplateCount) continue;
                             MatrixAmount amount;
@@ -373,6 +376,7 @@ namespace Excel_Iterate
             string want = options.ConditionValue == null ? "" : options.ConditionValue.Trim();
             for (int i = 0; i < rows.Count; i++)
             {
+                EliminationCancellation.Check();
                 EliminationRow row = rows[i];
                 if (options.HasConditionColumn)
                 {
@@ -472,6 +476,7 @@ namespace Excel_Iterate
 
             for (int g = 0; g < order.Count; g++)
             {
+                EliminationCancellation.Check();
                 string key = order[g];
                 string[] parts = key.Split('\u0001');
                 string entity = parts[0];
@@ -485,6 +490,7 @@ namespace Excel_Iterate
                 Dictionary<string, MatrixAmount> memo = new Dictionary<string, MatrixAmount>();
                 for (int t = 0; t < height; t++)
                 {
+                    EliminationCancellation.Check();
                     MatrixRowTemplate template = templates[t];
                     MatrixRow outRow = new MatrixRow();
                     outRow.RowNumber = top + t;
@@ -498,6 +504,7 @@ namespace Excel_Iterate
 
                     for (int y = 0; y < years.Count; y++)
                     {
+                        EliminationCancellation.Check();
                         string year = years[y];
                         MatrixMeasure measure = byYear.ContainsKey(year) ? byYear[year] : null;
                         // 该交易对在本年度没有数据 → 整列留空，不写返回 0 的冗余公式
@@ -547,6 +554,7 @@ namespace Excel_Iterate
 
             for (int i = 0; i < template.Terms.Count; i++)
             {
+                EliminationCancellation.Check();
                 MatrixTerm term = template.Terms[i];
                 decimal amount;
                 string text;
@@ -679,13 +687,16 @@ namespace Excel_Iterate
             int stride = matrix.GroupStride > 0 ? matrix.GroupStride : matrix.TemplateCount;
             for (int g = 0; g < matrix.GroupCount; g++)
             {
+                EliminationCancellation.Check();
                 int top = dataTop + g * stride;
                 for (int y = 0; y < matrix.Years.Count; y++)
                 {
+                    EliminationCancellation.Check();
                     string year = matrix.Years[y];
                     decimal debit = 0m, credit = 0m;
                     for (int r = 0; r < matrix.Rows.Count; r++)
                     {
+                        EliminationCancellation.Check();
                         MatrixRow row = matrix.Rows[r];
                         if (row.RowNumber < top || row.RowNumber >= top + matrix.TemplateCount) continue;
                         MatrixAmount amount;
@@ -710,6 +721,7 @@ namespace Excel_Iterate
             List<MatrixColumn> list = new List<MatrixColumn>();
             for (int i = 0; i < FixedColumns; i++)
             {
+                EliminationCancellation.Check();
                 MatrixColumn column = new MatrixColumn();
                 column.Index = i;
                 column.Number = startColumn + i;
@@ -719,6 +731,7 @@ namespace Excel_Iterate
             }
             for (int i = 0; i < years.Count; i++)
             {
+                EliminationCancellation.Check();
                 int spacerIndex = FixedColumns + i * 3;
                 MatrixColumn spacer = new MatrixColumn();
                 spacer.Index = spacerIndex;
@@ -816,6 +829,7 @@ namespace Excel_Iterate
             if (columns == null) return;
             for (int i = 0; i < columns.Count; i++)
             {
+                EliminationCancellation.Check();
                 EliminationColumn column = columns[i];
                 switch (column.Role)
                 {
@@ -893,6 +907,7 @@ namespace Excel_Iterate
         {
             for (int i = 0; i < sheet.Length; i++)
             {
+                EliminationCancellation.Check();
                 char c = sheet[i];
                 if (c == ' ' || c == '-' || c == '(' || c == ')' || c == '（' || c == '）') return true;
             }
@@ -977,6 +992,7 @@ namespace Excel_Iterate
                   .Append(Criterion(options.ConditionValue)).Append(")*");
             for (int i = 0; i < factors.Length; i++)
             {
+                EliminationCancellation.Check();
                 if (i > 0) sb.Append("*");
                 sb.Append("IFERROR(").Append(factors[i]).Append(",0)");
             }

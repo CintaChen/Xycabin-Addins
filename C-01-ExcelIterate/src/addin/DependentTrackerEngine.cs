@@ -9,7 +9,7 @@ namespace Excel_Iterate
     // 流程：
     //   1. 取目标单元格身份（工作簿名/工作表名/归一化地址）
     //   2. 遍历 app.Workbooks → 每个 wb.Worksheets → sheet.UsedRange
-    //   3. 批量取 used.Formula（object[,] 二维数组，一次 COM 往返）内存遍历
+    //   3. 在原宿主线程分块捕获 Formula，统一验证形状和数组下界后解析
     //   4. 对每个含公式的单元格，复用 FormulaRefParser.ParseAll 解析引用，
     //      逐项比对簿名+表名+地址（区域引用判断目标是否落在范围内）
     //   5. 进度回调 + 取消检查
@@ -41,7 +41,7 @@ namespace Excel_Iterate
         public bool Cancelled;
     }
 
-    /// <summary>扫描进度回调（后台线程调用，UI 层自行 BeginInvoke 更新）。</summary>
+    /// <summary>兼容同步入口的扫描进度；窗口会话合并后在原宿主线程通知。</summary>
     public delegate void DependentProgress(int wbIndex, int wbCount, int sheetIndex,
         int sheetCount, string sheetName, int foundSoFar);
 
@@ -51,113 +51,28 @@ namespace Excel_Iterate
         public static DependentResult TraceDependents(object application,
             DependentProgress progress, Func<bool> shouldCancel)
         {
-            DependentResult r = new DependentResult();
-            if (application == null)
-            {
-                r.Status = TrackerStatus.Error;
-                r.ErrorMessage = "宿主为空";
-                return r;
-            }
+            var result = new DependentResult();
             try
             {
-                dynamic app = application;
-                dynamic wb = app.ActiveWorkbook;
-                if (wb == null) { r.Status = TrackerStatus.NoWorkbook; return r; }
-                dynamic cell = app.ActiveCell;
-                if (cell == null) { r.Status = TrackerStatus.NoActiveCell; return r; }
-
-                // 目标单元格身份
-                r.TargetWorkbookName = (string)wb.Name;
-                try { r.TargetSheetName = (string)app.ActiveSheet.Name; } catch { }
-                string targetAddr = NormalizeAddr((string)cell.Address(false, false));
-                r.TargetCellAddress = targetAddr;
-
-                dynamic workbooks = app.Workbooks;
-                int wbCount = (int)workbooks.Count;
-                for (int w = 1; w <= wbCount; w++)
+                using(var reader = new DependentSnapshotReader(application, result))
                 {
-                    if (shouldCancel != null && shouldCancel()) { r.Cancelled = true; break; }
-                    dynamic curWb = GetItem(workbooks, w);
-                    string wbName = (string)curWb.Name;
-                    string wbPath = "";
-                    try { wbPath = (string)curWb.FullName; } catch { }
-                    dynamic sheets = curWb.Worksheets;
-                    int sheetCount = (int)sheets.Count;
-                    for (int s = 1; s <= sheetCount; s++)
+                    if(!reader.Valid)return result;
+                    var accumulator = new DependentAccumulator(result);
+                    while(reader.MoveNext())
                     {
-                        if (shouldCancel != null && shouldCancel()) { r.Cancelled = true; break; }
-                        dynamic sheet = GetItem(sheets, s);
-                        string sheetName = (string)sheet.Name;
-                        ScanSheet(sheet, wbName, wbPath, sheetName,
-                            r.TargetWorkbookName, r.TargetSheetName, targetAddr, r);
-                        if (progress != null)
-                            progress(w, wbCount, s, sheetCount, sheetName, r.Items.Count);
+                        if(shouldCancel!=null&&shouldCancel()){result.Cancelled=true;break;}
+                        accumulator.Accept(reader.Current,System.Threading.CancellationToken.None);
+                        var block=reader.Current;
+                        if(progress!=null)progress(block.WorkbookIndex,block.WorkbookCount,block.SheetIndex,block.SheetCount,block.SheetName,result.Items.Count);
                     }
-                }
-                r.Status = TrackerStatus.Completed;
-                return r;
-            }
-            catch (Exception ex)
-            {
-                r.Status = TrackerStatus.Error;
-                r.ErrorMessage = ex.Message;
-                return r;
-            }
-        }
-
-        /// <summary>扫描单个工作表：批量取公式，逐格解析比对。</summary>
-        private static void ScanSheet(dynamic sheet, string wbName, string wbPath, string sheetName,
-            string targetWbName, string targetSheetName, string targetAddr, DependentResult r)
-        {
-            try
-            {
-                dynamic used = sheet.UsedRange;
-                if (used == null) return;
-                int firstRow = (int)used.Row;
-                int firstCol = (int)used.Column;
-
-                object formulaObj = used.Formula;
-                if (formulaObj is object[,])
-                {
-                    object[,] arr = (object[,])formulaObj;
-                    int rows = arr.GetLength(0);
-                    int cols = arr.GetLength(1);
-                    for (int rr = 1; rr <= rows; rr++)
-                    {
-                        for (int cc = 1; cc <= cols; cc++)
-                        {
-                            r.ScannedCells++;
-                            object v = arr[rr, cc];
-                            string f = v as string;
-                            if (string.IsNullOrEmpty(f) || !f.StartsWith("=")) continue;
-                            r.ScannedFormulas++;
-                            int absRow = firstRow + rr - 1;
-                            int absCol = firstCol + cc - 1;
-                            string cellAddr = ColToLetters(absCol) + absRow.ToString();
-                            MatchFormula(f, wbName, wbPath, sheetName, cellAddr,
-                                targetWbName, targetSheetName, targetAddr, r);
-                        }
-                    }
-                }
-                else if (formulaObj is string)
-                {
-                    // 单格 UsedRange
-                    r.ScannedCells++;
-                    string f = (string)formulaObj;
-                    if (!string.IsNullOrEmpty(f) && f.StartsWith("="))
-                    {
-                        r.ScannedFormulas++;
-                        string cellAddr = ColToLetters(firstCol) + firstRow.ToString();
-                        MatchFormula(f, wbName, wbPath, sheetName, cellAddr,
-                            targetWbName, targetSheetName, targetAddr, r);
-                    }
+                    return accumulator.Finish();
                 }
             }
-            catch { }
+            catch(Exception error){result.Status=TrackerStatus.Error;result.ErrorMessage=error.Message;return result;}
         }
 
         /// <summary>解析单个公式，检查是否引用了目标单元格；命中则加入结果。</summary>
-        private static void MatchFormula(string formula, string wbName, string wbPath, string sheetName,
+        internal static void MatchFormula(string formula, string wbName, string wbPath, string sheetName,
             string cellAddr, string targetWbName, string targetSheetName,
             string targetAddr, DependentResult r)
         {
@@ -214,7 +129,7 @@ namespace Excel_Iterate
             return refWbName == targetWbName || targetWbName.StartsWith(refWbName + ".");
         }
 
-        private static string NormalizeAddr(string addr)
+        internal static string NormalizeAddr(string addr)
         {
             return (addr ?? "").Replace("$", "");
         }
@@ -245,7 +160,7 @@ namespace Excel_Iterate
         }
 
         /// <summary>列号（1 起始）→ 列字母。</summary>
-        private static string ColToLetters(int col)
+        internal static string ColToLetters(int col)
         {
             string s = "";
             while (col > 0)
