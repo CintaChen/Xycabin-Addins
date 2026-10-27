@@ -109,20 +109,20 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-后续本地完整重建后的包摘要已变化，当前安装包以[发布准备清单](../C-03-Website·Xycabin/build/github-release-preparation/assets.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
+后续本地完整重建后的包摘要已变化，当前安装包以[远端发布校验记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
-本轮完成公共源码单源迁移、抵消弹窗初显时序和局部绘制修复、会话生命周期、宿主线程分块读取与后台纯计算、大结果预览及恢复边界优化。沿用0.9.9.3、原命令ID、配置和固定发布者；非审计正文固定后完成重建、重签与打包，本节在验证后回填。真实黑影、宿主交互和跨屏DPI仍待用户实机验收，本轮未安装或连接WPS；随后按用户要求准备本地提交，并生成内含最新两包的HTML，远端push和Release附件上传留待后续。
+本轮完成公共源码单源迁移、抵消弹窗初显时序和局部绘制修复、会话生命周期、宿主线程分块读取与后台纯计算、大结果预览及恢复边界优化。沿用0.9.9.3、原命令ID、配置和固定发布者；非审计正文固定后完成重建、重签与打包，本节在验证后回填。真实黑影、宿主交互和跨屏DPI仍待用户实机验收，本轮未安装或连接WPS；随后按用户要求将源码推送到GitHub，并替换两个EXE和内含最新两包的HTML附件；远端三文件已重新下载核对。
 
 | 检查 | 结果 |
 |---|---|
 | 安装包 | [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,869,632字节，版本0.9.9.3，SHA-256前缀514B442185DFA27D |
-| 交付摘要 | [完整摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)、[质量评估、性能与验收步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)记录两包、DLL、清单、边界与本轮证据 |
+| 交付摘要 | [原优化交付摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)、[质量评估、性能与验收步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)记录两包、DLL、清单、边界与本轮证据 |
 | 构建与后台 | [最终重建](../C-01-ExcelIterate/build/optimization-audit/final-rebuild.log)、[最终完整验证](../C-01-ExcelIterate/build/optimization-audit/final-validation.log)：26项任务全部通过、缓存复用0项；抵消222、从属130、工作簿391、文件189、Feature099共10064项及新增运行质量60项均通过 |
 | 公共迁移 | [负向检查](../C-01-ExcelIterate/build/optimization-audit/shared-negative-probe.log)5项通过；两产品SourceLayoutProbe各7项通过，拒绝旧实现副本、非薄入口、缺失及越界引用；公共修改影响两产品缓存 |
 | 弹窗与异步 | [独立桌面日志](../C-01-ExcelIterate/build/optimization-audit/ui-render.log)：12组默认/自定义宽度和100%/150%/200%控件缩放，另有两类生产窗体最大化/还原；实际设备DPI为96，未冒充真实跨屏验收。运行质量覆盖取消、来源通知、同名重开、模拟COM失败、迟到回调和双表还原重试 |
 | 性能 | [五次计时汇总](../C-01-ExcelIterate/build/optimization-audit/benchmark-summary.json)：1千/1万/10万行全部比较，12组结果签名一致；10万行预览中位87.910→33.973秒，峰值工作集404.2→116.9MiB。扫描为离线宿主替身，不代表真实COM延迟 |
 | 签名与载荷 | [最终签名](../C-01-ExcelIterate/build/optimization-audit/Excel_Iterate-final-signatures.log)、[五载荷及资源](../C-01-ExcelIterate/build/optimization-audit/final-payload.log)：固定发布者及SHA-256清单双签名、五载荷、两整份文档及14份图片通过；两DLL内嵌网页一致 |
-| 兼容与恢复 | [公开接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Excel原670条记录保留、无新增公开类型。[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)与[源码基线](../C-01-ExcelIterate/build/optimization-audit/baseline.json)保留；源码和说明纳入本地提交，尚未push或上传Release；未清理历史或重置配置 |
+| 兼容与恢复 | [公开接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Excel原670条记录保留、无新增公开类型。[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)与[源码基线](../C-01-ExcelIterate/build/optimization-audit/baseline.json)保留；源码和说明已推送，三个Release附件已上传并下载复核；未清理历史或重置配置 |
 | 验收边界 | 原路径已事务替换；实际WPS黑影、键入、菜单、Esc、跨屏及真实写入还原待用户按报告验收。此前外链实机记录保留为历史证据，本轮未重复运行 |
 
 # 三. WordUpdater 项目档案
@@ -196,18 +196,18 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-后续本地完整重建后的包摘要已变化，当前安装包以[发布准备清单](../C-03-Website·Xycabin/build/github-release-preparation/assets.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
+后续本地完整重建后的包摘要已变化，当前安装包以[远端发布校验记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
 本轮完成公共源码单源迁移及共享界面优化，更新链接和链接查看统一使用完整状态捕获、独立恢复及恢复核对；移除两处500ms固定等待并保留非自有实例边界。沿用0.9.9.3、原身份、配置及固定证书，非审计正文固定后完成重建、重签、打包及后台验证，本节随后回填。原逐格、局部及多选来源行为继续回归；此前Ctrl跨实例实机结果属于历史证据，本轮没有连接WPS。
 
 | 检查 | 结果 |
 |---|---|
-| 安装包 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,246,016字节，版本0.9.9.3，SHA-256前缀9F3748BC7E83D869；[当前摘要](../C-02-WordUpdater/build/optimization-delivery.json) |
+| 安装包 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,246,016字节，版本0.9.9.3，SHA-256前缀9F3748BC7E83D869；[本轮远端发布校验](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json) |
 | 构建与后台 | [最终重建](../C-02-WordUpdater/build/optimization-final-rebuild.log)、[完整验证](../C-02-WordUpdater/build/optimization-final-validation.log)：24项后台任务全部通过、缓存复用0项；包括映射67、更新65、查看窗体55、尺寸核心67及原读取/引用、剪贴板等回归 |
 | 状态恢复 | 新增RuntimeQualityProbe 19项通过：两状态读取、设置和恢复失败分别注入；捕获失败零修改，部分设置失败不更新链接，恢复失败明确报告；链接查看捕获边界亦覆盖 |
 | 签名与载荷 | [最终签名](../C-01-ExcelIterate/build/optimization-audit/WordUpdater-final-signatures.log)、[五载荷及内嵌资源](../C-01-ExcelIterate/build/optimization-audit/final-payload.log)均通过，固定发布者、清单双签名和原五载荷结构沿用 |
 | 兼容与交付 | [接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Word原327条公开记录保留，无新增公开类型；[联合交付摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)和[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)保留 |
-| 验收边界 | 已替换原路径安装包，未自动安装或关闭宿主，未重置配置或清理历史；源码整理为本地提交，配套HTML已更新，push和Release附件上传仍待后续；真实按钮、字段更新、宿主状态、键入、菜单与跨屏操作按[实机步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)由用户验收 |
+| 验收边界 | 已替换原路径安装包，未自动安装或关闭宿主，未重置配置或清理历史；源码和说明已推送，两个EXE与配套HTML已上传并重新下载核对；真实按钮、字段更新、宿主状态、键入、菜单与跨屏操作按[实机步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)由用户验收 |
 
 # 四. XyCabin 项目档案
 
@@ -244,14 +244,15 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-按用户后续要求，将优化后的全部源码与说明整理为本地Git提交，并准备两个EXE和一个HTML作为后续GitHub Release附件。当前沿用0.9.9.3；只在本地更新独立网页与交付记录，尚未push、创建远端提交、移动标签或上传Release附件。
+按用户后续授权，已将实现提交[102d8ec](https://github.com/Xymircai/Xycabin-Addins/commit/102d8ececaa8519001957ea4459e49987aa9d15f)推送到main，仓库代码与README已更新；现有[Release v0.9.9.3](https://github.com/Xymircai/Xycabin-Addins/releases/tag/v0.9.9.3)的两个EXE及XyCabin.html已替换，发布标题与维护说明同步更新。用户确认只更新HTML附件与仓库说明，不启用GitHub Pages。
 
-本次复用已验证安装包及两DLL相同的空包网页快照，生成带最新两包的独立HTML；未重新编译加载项，EXE与优化交付摘要保持一致。已核对网页内嵌安装包逐字节、SHA-256、版本及移除包数据后的正文一致；原五载荷、文档和图片校验继续通过。
+本次复用当前完整重建后已验证的两个安装包及两DLL相同的空包网页快照，不再编译加载项；附件摘要以远端发布记录为准。上传前保存旧附件，上传后重新下载三份文件，核对SHA-256、大小、HTML内嵌EXE及移除包数据后的正文；与两个独立EXE、两DLL内嵌网页均一致。未安装或连接WPS，未修改版本、签名身份或用户配置。
 
 | 检查 | 结果 |
 |---|---|
-| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，13,378,654字节，SHA-256前缀951AF60416B463D8 |
-| 三附件清单 | [本地发布准备记录](../C-03-Website·Xycabin/build/github-release-preparation/assets.json)记录两个EXE和HTML的完整摘要；[当前交付记录](../C-03-Website·Xycabin/build/current-delivery.json)与实际文件一致 |
-| 页面与附件验证 | [网页检查](../C-03-Website·Xycabin/build/github-release-preparation/site-validation.log)、[两包与页面一致性](../C-03-Website·Xycabin/build/github-release-preparation/assets-validation.log)；使用优化交付已通过的50项完整后台任务，不声称本次重跑 |
-| 源码与入口 | README补入C-00-Shared单源引用、同级目录携带及源码push与Release附件分发流程；本地AI工作记录、构建缓存、签名私钥和生成的EXE/HTML仍按忽略规则保留在本机 |
-| 后续发布 | 用户已选择稍后与代码一起上传附件。本轮不push、不替换远端附件、不移动现有v0.9.9.3标签；发布时须核对标签与源码提交，附件上传不会自动改变标签指向 |
+| 独立网页 | [XyCabin.html下载](https://github.com/Xymircai/Xycabin-Addins/releases/download/v0.9.9.3/XyCabin.html)，13,378,654字节，SHA-256前缀951AF60416B463D8 |
+| 安装包 | [Excel安装包](https://github.com/Xymircai/Xycabin-Addins/releases/download/v0.9.9.3/Excel_Iterate_Setup.exe)，4,869,632字节，摘要前缀514B442185DFA27D；[Word安装包](https://github.com/Xymircai/Xycabin-Addins/releases/download/v0.9.9.3/WordUpdater_Setup.exe)，4,246,016字节，摘要前缀9F3748BC7E83D869 |
+| 远端证据 | [发布记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)、[上传日志](../C-03-Website·Xycabin/build/github-release-publication/upload.log)、[远端下载核对](../C-03-Website·Xycabin/build/github-release-publication/remote-verification.log)记录三附件完整摘要及网页一致性；旧附件备份和原发布元数据保存在同一证据目录 |
+| 本地校验 | [网页检查](../C-03-Website·Xycabin/build/github-release-preparation/site-validation.log)、[当前签名和五载荷](../C-03-Website·Xycabin/build/github-release-preparation/assets-validation.log)通过；沿用已有50项完整后台任务结果，本次未声称重新执行业务全量测试或性能实验 |
+| 源码与版本 | README说明C-00-Shared单源引用及构建携带关系。既有v0.9.9.3标签保持历史指向，Release说明另提供本次实现提交和对应源码ZIP链接；未强制推送或移动既有标签 |
+| 验收边界 | 本轮只更新GitHub仓库说明和HTML附件，未部署在线Pages站点。真实WPS黑影、焦点、菜单、Esc、跨屏及写入还原仍按使用报告由用户验收 |
