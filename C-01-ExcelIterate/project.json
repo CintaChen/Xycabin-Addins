@@ -149,11 +149,11 @@
     "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
     "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/CustomFunctionForm.cs",
     "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
-    "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs",
     "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
     "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
-    "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
-    "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs",
+    "AC-Original Code/ExcelIterate/Data/_Shared/HostBatchRunner.cs",
+    "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs",
     "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs",
     "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkOperationLog.cs",
     "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBatch.cs",
@@ -414,8 +414,8 @@
         "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentSnapshotReader.cs",
         "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
         "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
-        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
-        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs",
         "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs"
       ],
       "tests": [
@@ -436,8 +436,8 @@
         "AC-Original Code/ExcelIterate/Data/TracePrecedents/PrecedentTrackerEngine.cs",
         "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
         "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
-        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
-        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs",
         "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs"
       ],
       "tests": [
@@ -482,7 +482,7 @@
         "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
         "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
         "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
-        "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs",
         "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs"
       ],
       "tests": [
@@ -501,7 +501,7 @@
         "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
         "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
         "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
-        "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs",
         "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs",
@@ -510,8 +510,8 @@
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationEngine.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrixBuilder.Common.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrix.cs",
-        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
-        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs"
+        "AC-Original Code/ExcelIterate/Data/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs"
       ],
       "tests": [
         "src/testharness/EliminationProbe.cs",
@@ -531,7 +531,7 @@
         "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
         "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
         "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
-        "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs",
         "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs",
@@ -540,8 +540,8 @@
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationEngine.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrixBuilder.Common.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrix.cs",
-        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
-        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs"
+        "AC-Original Code/ExcelIterate/Data/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs"
       ],
       "tests": [
         "src/testharness/EliminationProbe.cs",
@@ -1370,7 +1370,7 @@
       "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs"
     ],
     "FormulaRefRewriter.cs": [
-      "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs"
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs"
     ],
     "WorksheetIdentity.cs": [
       "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
@@ -1379,10 +1379,10 @@
       "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs"
     ],
     "HostBatchRunner.cs": [
-      "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs"
+      "AC-Original Code/ExcelIterate/Data/_Shared/HostBatchRunner.cs"
     ],
     "SourceChangeWatch.cs": [
-      "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs"
+      "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs"
     ],
     "LinkAssistant.cs": [
       "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs"
@@ -1435,5 +1435,92 @@
     "RecycleFiles.cs": [
       "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs"
     ]
+  },
+  "code_layout": {
+    "tabEtTrace": "ExcelIterate",
+    "grpTrace": "Data",
+    "btnTracePrecedents": "TracePrecedents",
+    "btnTraceDependents": "TraceDependents",
+    "menuFilterEnhanced": "FilterEnhanced",
+    "btnFilterColumns": "FilterColumns",
+    "btnQuickAdvancedFilter": "QuickAdvancedFilter",
+    "menuAuditToolbox": "AuditToolbox",
+    "btnMergeHeaders": "MergeHeaders",
+    "menuElimination": "Elimination",
+    "btnEliminationReceivable": "Receivable",
+    "btnEliminationRevenueCost": "RevenueCost",
+    "grpAction": "Operations",
+    "menuOneClickFormula": "OneClickFormula",
+    "menuWrapFormula": "WrapFormula",
+    "menuIFErrorWrap": "IFErrorWrap",
+    "btnWrapIFError": "WrapIFError",
+    "btnCustomIFError": "CustomIFError",
+    "menuRoundWrap": "RoundWrap",
+    "btnWrapRound": "WrapRound",
+    "btnCustomRound": "CustomRound",
+    "btnWrapAbs": "WrapAbs",
+    "btnCustomFunction": "CustomFunction",
+    "btnUnwrapFormula": "UnwrapFormula",
+    "menuArithmetic": "Arithmetic",
+    "menuCalculateAdd": "Add",
+    "btnCalculateAdd": "Default",
+    "btnCustomCalculateAdd": "Custom",
+    "menuCalculateSubtract": "Subtract",
+    "btnCalculateSubtract": "Default",
+    "btnCustomCalculateSubtract": "Custom",
+    "menuCalculateMultiply": "Multiply",
+    "btnCalculateMultiply": "Default",
+    "btnCustomCalculateMultiply": "Custom",
+    "menuCalculateDivide": "Divide",
+    "btnCalculateDivide": "Default",
+    "btnCustomCalculateDivide": "Custom",
+    "menuFileOperations": "FileOperations",
+    "menuBatchProcessing": "BatchProcessing",
+    "btnOrganizeFiles": "OrganizeFiles",
+    "btnRenameFiles": "RenameFiles",
+    "btnFileNames": "FileNames",
+    "menuFileConversion": "FileConversion",
+    "btnCurrentPdf": "CurrentPdf",
+    "btnConvertPdf": "ConvertPdf",
+    "btnWatermarkPdf": "WatermarkPdf",
+    "btnSplitPdf": "SplitPdf",
+    "btnMergePdf": "MergePdf",
+    "btnLinkAssistant": "LinkAssistant",
+    "btnGenerateDirectory": "GenerateDirectory",
+    "grpFeedback": "Feedback",
+    "btnFeedback": "Feedback",
+    "grpExtension": "Extensions",
+    "btnAgentExtension": "AgentExtension",
+    "tabAgentEvo": "AgentEvo",
+    "grpAgentResources": "Details",
+    "menuAgentApi": "AgentApi",
+    "menuAgentCloud": "AgentCloud",
+    "btnAgentBaidu": "AgentBaidu",
+    "btnAgentAliyun": "AgentAliyun",
+    "menuAgentSites": "AgentSites",
+    "menuAgentChina": "AgentChina",
+    "btnAgentWorkBuddy": "AgentWorkBuddy",
+    "btnAgentTrae": "AgentTrae",
+    "btnAgentQoder": "AgentQoder",
+    "btnAgentDeepSeek": "AgentDeepSeek",
+    "btnAgentDoubao": "AgentDoubao",
+    "btnAgentKimi": "AgentKimi",
+    "menuAgentOverseas": "AgentOverseas",
+    "btnAgentChatGPT": "AgentChatGPT",
+    "btnAgentClaude": "AgentClaude",
+    "btnAgentGemini": "AgentGemini",
+    "menuAgentWorkflow": "AgentWorkflow",
+    "btnAgentReadme": "AgentReadme",
+    "btnAgentUserGuide": "AgentUserGuide",
+    "btnAgentHome": "AgentHome",
+    "grpAgentOperations": "Operations",
+    "menuAgentCustomization": "AgentCustomization",
+    "btnAgentSort": "AgentSort",
+    "btnAgentNames": "AgentNames",
+    "btnAgentFormats": "AgentFormats",
+    "btnAgentDialogSizes": "AgentDialogSizes",
+    "menuAgentExperiments": "AgentExperiments",
+    "btnAgentOcrPlaceholder": "AgentOcrPlaceholder",
+    "btnAgentRequirements": "AgentRequirements"
   }
 }

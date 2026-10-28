@@ -8,7 +8,7 @@ import sys
 import time
 import json
 sys.dont_write_bytecode = True
-from project_support import ROOT, BUILD, OUT, PROJECT, SITE_ROOT, load_site, DESIGN_OUT
+from project_support import ROOT, BUILD, OUT, PROJECT, SITE_ROOT, load_site, DESIGN_OUT, verify_features
 from verify_package import verify
 sys.path.insert(0, str(SITE_ROOT / "src"))
 from build_cache import inputs, key, digest, receipt, save
@@ -23,6 +23,7 @@ def main():
     parser.add_argument('--installer', type=Path, default=OUT / (PROJECT['assembly'] + '_Setup.exe'))
     args = parser.parse_args()
     mode, background = args.mode, args.background
+    classification = verify_features()
     load_site().validate_snapshot(args.site_html, ROOT)
     verify()
     dll = BUILD / (PROJECT['assembly'] + '.dll')
@@ -103,7 +104,9 @@ def main():
     log_path.write_text('\n'.join(logs), encoding='utf-8')
     for values in pending_receipts:
         save(*values)
-    (BUILD / 'validation-timings.json').write_text(json.dumps({'mode': mode, 'tests': timings}, ensure_ascii=False, indent=2), encoding='utf-8')
+    (BUILD / 'validation-timings.json').write_text(json.dumps(
+        {'mode': mode, 'classification_gate': classification, 'tests': timings},
+        ensure_ascii=False, indent=2), encoding='utf-8')
     if render_ui:
         preview = DESIGN_OUT
         preview.mkdir(exist_ok=True)

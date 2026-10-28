@@ -10,11 +10,16 @@ from site_core import verify_installers
 from build_cache import atomic_json
 
 MODE = 'full'
+CLASSIFICATION = {'rule': 'R-30', 'status': 'not_run', 'cached': False}
 
 
 def write_summary(status):
+    classification = dict(CLASSIFICATION)
+    if classification['status'] == 'running':
+        classification['status'] = 'fail'
     atomic_json(ROOT / 'build/validate-run-summary.json',
-                {'mode': MODE, 'status': status, 'stages': RUN_STAGES})
+                {'mode': MODE, 'status': status, 'stages': RUN_STAGES,
+                 'classification_gate': classification})
 
 
 def main():
@@ -23,9 +28,14 @@ def main():
     parser.add_argument('--site-only', action='store_true')
     parser.add_argument('--skip-ui', action='store_true')
     parser.add_argument('--background', action='store_true', help='不运行会显示或激活窗口的探针，前台项目列为待验收')
-    global MODE
+    global MODE, CLASSIFICATION
     args = parser.parse_args()
     MODE = args.mode
+    sys.path.insert(0, str(ROOT.parent / 'C-00-Shared'))
+    from feature_index import check as check_features
+    if not args.site_only:
+        CLASSIFICATION['status'] = 'running'
+        CLASSIFICATION = check_features(ROOT.parent)
     run([sys.executable, ROOT / 'src/tools/cleanup_probe.py'], ROOT, ROOT / 'build/cleanup-validation.log')
     run([sys.executable, ROOT / 'src/tools/cache_probe.py'], ROOT, ROOT / 'build/cache-validation.log')
     run([sys.executable, ROOT / 'src/tools/cleanup_review_probe.py'], ROOT, ROOT / 'build/cleanup-review-validation.log')

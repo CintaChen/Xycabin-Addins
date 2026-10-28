@@ -72,6 +72,8 @@ def main():
     for project in (left, right):
         if not project.is_dir():
             raise FileNotFoundError('共享检查需要两个加载项目录：' + str(project))
+    from feature_index import check as check_feature_index
+    check_feature_index(ROOT)
     errors = []
     layout = manifest()
     for relative in layout['linked']:
@@ -107,8 +109,6 @@ def main():
             errors.append('缺少集中网站接入文件：' + str(path))
     if errors:
         raise ValueError('\n'.join(errors))
-    from feature_index import check as check_feature_index
-    check_feature_index(ROOT)
     print('PASS: C-04 documents, %d unique linked implementations and both product source manifests' % len(layout['linked']))
 
 

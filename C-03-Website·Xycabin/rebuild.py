@@ -20,9 +20,13 @@ def mark(gates, identifier):
 
 
 def write_summary(mode, status, started, reused, gates, skipped):
+    source_stage = next((stage for stage in RUN_STAGES if stage['stage'] == 'shared-source'), None)
+    classification = {'rule': 'R-30', 'cached': False, 'status':
+                      'not_run' if source_stage is None else 'fail' if source_stage['returncode'] else 'pass'}
     atomic_json(ROOT / 'build/last-run-summary.json',
                 {'mode': mode, 'status': status, 'seconds': round(time.perf_counter() - started, 3),
-                 'reused_builds': reused, 'stages': RUN_STAGES, 'inprocess_gates': gates, 'skipped': skipped})
+                 'reused_builds': reused, 'stages': RUN_STAGES, 'inprocess_gates': gates,
+                 'classification_gate': classification, 'skipped': skipped})
 
 
 def rebuild():

@@ -53,9 +53,9 @@ ThisAddIn使用 `[StartupObject(0)]`、FullTrust，继承 `Microsoft.Office.Tool
 
 两个加载项的功能实现位于 AC-Original Code，层级为选项卡→分组→菜单→末级功能。末级 Connect 分部文件保存真实按钮回调，算法和弹窗按专属归叶子、共用归就近 _Shared 的原则维护；跨产品业务仍只在 C-00-Shared。加载框架、生成文件、配置器、安装器及校验保留原工程目录。
 
-完整导航仅维护在 [B4-Code Index](<B4-Code Index.md>)。新增功能时同步配置器、project.json 的 sources/features，再运行 python C-00-Shared/feature_index.py --write；默认不带 --write 为只读一致性检查。features 按稳定控件 ID 记录目录、入口、实现依赖与 tests，显示名称和排序变化不触发目录重命名。
+完整导航仅维护在 [B4-Code Index](<B4-Code Index.md>)。新增功能时同步配置器、project.json 的 sources/features，再运行 python C-00-Shared/feature_index.py --write；默认不带 --write 为只读一致性检查。code_layout 按稳定菜单节点 ID 登记英文目录名，features 按叶子 ID 记录目录、入口、实现依赖与 tests；门禁按真实菜单树推导路径，显示名称和同层排序变化不触发目录重命名。
 
-编译清单使用物理相对路径。历史源码守卫通过 source_aliases 显式连接拆分前文件名与实际编译片段；Python 读聚合文本用 source_text，读取单一物理文件用 source_path；C# SourcePaths 的目录扫描枚举实际编译文件，读取拆分别名组合对应片段。缺失、歧义或未参与编译的依赖必须失败，不因旧路径消失而跳过。缓存与清理盘点将 AC-Original Code 视为必要源码输入。
+编译清单使用物理相对路径。历史源码守卫通过 source_aliases 显式连接拆分前文件名与实际编译片段；Python 读聚合文本用 source_text，读取单一物理文件用 source_path；C# SourcePaths 的目录扫描枚举实际编译文件，读取拆分别名组合对应片段。缺失、歧义或未参与编译的依赖必须失败，不因旧路径消失而跳过。缓存与清理盘点将 AC-Original Code 视为必要源码输入。 R-30 另核对源码完整归属、基础设施白名单、父菜单接线和共用代码最近公共父级；单项目与联合入口在完整、增量模式均执行只读核验，隔离正反例通过 --self-test 检查。
 
 ## 2. 功能区按钮、图标与菜单
 

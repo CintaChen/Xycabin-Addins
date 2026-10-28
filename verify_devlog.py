@@ -56,6 +56,7 @@ RULES = {
     'R-27': ('L2', 'C-00-Shared/src/testharness/GridHeadersProbe.cs', 'GridHeaderChecks'),
     'R-28': ('L2', 'C-00-Shared/src/testharness/Feature099Probe.cs', 'OutputFormatChecks'),
     'R-29': ('L2', 'C-00-Shared/src/testharness/LiveProbeSafetyFixture.cs', 'Main'),
+    'R-30': ('L1', 'C-00-Shared/feature_index.py', 'verify_product'),
 }
 
 H_LINE = re.compile(r'(?m)^\*\*(H-\d{2})\*\*')
@@ -160,7 +161,7 @@ SEMANTICS = {
 }
 GATE_REGISTRY = {
     'G-01': ('六份文档与规则注册表', 'R-01–R-16,R-20'),
-    'G-02': ('C-01/C-02 共享一致性', 'R-15'),
+    'G-02': ('公共实现与功能源码分类', 'R-15,R-30'),
     'G-03': ('三个 CMD 入口契约', 'R-23'),
     'G-04': ('加载项身份预检', 'R-17'),
     'G-05': ('冗余清理盘点', 'R-21'),
@@ -169,11 +170,11 @@ GATE_REGISTRY = {
     'G-08': ('构建前文档指纹', 'R-20'),
     'G-09': ('网站快照构建', 'R-14'),
     'G-10': ('快照网页门禁', 'R-22'),
-    'G-11': ('Excel 重建链', 'R-16–R-19'),
-    'G-12': ('Excel 后台验证', 'R-17,R-25,R-26,R-27,R-28,R-29'),
+    'G-11': ('Excel 重建链', 'R-16–R-19,R-30'),
+    'G-12': ('Excel 后台验证', 'R-17,R-25,R-26,R-27,R-28,R-29,R-30'),
     'G-13': ('Excel 五载荷与内嵌资产', 'R-18,R-24'),
-    'G-14': ('Word 重建链', 'R-16–R-19'),
-    'G-15': ('Word 后台验证', 'R-17,R-25,R-26,R-27,R-29'),
+    'G-14': ('Word 重建链', 'R-16–R-19,R-30'),
+    'G-15': ('Word 后台验证', 'R-17,R-25,R-26,R-27,R-29,R-30'),
     'G-16': ('Word 五载荷与内嵌资产', 'R-18,R-24'),
     'G-17': ('下载页组装与两包核对', 'R-24'),
     'G-18': ('下载页网页门禁', 'R-22'),
@@ -181,7 +182,7 @@ GATE_REGISTRY = {
     'G-20': ('事务发布', ''),
     'G-21': ('发布后布局门禁', 'R-02'),
     'G-22': ('缓存提交与运行摘要', 'R-20'),
-    'G-23': ('收尾独立验证', 'R-01–R-29'),
+    'G-23': ('收尾独立验证', 'R-01–R-30'),
 }
 
 
@@ -514,7 +515,7 @@ def self_test():
     assert check_gate_inventory(sample) == []
     assert any('G-23' in item for item in check_gate_inventory(sample.replace('| G-23 |', '| 无关 |', 1)))
     assert any('失败语义' in item for item in check_gate_inventory(sample.replace('| FAIL |', '| 硬错 |', 1)))
-    assert set(RULES) == {'R-%02d' % index for index in range(1, 30)}
+    assert set(RULES) == {'R-%02d' % index for index in range(1, 31)}
     assert H_LINE.findall('**H-01** 甲。验收：x。证据：y。\n**H-02** 乙。验收：x。证据：y。\n') == ['H-01', 'H-02']
     hsample = '\n'.join('**H-%02d** 甲。验收：人工。证据：记录。' % index for index in range(1, 13))
     assert check_h_items(hsample) == []

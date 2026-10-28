@@ -107,6 +107,12 @@ def load_site():
     return module
 
 
+def verify_features():
+    """R-30 is deliberately executed outside compiler and validation caches."""
+    from feature_index import check
+    return check(ROOT.parent, project_root=ROOT)
+
+
 def verify_layout(source_only=True):
     """Source checks allow absent generated artifacts; completed deliveries require them."""
     load_site()

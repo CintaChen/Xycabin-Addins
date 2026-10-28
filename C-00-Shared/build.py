@@ -5,7 +5,7 @@ import argparse
 import subprocess
 import sys
 sys.dont_write_bytecode = True
-from project_support import ROOT, SRC, BUILD, LIB, CSC, COMMON_REF, PROJECT, DEFINES, load_configure, write_project_info, load_site, SITE_ROOT, DOC_OUT, OUT, verify_layout
+from project_support import ROOT, SRC, BUILD, LIB, CSC, COMMON_REF, PROJECT, DEFINES, load_configure, write_project_info, load_site, SITE_ROOT, DOC_OUT, OUT, verify_layout, verify_features
 
 sys.path.insert(0, str(SITE_ROOT / "src"))
 from build_cache import compile_cached
@@ -68,6 +68,7 @@ def main():
     parser.add_argument('--with-testharness', action='store_true')
     args = parser.parse_args()
     MODE = args.mode
+    verify_features()
     website = load_site()
     if args.site_html:
         website.validate_snapshot(args.site_html, ROOT, require_embedded=True)

@@ -4,7 +4,7 @@ import argparse
 import subprocess
 import sys
 sys.dont_write_bytecode = True
-from project_support import ROOT, OUT, PROJECT, CONFIGURE_NAME, load_site, verify_layout
+from project_support import ROOT, OUT, PROJECT, CONFIGURE_NAME, load_site, verify_layout, verify_features
 
 
 # rule=R-17
@@ -21,6 +21,7 @@ def main():
     if args.open_installer_only:
         os.startfile(str(OUT / (PROJECT['assembly'] + '_Setup.exe')))
         return
+    verify_features()
     website = load_site()
     verify_layout(source_only=True)
     if args.site_html:

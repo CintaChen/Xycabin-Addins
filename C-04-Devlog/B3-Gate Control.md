@@ -13,7 +13,7 @@
 | 编号   | 门禁              | 执行入口                                                  | 对应条款                          | 失败语义              |
 | ---- | --------------- | ----------------------------------------------------- | ----------------------------- | ----------------- |
 | G-01 | 六份文档与规则注册表      | devlog_probe→verify_devlog.py                         | R-01–R-16、R-20                | FAIL              |
-| G-02 | 公共实现与源引用校验 | verify_shared.py                                      | R-15                          | FAIL              |
+| G-02 | 公共实现与功能源码分类 | verify_shared.py                                      | R-15、R-30                     | FAIL              |
 | G-03 | 三个 CMD 入口契约     | workflow_probe.py                                     | R-23                          | FAIL              |
 | G-04 | 加载项身份预检         | delivery.projects()                                   | R-17                          | FAIL              |
 | G-05 | 冗余清理盘点          | cleanup_probe                                         | R-21                          | FAIL              |
@@ -22,11 +22,11 @@
 | G-08 | 构建前文档指纹         | input_fingerprint                                     | R-20                          | FAIL              |
 | G-09 | 网站快照构建          | site_core.build                                       | R-14                          | FAIL              |
 | G-10 | 快照网页门禁          | site_probe --html 快照                                  | R-22                          | FAIL+SKIP(node)   |
-| G-11 | Excel 重建链       | C-01/rebuild.py                                       | R-16、R-17、R-18、R-19           | FAIL(HIT 保留原检查时间) |
-| G-12 | Excel 后台验证      | C-01/validate.py --background                         | R-17、R-25、R-26、R-27、R-28、R-29 | FAIL              |
+| G-11 | Excel 重建链       | C-01/rebuild.py                                       | R-16、R-17、R-18、R-19、R-30      | FAIL(HIT 保留原检查时间) |
+| G-12 | Excel 后台验证      | C-01/validate.py --background                         | R-17、R-25、R-26、R-27、R-28、R-29、R-30 | FAIL              |
 | G-13 | Excel 五载荷与内嵌资产  | verify_payload→PayloadProbe.exe                       | R-18、R-24                     | FAIL              |
-| G-14 | Word 重建链        | C-02/rebuild.py                                       | R-16、R-17、R-18、R-19           | FAIL(HIT 保留原检查时间) |
-| G-15 | Word 后台验证       | C-02/validate.py --background                         | R-17、R-25、R-26、R-27、R-29      | FAIL              |
+| G-14 | Word 重建链        | C-02/rebuild.py                                       | R-16、R-17、R-18、R-19、R-30      | FAIL(HIT 保留原检查时间) |
+| G-15 | Word 后台验证       | C-02/validate.py --background                         | R-17、R-25、R-26、R-27、R-29、R-30 | FAIL              |
 | G-16 | Word 五载荷与内嵌资产   | verify_payload→PayloadProbe.exe                       | R-18、R-24                     | FAIL              |
 | G-17 | 下载页组装与两包核对      | attach_installers+embedded_snapshot+verify_installers | R-24                          | FAIL              |
 | G-18 | 下载页网页门禁         | site_probe --html 完整页                                 | R-22                          | FAIL+SKIP(node)   |
@@ -34,7 +34,7 @@
 | G-20 | 事务发布            | delivery.publish                                      | —                             | FAIL(回滚)          |
 | G-21 | 发布后布局门禁         | layout_probe.verify（全流程仅一次）                           | R-02                          | FAIL              |
 | G-22 | 缓存提交与运行摘要       | build_cache.commit+两份 summary                         | R-20                          | FAIL              |
-| G-23 | 收尾独立验证          | bat 末尾 validate.py --background                       | R-01–R-29                     | FAIL              |
+| G-23 | 收尾独立验证          | bat 末尾 validate.py --background                       | R-01–R-30                     | FAIL              |
 
 **R-01** C-04-Devlog 恰好六份：B0-Entry、A-UserGuide、B1-Project-Files、B2-DevExperience、B3-Gate Control、B4-Code Index；三个项目内不得保留文档副本。仓库根 AGENTS.md 只放指向 B0 的指针，B0 只放阅读顺序与按角色分流。
 
@@ -64,7 +64,7 @@
 
 **R-14** 内嵌资源清单、文档与图片摘要必须与实际字节一致；A-UserGuide 与 B2 各整份内嵌一份，图片按摘要去重。
 
-**R-15** 公共源码和构建实现只在C-00-Shared维护，C-01/C-02经@shared/直接引用；产品仅保留薄入口、专属及生成源码。verify_shared拒绝公共实现副本、缺失或越界引用并核对必要公共二进制依赖；SourceLayoutProbe验证同一公共改动使两产品缓存失效。共享经验在B2、B3各只保留一份。 功能薄入口位于产品AC目录，业务实现不复制；project.json的features与菜单叶子一一对应，feature_index检查实际编译文件、回调唯一性、依赖及B4生成内容，失败不得跳过。
+**R-15** 公共源码和构建实现只在C-00-Shared维护，C-01/C-02经@shared/直接引用；产品仅保留薄入口、专属及生成源码。verify_shared拒绝公共实现副本、缺失或越界引用并核对必要公共二进制依赖；SourceLayoutProbe验证同一公共改动使两产品缓存失效。共享经验在B2、B3各只保留一份。 功能分类规则与执行入口统一见 R-30。
 
 **R-16** 版本唯一来源是各项目配置器的 INSTALLER_VERSION，四段 0～65534，仅用户指定才修改；安装器、加载项与清单同源；新第三段主版本把前一主版本子版本并入末段 0。
 
@@ -133,6 +133,16 @@
 ![程序生成工作表的表头与全数据列宽适配构造示意](../C-01-ExcelIterate/AB-Graphic/格式规范-生成工作表-构造示意.png)
 
 上图为构造示意：表头单行、居中加粗，列宽按表头与全部数据适配；非真实 WPS 截图。[可编辑SVG](../C-01-ExcelIterate/AB-Graphic/output-format-maintenance.svg)
+
+## 6. 功能源码分类与代码索引
+
+**R-30** 两个加载项的功能源码必须按“选项卡→分组→菜单→末级功能”存于 AC-Original Code。配置器是菜单层级与稳定 ID 的来源；project.json 的 code_layout 按节点 ID 登记英文 PascalCase 目录名，features 记录叶子入口、实现依赖与验证入口。显示名称和同层排序不改变目录身份。feature_index 根据真实菜单 ID 推导完整目录并核对实际源码，不能只靠层数相同或手填路径通过。
+
+每个末级功能具有唯一实际按钮回调与图标回调，入口、专属实现和索引必须指向参与编译的同一物理源码。每份 AC 源码均须归属功能或合法父菜单图标入口；父菜单目录只承载该菜单接线。共用业务代码由至少两个功能引用，并位于使用功能的最近公共父目录的 _Shared；跨产品实现仍只在 C-00-Shared 维护并登记公共清单。产品编译源码位于 AC 外时必须命中 feature_index 的基础设施白名单，新增业务实现不得放回 src/addin；测试、安装器和构建工具继续使用各自工程目录。
+
+标准单项目 rebuild、build、validate 均在执行生成、编译或包验证前只读核验本产品和 B4 对应章节；联合重建的 G-02、G-11、G-14 与后台验证的 G-12、G-15、G-23 执行本门禁。完整与增量模式均不可缓存跳过，运行摘要记录 R-30 状态和 cached=false；批处理沿同一调用链执行并传播非零退出码。缺映射、目录错误、源码未登记、入口重复、共用位置错误或 B4 过期均中止，不自动修改目录或索引。
+
+新增功能顺序：配置器登记稳定菜单 ID→code_layout 登记英文节点名→按推导目录实现回调与业务→同步 sources/features 和必要的公共清单→显式运行 python C-00-Shared/feature_index.py --write→只读分类核验与负向测试→标准重建和验证。只读命令为 python C-00-Shared/feature_index.py；单产品增加 --project-root 并指定产品目录；--self-test 验证正反例及入口阻断。源码结构可机械校验，算法业务归属仍在代码评审中核对。
 
 # 二. XyCabin 网站门禁
 
