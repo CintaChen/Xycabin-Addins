@@ -104,17 +104,85 @@ python "C-03-Website·Xycabin/rebuild.py" --background --mode full
 | `C-03-Website·Xycabin/AA-Program/XyCabin.html` | 由模板渲染生成的产物 |
 | `*.cer`、`*.pfx`、`*.snk` | 证书与私钥材料 |
 
-## 源码提交与 Release 附件
+## 源码提交、推送与 Release 附件
 
-源码、公共目录、测试和统一文档通过 Git 提交。两个安装包和独立 HTML 按上述忽略规则保留在本地，通过 GitHub Releases 分发；提交代码及 `git push` 不会自动上传或替换 Release 附件。
+源码、公共目录、测试和统一文档通过 Git 提交；两个安装包与独立 HTML 按上述忽略规则保留在本地，通过 GitHub Releases 分发。提交代码及 `git push` 不会上传或替换 Release 附件，两者必须分开执行。
 
-每次发布准备以下三份文件：
+远端为 `https://github.com/Xymircai/Xycabin-Addins.git`，长期分支 `main`；`restructure/20261019` 为历史分支，不再合入。
 
-- `C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe`
-- `C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe`
-- `C-03-Website·Xycabin/AA-Program/XyCabin.html`
+### 提交前核对
 
-HTML 内嵌的两个 EXE 必须与待上传安装包逐字节一致；移除安装包数据区后的页面须与两 DLL 的内嵌网页一致。推送后还需单独上传并核对这三个附件的 SHA-256。发布时核对 Release 标签所指提交；更新附件不会自动移动已有标签，GitHub 自动生成的源码压缩包取自该标签。
+```bash
+python verify_devlog.py                 # 六份文档、版本表与门禁注册表
+python verify_shared.py                 # 公共实现唯一、源引用与功能映射
+python C-00-Shared/feature_index.py     # 只读校验代码索引
+git status --short                      # 确认改动范围
+```
+
+三条校验全部 PASS 再提交。迁移源码、增删菜单或改动回调后，先运行 `python C-00-Shared/feature_index.py --write` 重建 `C-04-Devlog/B4-Code Index.md`，否则 `verify_shared.py` 会以「B4 代码索引与实际功能映射不一致」失败。
+
+完整重建期间不要改文档、共享源码与内嵌图片；如有改动，等本轮构建结束后重跑，保证构建前后输入指纹一致。
+
+### 分批提交
+
+一次提交只表达一件事，便于回溯与单独回退：
+
+```bash
+git add C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py
+git commit -m "feat(excel): 审计工具箱子项更名为「表头匹配」"
+
+git add C-04-Devlog README.md
+git commit -m "docs(release): 补充提交与附件更新流程"
+```
+
+提交信息约定 `类型(范围): 摘要`：类型取 `feat`、`fix`、`refactor`、`docs`、`chore`、`test`；范围取 `excel`、`word`、`site`、`shared`，跨产品时省略。正文写清动机、影响面与已执行的验证。
+
+- 不要用 `git add -A` 或 `git add .` 一次提交全部改动，容易把无关修改混进同一提交；
+- 提交前用 `git diff --cached` 复核暂存内容，确认没有带入证书、私钥或本机绝对路径；
+- `build/`、`stage/`、`AA-Program/*_Setup.exe`、`XyCabin.html`、`lib/*.dll` 与证书已被 `.gitignore` 排除，`git status` 看不到它们属正常。
+
+### 推送
+
+```bash
+git fetch origin
+git rebase origin/main        # 远端有新提交时先变基，保持线性历史
+git push origin main
+git log --oneline -3          # 与 GitHub 网页上的提交号比对
+```
+
+推送前先 `git fetch`；被拒时用 `git pull --rebase` 处理，不要用 `git push --force` 覆盖他人提交。推送成功后 GitHub 代码页即显示最新提交。
+
+### 更新 Release 附件
+
+版本号唯一来源是各项目配置器的 `INSTALLER_VERSION`，只有明确要求升版时才修改。版本不变而内容更新时，用同名附件覆盖现有 Release：
+
+```bash
+# 1) 确认版本号与三份产物均已按当前源码重建
+grep -n "INSTALLER_VERSION =" C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py
+ls -l C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe \
+      C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe \
+      "C-03-Website·Xycabin/AA-Program/XyCabin.html"
+
+# 2) 覆盖上传；同名附件必须加 --clobber，否则报 already exists
+gh release upload v0.9.9.3 \
+  C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe \
+  C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe \
+  "C-03-Website·Xycabin/AA-Program/XyCabin.html" --clobber
+
+# 3) 重新下载，核对远端字节与本地一致
+gh release download v0.9.9.3 --dir build/release-verify --clobber
+sha256sum build/release-verify/*.exe build/release-verify/*.html
+sha256sum C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe \
+          C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe \
+          "C-03-Website·Xycabin/AA-Program/XyCabin.html"
+```
+
+1. 三份文件必须同批重建、同批上传。独立 HTML 内嵌两个安装包，其正文又与两 DLL 的内嵌网页一致；只替换其中一件会造成网页与安装包错配。
+2. 上传前确认工作区没有未提交的源码改动，避免附件比仓库代码新。
+3. HTML 内嵌的两个 EXE 必须与待上传安装包逐字节一致；移除安装包数据区后的页面须与两 DLL 的内嵌网页一致。
+4. 更新附件不会移动已有标签，GitHub 自动生成的源码压缩包仍取自标签所指提交。版本不变时「同版本不同字节」的追溯依据是本轮提交号与附件 SHA-256，记录在 [B1 交付证据](C-04-Devlog/B1-Project-Files.md)。
+5. 需要正式换版时，先在配置器升 `INSTALLER_VERSION`，重建、提交、推送，再新建标签与 Release，不要复用旧标签。
+6. 上传超时可直接重跑 `gh release upload`，`--clobber` 会覆盖同名附件；中断可能留下未完成的附件，用 `gh release view v0.9.9.3` 核对后再补传。
 
 ## 免责声明
 
