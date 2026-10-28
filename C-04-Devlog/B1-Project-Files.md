@@ -106,23 +106,20 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-本次功能源码分类完成 54 个末级入口迁移，完整路径见 [B4-Code Index](<B4-Code Index.md>)。两个候选包的完整重建、50项后台验证、公开接口与方法体对照、签名和载荷均通过；详见[源码分类验证记录](../C-01-ExcelIterate/build/feature-layout-audit/delivery-review.md)及[统计与候选包摘要](../C-01-ExcelIterate/build/feature-layout-audit/summary.json)。本次交付源码组织与导航；其后按最新源码联合重建了正式安装包与网站，摘要见本节表格；WPS实机点击待验收。
+本轮分类门禁实现提交 [3cff8c5](https://github.com/Xymircai/Xycabin-Addins/commit/3cff8c5856b6d32c2fc20a10994dd2228cb80892)；构建源码与 README 提交 [bfccdec](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)，原有四个未推送提交完整保留并一并推送。详见 [本轮验证与发布记录](../C-03-Website·Xycabin/build/github-release-r30/delivery-review.md) 与 [完整证据摘要](../C-03-Website·Xycabin/build/github-release-r30/delivery-summary.json)。
 
-本轮联合重建后的包摘要见下表；远端Release附件尚未替换（交付时段本机到GitHub不可用，命令见README），原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
-
-本轮完成公共源码单源迁移、抵消弹窗初显时序和局部绘制修复、会话生命周期、宿主线程分块读取与后台纯计算、大结果预览及恢复边界优化。沿用0.9.9.3、原命令ID、配置和固定发布者；非审计正文固定后完成重建、重签与打包，本节在验证后回填。真实黑影、宿主交互和跨屏DPI仍待用户实机验收，本轮未安装或连接WPS；随后按用户要求将源码推送到GitHub，并替换两个EXE和内含最新两包的HTML附件；远端三文件已重新下载核对。
+本产品 54 个末级入口通过 [B3 R-30](<B3-Gate Control.md#6-功能源码分类与代码索引>) 与 [B4 代码索引](<B4-Code Index.md>) 核验。完整与增量模式均只读检查；55 项正反例包含 16 次实际入口违规阻断，不自动修正目录或索引。
 
 | 检查 | 结果 |
-|---|---|
-| 安装包 | [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,871,680字节，版本0.9.9.3，SHA-256前缀5C137CC6D5CD75B2 |
-| 交付摘要 | [原优化交付摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)、[质量评估、性能与验收步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)记录两包、DLL、清单、边界与本轮证据 |
-| 构建与后台 | [最终重建](../C-01-ExcelIterate/build/optimization-audit/final-rebuild.log)、[最终完整验证](../C-01-ExcelIterate/build/optimization-audit/final-validation.log)：26项任务全部通过、缓存复用0项；抵消222、从属130、工作簿391、文件189、Feature099共10064项及新增运行质量60项均通过 |
-| 公共迁移 | [负向检查](../C-01-ExcelIterate/build/optimization-audit/shared-negative-probe.log)5项通过；两产品SourceLayoutProbe各7项通过，拒绝旧实现副本、非薄入口、缺失及越界引用；公共修改影响两产品缓存 |
-| 弹窗与异步 | [独立桌面日志](../C-01-ExcelIterate/build/optimization-audit/ui-render.log)：12组默认/自定义宽度和100%/150%/200%控件缩放，另有两类生产窗体最大化/还原；实际设备DPI为96，未冒充真实跨屏验收。运行质量覆盖取消、来源通知、同名重开、模拟COM失败、迟到回调和双表还原重试 |
-| 性能 | [五次计时汇总](../C-01-ExcelIterate/build/optimization-audit/benchmark-summary.json)：1千/1万/10万行全部比较，12组结果签名一致；10万行预览中位87.910→33.973秒，峰值工作集404.2→116.9MiB。扫描为离线宿主替身，不代表真实COM延迟 |
-| 签名与载荷 | [最终签名](../C-01-ExcelIterate/build/optimization-audit/Excel_Iterate-final-signatures.log)、[五载荷及资源](../C-01-ExcelIterate/build/optimization-audit/final-payload.log)：固定发布者及SHA-256清单双签名、五载荷、两整份文档及14份图片通过；两DLL内嵌网页一致 |
-| 兼容与恢复 | [公开接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Excel原670条记录保留、无新增公开类型。[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)与[源码基线](../C-01-ExcelIterate/build/optimization-audit/baseline.json)保留；本轮提交已在本地形成，推送与Release附件替换待网络恢复后执行；未清理历史或重置配置 |
-| 验收边界 | 原路径已事务替换；实际WPS黑影、键入、菜单、Esc、跨屏及真实写入还原待用户按报告验收。此前外链实机记录保留为历史证据，本轮未重复运行 |
+| --- | --- |
+| 安装包 | [Excel_Iterate_Setup.exe](../C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe)，4,871,680 字节，版本 0.9.9.3；SHA-256：7a61efb06f15a02d5946dea233e22749407d12767d7b82432e1fe47c57cdee9d |
+| 重建与后台 | [联合完整重建](../C-03-Website·Xycabin/build/last-run-summary.json)与[收尾独立验证](../C-03-Website·Xycabin/build/validate-run-summary.json)成功；本产品 26 项完整后台任务通过、缓存复用 0；[产品验证日志](../C-03-Website·Xycabin/build/Excel_Iterate-validation.log) |
+| 分类与编译 | [验证收据](../C-01-ExcelIterate/build/validation-timings.json)记录 R-30=pass、cached=false；目录、实际回调、编译清单及 B4 一致 |
+| 签名与载荷 | [重建及签名日志](../C-03-Website·Xycabin/build/Excel_Iterate-rebuild.log)与[五载荷和资源核对](../C-03-Website·Xycabin/build/Excel_Iterate-payload.log)通过；沿用原发布者、清单双签名，文档与图形资源匹配 |
+| 接口兼容 | [公开接口对照](../C-03-Website·Xycabin/build/github-release-r30/public-api-summary.json)：680 条记录保持一致，新增 0、删除 0 |
+| GitHub 与 Release | 已普通推送至 main；[现有 Release](https://github.com/Xymircai/Xycabin-Addins/releases/tag/v0.9.9.3)附件已替换并回下载，摘要匹配本地正式产物；HTML 内嵌 EXE 与独立附件逐字节一致 |
+| 源码链接 | [本轮精确提交](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)及[对应源码 ZIP](https://github.com/Xymircai/Xycabin-Addins/archive/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae.zip)；既有版本标签保持历史指向，自动 Source code 附件仍是旧标签源码 |
+| 验收边界 | 实际 WPS 点击、宿主交互、安装效果、焦点与跨屏待实机验收；本轮未安装、连接或关闭 WPS，未重置用户配置 |
 
 # 三. WordUpdater 项目档案
 
@@ -193,20 +190,20 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-本次功能源码分类完成 31 个末级入口迁移，完整路径见 [B4-Code Index](<B4-Code Index.md>)。两个候选包的完整重建、50项后台验证、公开接口与方法体对照、签名和载荷均通过；详见[源码分类验证记录](../C-01-ExcelIterate/build/feature-layout-audit/delivery-review.md)及[统计与候选包摘要](../C-01-ExcelIterate/build/feature-layout-audit/summary.json)。本次交付源码组织与导航；其后按最新源码联合重建了正式安装包与网站，摘要见本节表格；WPS实机点击待验收。
+本轮分类门禁实现提交 [3cff8c5](https://github.com/Xymircai/Xycabin-Addins/commit/3cff8c5856b6d32c2fc20a10994dd2228cb80892)；构建源码与 README 提交 [bfccdec](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)，原有四个未推送提交完整保留并一并推送。详见 [本轮验证与发布记录](../C-03-Website·Xycabin/build/github-release-r30/delivery-review.md) 与 [完整证据摘要](../C-03-Website·Xycabin/build/github-release-r30/delivery-summary.json)。
 
-本轮联合重建后的包摘要见下表；远端Release附件尚未替换（交付时段本机到GitHub不可用，命令见README），原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
-
-本轮完成公共源码单源迁移及共享界面优化，更新链接和链接查看统一使用完整状态捕获、独立恢复及恢复核对；移除两处500ms固定等待并保留非自有实例边界。沿用0.9.9.3、原身份、配置及固定证书，非审计正文固定后完成重建、重签、打包及后台验证，本节随后回填。原逐格、局部及多选来源行为继续回归；此前Ctrl跨实例实机结果属于历史证据，本轮没有连接WPS。
+本产品 31 个末级入口通过 [B3 R-30](<B3-Gate Control.md#6-功能源码分类与代码索引>) 与 [B4 代码索引](<B4-Code Index.md>) 核验。完整与增量模式均只读检查；55 项正反例包含 16 次实际入口违规阻断，不自动修正目录或索引。
 
 | 检查 | 结果 |
-|---|---|
-| 安装包 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,248,064字节，版本0.9.9.3，SHA-256前缀8A1F95B6784B93AB；远端附件替换待执行 |
-| 构建与后台 | [最终重建](../C-02-WordUpdater/build/optimization-final-rebuild.log)、[完整验证](../C-02-WordUpdater/build/optimization-final-validation.log)：24项后台任务全部通过、缓存复用0项；包括映射67、更新65、查看窗体55、尺寸核心67及原读取/引用、剪贴板等回归 |
-| 状态恢复 | 新增RuntimeQualityProbe 19项通过：两状态读取、设置和恢复失败分别注入；捕获失败零修改，部分设置失败不更新链接，恢复失败明确报告；链接查看捕获边界亦覆盖 |
-| 签名与载荷 | [最终签名](../C-01-ExcelIterate/build/optimization-audit/WordUpdater-final-signatures.log)、[五载荷及内嵌资源](../C-01-ExcelIterate/build/optimization-audit/final-payload.log)均通过，固定发布者、清单双签名和原五载荷结构沿用 |
-| 兼容与交付 | [接口对照](../C-01-ExcelIterate/build/optimization-audit/public-api-summary.json)：Word原327条公开记录保留，无新增公开类型；[联合交付摘要](../C-01-ExcelIterate/build/optimization-audit/delivery-summary.json)和[原包恢复归档](../C-01-ExcelIterate/build/optimization-audit/original-deliverables.zip)保留 |
-| 验收边界 | 已重建原路径安装包，未自动安装或关闭宿主，未重置配置或清理历史；推送与附件替换待网络恢复后执行；真实按钮、字段更新、宿主状态、键入、菜单与跨屏操作按[实机步骤](../C-01-ExcelIterate/build/optimization-audit/delivery-review.md)由用户验收 |
+| --- | --- |
+| 安装包 | [WordUpdater_Setup.exe](../C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe)，4,248,576 字节，版本 0.9.9.3；SHA-256：597d5b0fa1e841f5e410921d67a48289a9aff4ca33a108f7830216b6b5a7f291 |
+| 重建与后台 | [联合完整重建](../C-03-Website·Xycabin/build/last-run-summary.json)与[收尾独立验证](../C-03-Website·Xycabin/build/validate-run-summary.json)成功；本产品 24 项完整后台任务通过、缓存复用 0；[产品验证日志](../C-03-Website·Xycabin/build/WordUpdater-validation.log) |
+| 分类与编译 | [验证收据](../C-02-WordUpdater/build/validation-timings.json)记录 R-30=pass、cached=false；目录、实际回调、编译清单及 B4 一致 |
+| 签名与载荷 | [重建及签名日志](../C-03-Website·Xycabin/build/WordUpdater-rebuild.log)与[五载荷和资源核对](../C-03-Website·Xycabin/build/WordUpdater-payload.log)通过；沿用原发布者、清单双签名，文档与图形资源匹配 |
+| 接口兼容 | [公开接口对照](../C-03-Website·Xycabin/build/github-release-r30/public-api-summary.json)：327 条记录保持一致，新增 0、删除 0 |
+| GitHub 与 Release | 已普通推送至 main；[现有 Release](https://github.com/Xymircai/Xycabin-Addins/releases/tag/v0.9.9.3)附件已替换并回下载，摘要匹配本地正式产物；HTML 内嵌 EXE 与独立附件逐字节一致 |
+| 源码链接 | [本轮精确提交](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)及[对应源码 ZIP](https://github.com/Xymircai/Xycabin-Addins/archive/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae.zip)；既有版本标签保持历史指向，自动 Source code 附件仍是旧标签源码 |
+| 验收边界 | 实际 WPS 点击、宿主交互、安装效果、焦点与跨屏待实机验收；本轮未安装、连接或关闭 WPS，未重置用户配置 |
 
 # 四. XyCabin 项目档案
 
@@ -243,18 +240,15 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
-本轮把两个加载项的业务实现按菜单层级迁入 `AC-Original Code` 并新增 B4 代码索引（[e01d0f7](https://github.com/Xymircai/Xycabin-Addins/commit/e01d0f7)），随后把审计工具箱子项由“表头匹配增加”更名为“表头匹配”（[a3c0d98](https://github.com/Xymircai/Xycabin-Addins/commit/a3c0d98)），README 的提交与附件流程同步重写（[e7daf52](https://github.com/Xymircai/Xycabin-Addins/commit/e7daf52)）。版本仍为0.9.9.3，命令ID、回调OnMergeHeaders、窗口标题“跨工作簿表头匹配合并”与安装路径均未改变。
+本轮分类门禁实现提交 [3cff8c5](https://github.com/Xymircai/Xycabin-Addins/commit/3cff8c5856b6d32c2fc20a10994dd2228cb80892)；构建源码与 README 提交 [bfccdec](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)，原有四个未推送提交完整保留并一并推送。详见 [本轮验证与发布记录](../C-03-Website·Xycabin/build/github-release-r30/delivery-review.md) 与 [完整证据摘要](../C-03-Website·Xycabin/build/github-release-r30/delivery-summary.json)。
 
-三份产物按最新源码联合重建：运行摘要状态为success，G-04、G-08、G-09、G-17、G-19、G-20、G-21、G-22通过，Excel与Word的收尾独立验证各返回0。更名只改显示文字，未触及读取表头、预检、写入与还原逻辑；真实WPS中的菜单文字与点击仍由用户验收。
-
-本机到GitHub的连接在交付时段不可用（代理对github.com返回502，对api.github.com为TLS握手超时），推送与Release附件替换未执行，按README“更新 Release 附件”一节的命令由用户在网络恢复后完成；下表摘要为本地重建产物，替换后须以下载复核结果为准。
+三份产物同批联合完整重建，并通过收尾独立验证。B1 此审计区在构建完成、推送与远端附件回下载核对成功后回填，不改变内嵌文档正文。
 
 | 检查 | 结果 |
-|---|---|
-| 独立网页 | `C-03-Website·Xycabin/AA-Program/XyCabin.html`，13,384,112字节，SHA-256前缀0C3FCC294F500082 |
-| 安装包 | Excel_Iterate_Setup.exe，4,871,680字节，摘要前缀5C137CC6D5CD75B2；WordUpdater_Setup.exe，4,248,064字节，摘要前缀8A1F95B6784B93AB |
-| 构建与验证 | [联合重建摘要](../C-03-Website·Xycabin/build/last-run-summary.json)14个阶段返回0；[Excel收尾验证](../C-01-ExcelIterate/build/c01-validate.log)与[Word收尾验证](../C-02-WordUpdater/build/c02-validate.log)各返回0 |
-| 功能区生成 | [Ribbon.g.cs](../C-01-ExcelIterate/src/addin/Ribbon.g.cs)中btnMergeHeaders的label为“表头匹配”；B4索引、配置器标签与project.json一致 |
-| 源码与版本 | 三次提交见上段；既有v0.9.9.3标签保持历史指向，未强制推送或移动标签 |
-| 待执行 | `git push origin main` 与 `gh release upload v0.9.9.3 … --clobber`；上传后重新下载核对SHA-256、字节数及HTML内嵌EXE |
-| 验收边界 | 更名未在真实WPS中点击验收；后台探针通过不等于菜单文字、焦点与跨屏的人工确认 |
+| --- | --- |
+| 独立网页 | [XyCabin.html](../C-03-Website·Xycabin/AA-Program/XyCabin.html)，13,384,792 字节；SHA-256：9e300daa5991206ef91b4d85cdc22da5c3baac68e8d170f820a6522486e60bdc |
+| 联合重建 | [运行摘要](../C-03-Website·Xycabin/build/last-run-summary.json)状态 success，14 个阶段返回 0，G-04、G-08、G-09、G-17、G-19、G-20、G-21、G-22 通过；R-30=pass、cached=false |
+| 收尾验证 | [独立验证摘要](../C-03-Website·Xycabin/build/validate-run-summary.json)状态 success，两个加载项 26+24 项后台任务通过且不复用缓存；签名、五载荷及内嵌文档/图形资源通过 |
+| 附件一致性 | [发布验证状态](../C-03-Website·Xycabin/build/github-release-r30/publication-state.json)为 PUBLISHED_AND_DOWNLOADED_VERIFIED；三个远端附件已重新下载，SHA-256 与本地匹配，HTML 内嵌两包与独立附件逐字节一致，去除安装包数据后的网页与两 DLL 快照一致 |
+| 发布记录 | [现有 Release](https://github.com/Xymircai/Xycabin-Addins/releases/tag/v0.9.9.3)说明已更新本轮变化、精确源码提交、[源码 ZIP](https://github.com/Xymircai/Xycabin-Addins/archive/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae.zip)与三附件完整 SHA-256；原说明和附件已备份，未移动标签或强制推送 |
+| 版本与边界 | 保持 0.9.9.3、原发布者及既有标签；自动 Source code 对应历史标签。本轮未自动安装或关闭宿主，实际 WPS 按钮和安装效果仍待实机验收 |
