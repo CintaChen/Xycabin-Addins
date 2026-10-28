@@ -51,7 +51,7 @@
 
 1. Windows 10 / 11
 2. .NET Framework 4.x（提供 `csc.exe`，系统自带）
-3. Python 3.9 或更高版本
+3. Python 3.10 或更高版本
 4. WPS Office —— 仅在运行与验收时需要，编译不需要
 
 ### 补回互操作程序集
@@ -104,85 +104,154 @@ python "C-03-Website·Xycabin/rebuild.py" --background --mode full
 | `C-03-Website·Xycabin/AA-Program/XyCabin.html` | 由模板渲染生成的产物 |
 | `*.cer`、`*.pfx`、`*.snk` | 证书与私钥材料 |
 
-## 源码提交、推送与 Release 附件
+## 新增功能、提交与 Release 发布
 
-源码、公共目录、测试和统一文档通过 Git 提交；两个安装包与独立 HTML 按上述忽略规则保留在本地，通过 GitHub Releases 分发。提交代码及 `git push` 不会上传或替换 Release 附件，两者必须分开执行。
+以下命令使用 **Windows PowerShell**，从仓库任意子目录开始。Python 至少 3.10；Git、GitHub CLI 需已安装，gh 登录账号需有仓库写入和 Release 更新权限。
 
-远端为 `https://github.com/Xymircai/Xycabin-Addins.git`，长期分支 `main`；`restructure/20261019` 为历史分支，不再合入。
+### 准备终端
 
-### 提交前核对
-
-```bash
-python verify_devlog.py                 # 六份文档、版本表与门禁注册表
-python verify_shared.py                 # 公共实现唯一、源引用与功能映射
-python C-00-Shared/feature_index.py     # 只读校验代码索引
-git status --short                      # 确认改动范围
+```powershell
+$TaskRoot = git rev-parse --show-toplevel
+if ($LASTEXITCODE -ne 0) { throw "请先进入本 Git 仓库" }
+Set-Location -LiteralPath $TaskRoot
+$TaskPython = "python" # 可替换为可用 Python 解释器的绝对路径
+$RepoName = "Xymircai/Xycabin-Addins"
+$ReleaseTag = "v0.9.9.3"
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+function Invoke-Checked {
+    param([string]$Program, [string[]]$Arguments)
+    & $Program @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "$Program 退出码 $LASTEXITCODE，停止后续步骤" }
+}
+Invoke-Checked -Program $TaskPython -Arguments @("--version")
+Invoke-Checked -Program "git" -Arguments @("--version")
+Invoke-Checked -Program "gh" -Arguments @("auth", "status", "--hostname", "github.com")
 ```
 
-三条校验全部 PASS 再提交。迁移源码、增删菜单或改动回调后，先运行 `python C-00-Shared/feature_index.py --write` 重建 `C-04-Devlog/B4-Code Index.md`，否则 `verify_shared.py` 会以「B4 代码索引与实际功能映射不一致」失败。
+原证书与私钥、VSTO 依赖仍按上文准备。发布沿用固定身份，不能为了绕过签名失败而替换证书。
 
-完整重建期间不要改文档、共享源码与内嵌图片；如有改动，等本轮构建结束后重跑，保证构建前后输入指纹一致。
+### 新增或调整功能
 
-### 分批提交
+分类约束见 [B3 的 R-30](<C-04-Devlog/B3-Gate Control.md#6-功能源码分类与代码索引>)，代码定位见 [B4-Code Index](<C-04-Devlog/B4-Code Index.md>)。
 
-一次提交只表达一件事，便于回溯与单独回退：
+1. 在对应 AA-Program 配置器的 BUTTONS / EXTRA_TABS 定义菜单与稳定 ID。
+2. 在 project.json 的 code_layout 为新增节点 ID 登记英文 PascalCase 目录名。目录由“选项卡→分组→菜单→末级功能”的真实 ID 路径推导，不能仅修改 features.directory 蒙混通过；显示名称或同层排序变化不要求移动源码。
+3. 在 AC-Original Code 对应叶子实现真实回调和专属代码；父菜单目录只放本菜单图标接线。共用业务源码放在使用功能的最近公共父级 _Shared，跨产品代码集中在 C-00-Shared 并登记 source-manifest.json。
+4. 同步 sources 编译清单和 features 的 directory、entry、implementation、tests。AC 中每份源码均须归属功能；加载框架和生成文件保留在白名单位置，新增业务实现不得写回 src/addin。基础设施白名单变更需同步检查器并评审。
+5. 显式生成 B4，再运行只读门禁和正反例：
 
-```bash
-git add C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py
-git commit -m "feat(excel): 审计工具箱子项更名为「表头匹配」"
-
-git add C-04-Devlog README.md
-git commit -m "docs(release): 补充提交与附件更新流程"
+```powershell
+Invoke-Checked -Program $TaskPython -Arguments @("C-00-Shared/feature_index.py", "--write")
+Invoke-Checked -Program $TaskPython -Arguments @("C-00-Shared/feature_index.py")
+Invoke-Checked -Program $TaskPython -Arguments @("C-00-Shared/feature_index.py", "--project-root", "C-01-ExcelIterate")
+Invoke-Checked -Program $TaskPython -Arguments @("C-00-Shared/feature_index.py", "--self-test")
+Invoke-Checked -Program $TaskPython -Arguments @("verify_devlog.py")
+Invoke-Checked -Program $TaskPython -Arguments @("verify_shared.py")
 ```
 
-提交信息约定 `类型(范围): 摘要`：类型取 `feat`、`fix`、`refactor`、`docs`、`chore`、`test`；范围取 `excel`、`word`、`site`、`shared`，跨产品时省略。正文写清动机、影响面与已执行的验证。
+核验 Word 时将 --project-root 换为 C-02-WordUpdater。独立产品只核对自身和 B4 对应章节；重写整份 B4 需要两个产品完整源码。构建只读检查，不代替开发者修目录或索引。R-30 在单项目 rebuild/build/validate、联合构建和验证、批处理调用链中强制执行，完整与增量模式均不跳过。
 
-- 不要用 `git add -A` 或 `git add .` 一次提交全部改动，容易把无关修改混进同一提交；
-- 提交前用 `git diff --cached` 复核暂存内容，确认没有带入证书、私钥或本机绝对路径；
-- `build/`、`stage/`、`AA-Program/*_Setup.exe`、`XyCabin.html`、`lib/*.dll` 与证书已被 `.gitignore` 排除，`git status` 看不到它们属正常。
+### 联合重建与验证
 
-### 推送
+先固定非审计文档，再执行以下两步，全部通过后才提交和发布。联合流程使用同一网页快照构建两个加载项，并将两个 EXE 与内含同一两包的 HTML 一起完成本地事务交付。
 
-```bash
+```powershell
+Invoke-Checked -Program $TaskPython -Arguments @("C-03-Website·Xycabin/rebuild.py", "--background", "--mode", "full")
+Invoke-Checked -Program $TaskPython -Arguments @("C-03-Website·Xycabin/validate.py", "--background", "--mode", "full")
+```
+
+重建期间不要编辑文档、共享源码或内嵌资源；发现变化应等待本轮结束、修正后重跑。后台回归、签名、五载荷、内嵌资源及网页中的两包均须通过。实际 WPS 点击与安装效果单列验收，构建不自动安装或关闭宿主。
+
+### 分批提交和推送
+
+```powershell
+git status --short
+git diff --stat
+# 按本轮实际修改选择路径，勿混入无关改动。
+git add -- "C-00-Shared" "C-01-ExcelIterate" "C-02-WordUpdater" "C-03-Website·Xycabin" "C-04-Devlog" "verify_shared.py" "verify_devlog.py"
+git diff --cached --check
+git diff --cached --name-status
+git diff --cached
+git commit -m "feat(shared): 强制校验功能源码分类与索引" -m "说明原因、影响范围和本轮真实验证。"
+git add -- "README.md"
+git diff --cached --check
+git diff --cached
+git commit -m "docs: 完善分类门禁与 PowerShell 发布步骤"
 git fetch origin
-git rebase origin/main        # 远端有新提交时先变基，保持线性历史
+git log --oneline --left-right origin/main...main
+# 远端有新增时保留既有历史并合并；有冲突先解决并重新验证。
+git merge origin/main
 git push origin main
-git log --oneline -3          # 与 GitHub 网页上的提交号比对
+$SourceCommit = git rev-parse HEAD
+git status --short
+git log --oneline -8
 ```
 
-推送前先 `git fetch`；被拒时用 `git pull --rebase` 处理，不要用 `git push --force` 覆盖他人提交。推送成功后 GitHub 代码页即显示最新提交。
+任一步失败均停止，冲突和门禁未解决时不推送。提交信息采用“类型(可选范围): 摘要”，正文说明原因、影响和验证；原有未推送提交随 main 一并推送，不强推或改写历史。长期分支是 main，历史 restructure/20261019 分支不合入。
 
-### 更新 Release 附件
+不用 git add -A / git add . 代替范围审阅。build、stage、两个 EXE、生成 HTML、lib DLL、证书与私钥继续被忽略。git push 上传源码和文档，Release 附件需要单独上传。
 
-版本号唯一来源是各项目配置器的 `INSTALLER_VERSION`，只有明确要求升版时才修改。版本不变而内容更新时，用同名附件覆盖现有 Release：
+### 备份和更新现有 Release
 
-```bash
-# 1) 确认版本号与三份产物均已按当前源码重建
-grep -n "INSTALLER_VERSION =" C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py
-ls -l C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe \
-      C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe \
-      "C-03-Website·Xycabin/AA-Program/XyCabin.html"
+沿用 0.9.9.3，不移动已有标签。先确认 GitHub main 已显示 $SourceCommit，再备份旧说明和三个附件。每轮使用新目录，不以新附件覆盖旧备份。
 
-# 2) 覆盖上传；同名附件必须加 --clobber，否则报 already exists
-gh release upload v0.9.9.3 \
-  C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe \
-  C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe \
-  "C-03-Website·Xycabin/AA-Program/XyCabin.html" --clobber
-
-# 3) 重新下载，核对远端字节与本地一致
-gh release download v0.9.9.3 --dir build/release-verify --clobber
-sha256sum build/release-verify/*.exe build/release-verify/*.html
-sha256sum C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe \
-          C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe \
-          "C-03-Website·Xycabin/AA-Program/XyCabin.html"
+```powershell
+$ReleaseFiles = @(
+    "C-01-ExcelIterate/AA-Program/Excel_Iterate_Setup.exe",
+    "C-02-WordUpdater/AA-Program/WordUpdater_Setup.exe",
+    "C-03-Website·Xycabin/AA-Program/XyCabin.html"
+)
+$ReleaseAudit = Join-Path "build" ("release-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+$ReleaseBackup = Join-Path $ReleaseAudit "backup"
+$ReleaseVerify = Join-Path $ReleaseAudit "downloaded"
+New-Item -ItemType Directory -Path $ReleaseBackup, $ReleaseVerify -Force | Out-Null
+$BeforeJson = & gh release view $ReleaseTag --repo $RepoName --json name,body,tagName,url,assets
+if ($LASTEXITCODE -ne 0) { throw "无法读取 Release，停止发布" }
+$BeforeJson | Set-Content -LiteralPath (Join-Path $ReleaseAudit "release-before.json") -Encoding utf8
+Invoke-Checked -Program "gh" -Arguments @("release", "download", $ReleaseTag, "--repo", $RepoName, "--dir", $ReleaseBackup, "--pattern", "Excel_Iterate_Setup.exe", "--pattern", "WordUpdater_Setup.exe", "--pattern", "XyCabin.html")
+$ReleaseFiles | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 }
 ```
 
-1. 三份文件必须同批重建、同批上传。独立 HTML 内嵌两个安装包，其正文又与两 DLL 的内嵌网页一致；只替换其中一件会造成网页与安装包错配。
-2. 上传前确认工作区没有未提交的源码改动，避免附件比仓库代码新。
-3. HTML 内嵌的两个 EXE 必须与待上传安装包逐字节一致；移除安装包数据区后的页面须与两 DLL 的内嵌网页一致。
-4. 更新附件不会移动已有标签，GitHub 自动生成的源码压缩包仍取自标签所指提交。版本不变时「同版本不同字节」的追溯依据是本轮提交号与附件 SHA-256，记录在 [B1 交付证据](C-04-Devlog/B1-Project-Files.md)。
-5. 需要正式换版时，先在配置器升 `INSTALLER_VERSION`，重建、提交、推送，再新建标签与 Release，不要复用旧标签。
-6. 上传超时可直接重跑 `gh release upload`，`--clobber` 会覆盖同名附件；中断可能留下未完成的附件，用 `gh release view v0.9.9.3` 核对后再补传。
+将本轮变化、真实验证、三附件 SHA-256 与以下源码链接写入 $ReleaseAudit/release-notes.md，然后同批更新：
+
+```powershell
+"https://github.com/$RepoName/tree/$SourceCommit"
+("https://github.com/" + $RepoName + "/archive/" + $SourceCommit + ".zip")
+Invoke-Checked -Program "gh" -Arguments (@("release", "upload", $ReleaseTag, "--repo", $RepoName, "--clobber") + $ReleaseFiles)
+Invoke-Checked -Program "gh" -Arguments @("release", "edit", $ReleaseTag, "--repo", $RepoName, "--notes-file", (Join-Path $ReleaseAudit "release-notes.md"))
+Invoke-Checked -Program "gh" -Arguments @("release", "download", $ReleaseTag, "--repo", $RepoName, "--dir", $ReleaseVerify, "--pattern", "Excel_Iterate_Setup.exe", "--pattern", "WordUpdater_Setup.exe", "--pattern", "XyCabin.html")
+foreach ($ReleaseFile in $ReleaseFiles) {
+    $DownloadedFile = Join-Path $ReleaseVerify (Split-Path -Leaf $ReleaseFile)
+    $LocalDigest = (Get-FileHash -LiteralPath $ReleaseFile -Algorithm SHA256).Hash
+    $RemoteDigest = (Get-FileHash -LiteralPath $DownloadedFile -Algorithm SHA256).Hash
+    if ($LocalDigest -ne $RemoteDigest) { throw "Release 附件不一致：$ReleaseFile" }
+}
+```
+
+三文件必须同批重建和验证，HTML 内嵌的两个 EXE 与独立附件须逐字节一致。GitHub 的附件上传不具有三文件原子性；部分失败时使用 backup 原文件以同名 --clobber 恢复三个附件，并使用 release-before.json 的原 name/body 恢复说明，再核对原摘要。保留失败记录，修复后重跑，不能将部分成功标为发布成功。
+
+已有标签与 GitHub 自动生成的“Source code”附件仍对应历史提交，本轮源码使用发布说明中的提交链接和 ZIP。相同版本但字节更新的用户需手动下载并重装；仅在明确指定新四段版本号时升版、新建标签和 Release。
+
+### 回填发布证据
+
+重下载核对通过后，在 B1“本轮交付证据”记录实现提交、三附件摘要和验收边界。审计区不参与内嵌正文，回填不需重建安装包。
+
+```powershell
+Invoke-Checked -Program $TaskPython -Arguments @("verify_devlog.py")
+git add -- "C-04-Devlog/B1-Project-Files.md"
+git diff --cached --check
+git diff --cached
+git commit -m "docs: 记录 GitHub 与 Release 发布验收"
+git push origin main
+git status --short
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+gh release view $ReleaseTag --repo $RepoName
+```
+
+最终工作区应干净，本地 HEAD 与远端 main 一致，GitHub 网页可见 B3/B4/README，三附件摘要与本地正式产物相同。审计提交可晚于构建源码提交；发布说明保留实际构建对应的实现提交号。
 
 ## 免责声明
 
