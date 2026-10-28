@@ -128,11 +128,7 @@ namespace Excel_Iterate
         }
         public bool GetAgentTabVisible(object control) { return AgentController.Visible; }
         public bool GetAgentExtensionPressed(object control) { return AgentController.Visible; }
-        public void OnToggleAgentExtension(object control, bool pressed)
-        {
-            string warning = AgentController.SetVisible(pressed);
-            if (warning.Length != 0) UiDialog.Show(warning, "Agent扩展", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
+
         internal static void CloseAgentExtension()
         {
             AgentDocumentWindows.CloseAll();
@@ -144,21 +140,21 @@ namespace Excel_Iterate
             if (agentController != null) agentController.Clear();
             agentController = null;
         }
-        public void OnOpenAgentDialogSizes(object control)
+        private void OnOpenAgentDialogSizesCore(object control)
         {
             try {
 if(!EnsureApplication())throw new InvalidOperationException("请先打开对应 WPS 文件。");
                 DialogSizesForm.Open(); }
             catch (Exception ex) { Log("弹窗设置打开失败："+ex); UiDialog.Show("无法打开弹窗设置："+ex.Message,"自定配置",MessageBoxButtons.OK,MessageBoxIcon.Warning); }
         }
-        public void OnOpenAgentReadme(object control) { OpenAgentDocument(false); }
-        public void OnOpenAgentUserGuide(object control) { OpenAgentDocument(true); }
+
+
         private static void OpenAgentDocument(bool userGuide)
         {
             try { AgentDocumentWindows.Open(userGuide); }
             catch (Exception ex) { Log("Agent 文档读取失败：" + ex); UiDialog.Show("无法读取内嵌文档：" + ex.Message, "开发流程", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
-        public void OnAgentHome(object control)
+        private void OnAgentHomeCore(object control)
         {
             string path = "";
             try
@@ -190,39 +186,6 @@ if(!EnsureApplication())throw new InvalidOperationException("请先打开对应 
             IPictureDisp custom = RibbonConfig.GetImage(id);
             return custom ?? MakeRibbonIcon(RibbonConfig.BuiltinIconKind(id) ?? "agent", Ui.Blue, RibbonConfig.GetImageSize(id));
         }
-        public IPictureDisp GetImage_btnAgentExtension(object control) { return GetAgentImage("btnAgentExtension"); }
-        public IPictureDisp GetImage_menuAgentApi(object control) { return GetAgentImage("menuAgentApi"); }
-        public IPictureDisp GetImage_menuAgentCloud(object control) { return GetAgentImage("menuAgentCloud"); }
-        public IPictureDisp GetImage_menuAgentSites(object control) { return GetAgentImage("menuAgentSites"); }
-        public IPictureDisp GetImage_menuAgentChina(object control) { return GetAgentImage("menuAgentChina"); }
-        public IPictureDisp GetImage_menuAgentOverseas(object control) { return GetAgentImage("menuAgentOverseas"); }
-        public IPictureDisp GetImage_menuAgentCustomization(object control) { return GetAgentImage("menuAgentCustomization"); }
-        public IPictureDisp GetImage_btnAgentDialogSizes(object control) { return GetAgentImage("btnAgentDialogSizes"); }
-        public IPictureDisp GetImage_menuAgentWorkflow(object control) { return GetAgentImage("menuAgentWorkflow"); }
-        public IPictureDisp GetImage_btnAgentReadme(object control) { return GetAgentImage("btnAgentReadme"); }
-        public IPictureDisp GetImage_btnAgentUserGuide(object control) { return GetAgentImage("btnAgentUserGuide"); }
-        public IPictureDisp GetImage_btnAgentHome(object control) { return GetAgentImage("btnAgentHome"); }
-        public IPictureDisp GetImage_btnAgentChatGPT(object control) { return GetAgentImage("btnAgentChatGPT"); }
-        public IPictureDisp GetImage_btnAgentClaude(object control) { return GetAgentImage("btnAgentClaude"); }
-        public IPictureDisp GetImage_btnAgentWorkBuddy(object control) { return GetAgentImage("btnAgentWorkBuddy"); }
-        public IPictureDisp GetImage_btnAgentTrae(object control) { return GetAgentImage("btnAgentTrae"); }
-        public IPictureDisp GetImage_btnAgentQoder(object control) { return GetAgentImage("btnAgentQoder"); }
-        public IPictureDisp GetImage_btnAgentGemini(object control) { return GetAgentImage("btnAgentGemini"); }
-        public IPictureDisp GetImage_btnAgentDeepSeek(object control) { return GetAgentImage("btnAgentDeepSeek"); }
-        public IPictureDisp GetImage_btnAgentDoubao(object control) { return GetAgentImage("btnAgentDoubao"); }
-        public IPictureDisp GetImage_btnAgentKimi(object control) { return GetAgentImage("btnAgentKimi"); }
-        public IPictureDisp GetImage_btnAgentBaidu(object control) { return GetAgentImage("btnAgentBaidu"); }
-        public IPictureDisp GetImage_btnAgentAliyun(object control) { return GetAgentImage("btnAgentAliyun"); }
-        public void OnOpenUrl_btnAgentChatGPT(object control) { OpenAgentUrl("btnAgentChatGPT"); }
-        public void OnOpenUrl_btnAgentClaude(object control) { OpenAgentUrl("btnAgentClaude"); }
-        public void OnOpenUrl_btnAgentWorkBuddy(object control) { OpenAgentUrl("btnAgentWorkBuddy"); }
-        public void OnOpenUrl_btnAgentTrae(object control) { OpenAgentUrl("btnAgentTrae"); }
-        public void OnOpenUrl_btnAgentQoder(object control) { OpenAgentUrl("btnAgentQoder"); }
-        public void OnOpenUrl_btnAgentGemini(object control) { OpenAgentUrl("btnAgentGemini"); }
-        public void OnOpenUrl_btnAgentDeepSeek(object control) { OpenAgentUrl("btnAgentDeepSeek"); }
-        public void OnOpenUrl_btnAgentDoubao(object control) { OpenAgentUrl("btnAgentDoubao"); }
-        public void OnOpenUrl_btnAgentKimi(object control) { OpenAgentUrl("btnAgentKimi"); }
-        public void OnOpenUrl_btnAgentBaidu(object control) { OpenAgentUrl("btnAgentBaidu"); }
-        public void OnOpenUrl_btnAgentAliyun(object control) { OpenAgentUrl("btnAgentAliyun"); }
+
     }
 }

@@ -1,10 +1,10 @@
 **三项目档案与版本**
 
-最后更新：2026-10-27 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-28 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
-本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、门禁五类。加载项主选项卡的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。版本 0.9.9.3，构建不安装或操作用户 WPS。
+本仓库维护三个输出：WPS 文字加载项 WordUpdater、WPS 表格加载项 Excel-Iterate，以及两者共用的单文件离线网站 XyCabin。文档分为接手入口、使用说明、项目档案、开发经验、门禁、代码索引六类。加载项主选项卡的“扩展→Agent扩展”显示 Agent-Evo，提供概览/全文、网站和自定配置。版本 0.9.9.3，构建不安装或操作用户 WPS。
 
 ## 1. 目录与阅读顺序
 
@@ -15,6 +15,7 @@
 | B1-Project-Files.md                        | 本章与三个项目档案：定位、版本摘要、命令按钮、源码地图、当前状态 |
 | [B2-DevExperience.md](B2-DevExperience.md) | 共享开发经验与三个专属经验                    |
 | \[B3-Gate Control.md\](B3-Gate Control.md) | 共享门禁与网站门禁                        |
+| [B4-Code Index.md](<B4-Code Index.md>) | 两个加载项全部末级功能的目录树、入口、核心实现与共用依赖 |
 
 ## 2. 项目与交付物
 
@@ -26,7 +27,7 @@
 
 ## 3. 源码与资源目录
 
-三个项目统一为 `AA-Program`（配置器、启动器、正式产物）与 `AB-Graphic`（界面截图、功能区图标、示意 SVG）；专属源码在产品 `src/`，公共实现只在同级 `C-00-Shared`，构建中间物与验证证据在各产品 `build/`。文档只在仓库根 `C-04-Devlog` 维护，项目内不再保留副本。
+三个项目统一为 `AA-Program`（配置器、启动器、正式产物）与 `AB-Graphic`（界面截图、功能区图标、示意 SVG）；功能源码在产品 `AC-Original Code/`，按选项卡、分组和菜单叶子归档；加载框架、生成源码及工具仍在 `src/`。公共实现只在同级 `C-00-Shared`，依赖在 `lib/`，构建中间物与验证证据在各产品 `build/`。完整功能导航只在 [B4-Code Index](<B4-Code Index.md>) 维护。文档只在仓库根 `C-04-Devlog` 维护，项目内不再保留副本。
 
 # 二. Excel-Iterate 项目档案
 
@@ -54,40 +55,36 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ## 3. 当前命令按钮概览
 
-本表以当前生成的功能区 XML 现状为准，逐行列出全部顶层命令按钮及菜单子项，唯一数据源为 `AA-Program/C1-Exceliterate_Configure.py` 的 `BUTTONS` 与 `EXTRA_TABS`；按钮、菜单或网址调整后须同步本表，Agent-Evo 为默认隐藏页，命令名称与顺序以用户自定配置为准。
+本表以配置器 BUTTONS 与 EXTRA_TABS 为准，保留顶层功能概览。逐项源码路径、回调与共用依赖统一见 [B4-Code Index](<B4-Code Index.md>)；Agent-Evo 默认隐藏，显示名称和排序可由用户自定。
 
-| 命令按钮    | 选项卡与分组           | 子选项                                                                                                                                             | 功能摘要                                                                                    | 实现来源                                                                                                                                                               |
-| ------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 追踪引用    | Excel-Iterate·数据 | —                                                                                                                                               | 解析当前单元格公式，逐项展开被引用单元格的详情；错误行红字，选中后可「显示错误来源」回溯定位源头格并跳转                                    | OnTracePrecedents（Connect.cs:392）→ TrackerForm.cs；ErrorSourceEngine.cs/ErrorSourceForm.cs                                                                          |
-| 追踪从属    | Excel-Iterate·数据 | —                                                                                                                                               | 遍历所有已打开工作簿，找出哪些单元格的公式引用了当前单元格                                                           | OnTraceDependents（Connect.cs:420）→ TrackerForm.cs                                                                                                                  |
-| 筛选增强    | Excel-Iterate·数据 | 按列筛选、快捷高筛                                                                                                                                       | 按活动单元格所在表格的表头选择显示列                                                                      | OnFilterColumns（Connect.cs:277）→ ColumnFilterForm.cs；OnQuickAdvancedFilter（Connect.cs:256）→ WorkbookFeatures.cs                                                    |
-| 审计工具箱   | Excel-Iterate·数据 | 表头匹配增加、合并抵消（往来抵消、收入成本抵消）                                                                                                                        | 按表头列名批量匹配多个工作簿，把列数据合并到目标工作簿；往来抵消按列映射生成抵消分录，收入成本抵消按三维聚合生成矩阵式底稿（借贷恒等式保证平衡），两者均写入前备份、可一键还原 | OnMergeHeaders（Connect.MergeHeaders.cs:24）→ MergeHeadersForm.cs；OnEliminationReceivable/OnEliminationRevenueCost（Connect.Elimination.cs:46/49）→ EliminationForm.cs |
-| 一键公式    | Excel-Iterate·操作 | 进行公式封装（IFERROR封装〔默认返回空、自定义封装〕、ROUND封装〔默认保留2位、自定义封装〕、ABS封装、自定义函数）、移除公式封装、数值计算（加〔默认加100、自定义计算〕、减〔默认减100、自定义计算〕、乘〔默认乘100、自定义计算〕、除〔默认除10000、自定义计算〕） | 封装或移除当前选区公式的最外层函数                                                                       | 15 个回调均在 Connect.cs:197-228，委托 FormulaCommandEngine.cs                                                                                                             |
-| 文件操作    | Excel-Iterate·操作 | 文件批量整理、文件批量命名、文件提取名称                                                                                                                            | 整理文件或通过工作表清单批量重命名                                                                       | OnOrganizeFiles/OnRenameFiles（Connect.cs:242/249）→ FileToolForms.cs；OnFileNames（Connect.FileNames.cs:422）                                                          |
-| 链接助手    | Excel-Iterate·操作 | —                                                                                                                                               | 扫描并说明名称外链，C列填新路径或“断开链接”；名称清理先预检，整簿备份可恢复                                                         | OnLinkAssistant（Connect.cs:270）→ LinkAssistant + LinkBreakActions + LinkNameAnalysis                                                                                                                  |
-| 生成目录    | Excel-Iterate·操作 | —                                                                                                                                               | 链接全部工作表，隐藏表点击后显示并跳转                                                                     | OnGenerateDirectory（Connect.cs:263）→ WorkbookFeatures.cs                                                                                                           |
-| 问题反馈    | Excel-Iterate·反馈 | —                                                                                                                                               | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版）                                                             | OnOpenUrl_btnFeedback（Connect.cs:453）→ RibbonConfig.GetUrl 字典                                                                                                      |
-| Agent扩展 | Excel-Iterate·扩展 | —                                                                                                                                               | 显示或隐藏 Agent-Evo 选项卡（开关，按用户记住选择）                                                         | OnToggleAgentExtension（Connect.Agent.cs:131）                                                                                                                       |
-| 调用API   | Agent-Evo·详情     | 智能云-API（百度智能云、阿里智能云）、Agent-API（国内Agent：WorkBuddy、TRAE、Qoder、DeepSeek、豆包、Kimi；国外Agent：ChatGPT、Claude、Gemini）                                     | 四级嵌套菜单，打开对应云控制台或 AI 网站（无 screentip，url 按钮）                                              | OnOpenUrl_btnAgentXxx×9 与 OnOpenUrl_btnAgentBaidu/Aliyun（Connect.Agent.cs）→ RibbonConfig.GetUrl 字典                                                                 |
-| 开发流程    | Agent-Evo·详情     | 开发预览、用户预览、XyCabin                                                                                                                               | 打开内嵌开发/用户文档与网站首页                                                                        | OnOpenAgentReadme/OnOpenAgentUserGuide（Connect.Agent.cs:154/155）→ AgentDocumentForm.cs；OnAgentHome（Connect.Agent.cs:161）→ AgentLocalFiles.cs                       |
-| 自定配置    | Agent-Evo·操作     | 自定排序、自定名称、自定格式、交互弹窗                                                                                                                             | Agent 弹窗的自定义项                                                                           | OnAgentSort/Names/Formats（Connect.Customization.cs:16-18）→ AgentCustomization.cs；OnOpenAgentDialogSizes（Connect.Agent.cs:147）→ DialogSizeEditor.cs                 |
-| 实验计划    | Agent-Evo·操作     | OCR识别（置灰占位，未开放）、需求记录                                                                                                                            | 实验性功能入口                                                                                 | OnAgentOcrPlaceholder（Connect.Customization.cs:20，空实现）；OnAgentRequirements（Connect.Customization.cs:19）→ AgentCustomization.cs                                     |
+| 命令按钮 | 选项卡与分组 | 子选项 | 功能摘要 |
+| --- | --- | --- | --- |
+| 追踪引用 | Excel-Iterate·数据 | — | 解析当前单元格公式，逐项展开被引用单元格的详情；错误行红字，选中后可「显示错误来源」回溯定位源头格并跳转 |
+| 追踪从属 | Excel-Iterate·数据 | — | 遍历所有已打开工作簿，找出哪些单元格的公式引用了当前单元格 |
+| 筛选增强 | Excel-Iterate·数据 | 按列筛选、快捷高筛 | 按活动单元格所在表格的表头选择显示列 |
+| 审计工具箱 | Excel-Iterate·数据 | 表头匹配、合并抵消（往来抵消、收入成本抵消） | 按表头列名批量匹配多个工作簿，把列数据合并到目标工作簿；往来抵消按列映射生成抵消分录，收入成本抵消按三维聚合生成矩阵式底稿（借贷恒等式保证平衡），两者均写入前备份、可一键还原 |
+| 一键公式 | Excel-Iterate·操作 | 进行公式封装（IFERROR封装（默认返回空、自定义封装）、ROUND封装（默认保留2位、自定义封装）、ABS封装、自定义函数）、移除公式封装、数值计算（加（默认加、自定义计算）、减（默认减、自定义计算）、乘（默认乘、自定义计算）、除（默认除、自定义计算）） | 封装或移除当前选区公式的最外层函数 |
+| 文件操作 | Excel-Iterate·操作 | 批量处理（文件批量整理、文件批量命名、文件提取名称）、文件转换与 PDF 工具（当前文档转 PDF、批量文件转 PDF、PDF 添加水印、PDF 拆分、PDF 合并） | 文件批量整理、命名、名称提取；当前文档或批量转 PDF，以及 PDF 水印、拆分和合并。 |
+| 链接助手 | Excel-Iterate·操作 | — | 扫描并说明名称外链，C列填新路径或“断开链接”；名称清理先预检，整簿备份可恢复 |
+| 生成目录 | Excel-Iterate·操作 | — | 链接全部工作表，隐藏表点击后显示并跳转 |
+| 问题反馈 | Excel-Iterate·反馈 | — | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版） |
+| Agent扩展 | Excel-Iterate·扩展 | — | 显示或隐藏 Agent-Evo 选项卡（开关，按用户记住选择） |
+| 调用API | Agent-Evo·详情 | 智能云-API（百度智能云、阿里智能云）、Agent-API（国内Agent（WorkBuddy、TRAE、Qoder、DeepSeek、豆包、Kimi）、国外Agent（ChatGPT、Claude、Gemini）） | 四级嵌套菜单，打开对应云控制台或 AI 网站（无 screentip，url 按钮） |
+| 开发流程 | Agent-Evo·详情 | 开发预览、用户预览、XyCabin | 打开内嵌开发/用户文档与网站首页 |
+| 自定配置 | Agent-Evo·操作 | 自定排序、自定名称、自定格式、交互弹窗 | Agent 弹窗的自定义项 |
+| 实验计划 | Agent-Evo·操作 | OCR识别、需求记录 | 实验性功能入口 |
 
 ## 4. 源码地图与运行入口
 
-| 子系统        | 当前入口（未加目录者均在src/addin）                                                                                                                                |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 身份/生成      | project.json、project_support.py、AA-Program/C1-Exceliterate_Configure.py、src/configuration/configure_core.py                                           |
-| 加载/界面      | ThisAddIn、Connect及分部、Ribbon.g、InteropDefs、UiKit、HostDialogService                                                                                     |
-| Agent/自定配置 | Connect.Agent/Customization、AgentDocumentForm/LocalFiles、AgentCustomization、DialogFormatting、FormatEditorThread/Session、CustomizationSaving           |
-| 尺寸/预览      | DialogSizes、DialogSizeEditor、DialogPreviewFactory；src/tools/dialog_catalog_probe与DialogSizesProbe                                                     |
-| 单元格/公式/筛选  | FormulaRefParser、Tracker引擎、ErrorSourceEngine/Form、FormulaCommandEngine/Interaction/WindowThread、WorksheetIdentity、ColumnVisibilityEngine              |
-| 目录/合并      | WorkbookFeatures、FormulaRefRewriter、MergeHeadersEngine/Host/Form、EliminationEngine/Matrix/Diff/Host/Form、Connect.MergeHeaders、Connect.Elimination     |
-| 链接/文件/OCR  | XlsxLinkPackage、LinkAssistant/BreakActions/Batch/OperationLog、LinkNameAnalysis、FileOperations/OperationBatch/RecycleFiles、FileOcr/Selection/CloudOcr、Connect.FileNames |
-| 构建/安装      | build/rebuild/resign/gen_manifest/build_installer/verify_package/validate.py；src/installer及src/tools                                                  |
-| 验证/网站      | src/testharness、src/tools；同级Website完整源码与父verify_shared.py                                                                                             |
+| 子系统 | 位置与入口 |
+| --- | --- |
+| 功能实现 | AC-Original Code；完整定位见 [B4-Code Index](<B4-Code Index.md>)，机器映射在 project.json 的 features |
+| 加载与生成 | src/addin 的 ThisAddIn、Connect、AssemblyInfo 及生成文件；AA-Program 配置器和 src/configuration |
+| 跨产品共用 | C-00-Shared；产品只保留功能薄入口，经 @shared/ 直接编译引用共用实现 |
+| 构建与验证 | 根目录构建脚本；src/installer、src/pdf、src/tools、src/testharness；父目录 verify_shared.py |
+| 依赖与证据 | lib 为必要编译依赖；build 为中间物、候选包、缓存与验证证据 |
 
-单项目：`python rebuild.py --mode full` 后 `python validate.py --background`。联合文档/网页交付：Website `python rebuild.py --background --mode full`，随后 `python validate.py --background`。用已实际--version验证的解释器；新设备从[从零流程](B2-DevExperience.md#1-从零构建加载项)开始。
+单项目：运行 python rebuild.py --background --mode full，再运行 python validate.py --background。源码结构迁移验证使用 --installer-output 将候选包写入 build，并通过 validate.py 的 --installer 指定候选包。联合交付仍使用 Website 入口。
 
 ## 5. 当前状态与交付
 
@@ -108,6 +105,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 本轮沿用版本与发布身份，公共源码迁至C-00-Shared，项目清单直接引用，生成文件与产品入口保留原位置。抵消窗口在首次可见前应用最大化，来源事件先订阅再回填；局部缓冲覆盖布局、网格和拖柄，尺寸预览保持普通窗口。默认布局按窗口及DPI延迟测量；从属扫描和抵消预检通过原宿主线程分块读取、后台纯数据运算，来源变化时中止。宿主不支持变化监听时回退同步读取并记录兼容路径。EliminationSession统一持有目标、快照和任务，大结果预览按需取值，仍完整测宽、支持复制；取消与失败重试保留尚未还原的目标。实际WPS黑影、键入、菜单、跨屏DPI与写入还原由用户验收，离线检查不能代替。
 
 ### (2). 本轮交付证据
+
+本次功能源码分类完成 54 个末级入口迁移，完整路径见 [B4-Code Index](<B4-Code Index.md>)。两个候选包的完整重建、50项后台验证、公开接口与方法体对照、签名和载荷均通过；详见[源码分类验证记录](../C-01-ExcelIterate/build/feature-layout-audit/delivery-review.md)及[统计与候选包摘要](../C-01-ExcelIterate/build/feature-layout-audit/summary.json)。本次只交付源码组织与导航及已验证候选包，原正式安装包和网站保持原摘要；WPS实机点击待验收。
 
 后续本地完整重建后的包摘要已变化，当前安装包以[远端发布校验记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
@@ -150,35 +149,33 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ## 3. 当前命令按钮概览
 
-本表以当前生成的功能区 XML 现状为准，逐行列出全部顶层命令按钮及菜单子项，唯一数据源为 `AA-Program/C2-Wordupdater_Configure.py` 的 `BUTTONS` 与 `EXTRA_TABS`；按钮、菜单或网址调整后须同步本表，Agent-Evo 为默认隐藏页，命令名称与顺序以用户自定配置为准。
+本表以配置器 BUTTONS 与 EXTRA_TABS 为准，保留顶层功能概览。逐项源码路径、回调与共用依赖统一见 [B4-Code Index](<B4-Code Index.md>)；Agent-Evo 默认隐藏，显示名称和排序可由用户自定。
 
-| 命令按钮    | 选项卡与分组         | 子选项                                                                                                         | 功能摘要                                       | 实现来源                                                                                                                                               |
-| ------- | -------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 更新链接    | WordUpdater·链接 | —                                                                                                           | 一键批量更新所选范围内的全部链接                           | OnUpdateLinks（Connect.cs:236）→ UpdateEngine.cs                                                                                                     |
-| 链接Excel | WordUpdater·链接 | —                                                                                                           | 按所选规则矩形逐格链接，允许选区外合并；按来源路径定位工作簿并读取Ctrl多选 | OnLinkToExcel（Connect.cs:498）→ LinkPasteEngine.cs + LinkPasteGeometry.cs + EtSelectionReader.cs                                                                            |
-| 查看链接    | WordUpdater·链接 | —                                                                                                           | 查看本文档引用了哪些Excel文件及其工作表/区域                  | OnViewLinks（Connect.cs:319）→ LinkViewForm.cs + LinkViewEngine.cs                                                                                   |
-| 全选表格    | WordUpdater·操作 | —                                                                                                           | 选中本文档中的全部表格（正文不受影响）                        | OnSelectAllTables（Connect.cs:396）→ TableSelectEngine.cs                                                                                            |
-| 问题反馈    | WordUpdater·反馈 | —                                                                                                           | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版）                | OnOpenUrl_btnFeedback（Connect.cs:170）                                                                                                              |
-| Agent扩展 | WordUpdater·扩展 | —                                                                                                           | 显示或隐藏 Agent-Evo 选项卡（开关）                    | OnToggleAgentExtension（Connect.Agent.cs:131）                                                                                                       |
-| 调用API   | Agent-Evo·详情   | 智能云-API（百度智能云、阿里智能云）、Agent-API（国内Agent：WorkBuddy、TRAE、Qoder、DeepSeek、豆包、Kimi；国外Agent：ChatGPT、Claude、Gemini） | 四级嵌套菜单，打开对应云控制台或 AI 网站（无 screentip，url 按钮） | OnOpenUrl_btnAgentXxx×9 与 OnOpenUrl_btnAgentBaidu/Aliyun（Connect.Agent.cs）→ RibbonConfig.GetUrl 字典                                                 |
-| 开发流程    | Agent-Evo·详情   | 开发预览、用户预览、XyCabin                                                                                           | 打开内嵌开发/用户文档与网站首页                           | OnOpenAgentReadme/OnOpenAgentUserGuide（Connect.Agent.cs:154/155）→ AgentDocumentForm.cs；OnAgentHome（Connect.Agent.cs:161）→ AgentLocalFiles.cs       |
-| 自定配置    | Agent-Evo·操作   | 自定排序、自定名称、自定格式、交互弹窗                                                                                         | Agent 弹窗的自定义项                              | OnAgentSort/Names/Formats（Connect.Customization.cs:16-18）→ AgentCustomization.cs；OnOpenAgentDialogSizes（Connect.Agent.cs:147）→ DialogSizeEditor.cs |
-| 实验计划    | Agent-Evo·操作   | OCR识别（置灰占位，未开放）、需求记录                                                                                        | 实验性功能入口                                    | OnAgentOcrPlaceholder（Connect.Customization.cs:20，空实现）；OnAgentRequirements（Connect.Customization.cs:19）→ AgentCustomization.cs                     |
+| 命令按钮 | 选项卡与分组 | 子选项 | 功能摘要 |
+| --- | --- | --- | --- |
+| 更新链接 | WordUpdater·链接 | — | 一键批量更新所选范围内的全部链接 |
+| 链接Excel | WordUpdater·链接 | — | 按所选规则矩形逐格链接，允许选区外合并；按来源路径定位工作簿并读取Ctrl多选 |
+| 查看链接 | WordUpdater·链接 | — | 查看本文档引用了哪些Excel文件及其工作表/区域 |
+| 全选表格 | WordUpdater·操作 | — | 选中本文档中的全部表格（正文不受影响） |
+| 文件操作 | WordUpdater·操作 | 文件转换与 PDF 工具（当前文档转 PDF、批量文件转 PDF、PDF 添加水印、PDF 拆分、PDF 合并） | 当前文档或批量转 PDF，以及 PDF 水印、拆分和合并。 |
+| 问题反馈 | WordUpdater·反馈 | — | 有BUG或新增功能请发送邮箱（打开 QQ 邮箱网页版） |
+| Agent扩展 | WordUpdater·扩展 | — | 显示或隐藏 Agent-Evo 选项卡（开关） |
+| 调用API | Agent-Evo·详情 | 智能云-API（百度智能云、阿里智能云）、Agent-API（国内Agent（WorkBuddy、TRAE、Qoder、DeepSeek、豆包、Kimi）、国外Agent（ChatGPT、Claude、Gemini）） | 四级嵌套菜单，打开对应云控制台或 AI 网站（无 screentip，url 按钮） |
+| 开发流程 | Agent-Evo·详情 | 开发预览、用户预览、XyCabin | 打开内嵌开发/用户文档与网站首页 |
+| 自定配置 | Agent-Evo·操作 | 自定排序、自定名称、自定格式、交互弹窗 | Agent 弹窗的自定义项 |
+| 实验计划 | Agent-Evo·操作 | OCR识别、需求记录 | 实验性功能入口 |
 
 ## 4. 源码地图与运行入口
 
-| 子系统        | 当前入口（未加目录者均在src/addin）                                                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 身份/生成      | project.json、project_support.py、AA-Program/C2-Wordupdater_Configure.py、src/configuration/configure_core.py                                  |
-| 加载/界面      | ThisAddIn、Connect及分部、Ribbon.g、InteropDefs、UiKit、HostDialogService                                                                           |
-| Agent/自定配置 | Connect.Agent/Customization、AgentDocumentForm/LocalFiles、AgentCustomization、DialogFormatting、FormatEditorThread/Session、CustomizationSaving |
-| 尺寸/预览      | DialogSizes、DialogSizeEditor、DialogPreviewFactory；src/tools/dialog_catalog_probe与DialogSizesProbe                                           |
-| LINK/选区    | LinkPasteGeometry/Engine、EtSelectionReader、TableSelectEngine                                                                                |
-| 更新/查看/清理   | UpdateEngine、LinkViewEngine/Form、FlashHighlighter、EtCleanup                                                                                 |
-| 构建/安装      | build/rebuild/resign/gen_manifest/build_installer/verify_package/validate.py；src/installer及src/tools                                        |
-| 验证/网站      | src/testharness、src/tools；同级Website完整源码与父verify_shared.py                                                                                   |
+| 子系统 | 位置与入口 |
+| --- | --- |
+| 功能实现 | AC-Original Code；完整定位见 [B4-Code Index](<B4-Code Index.md>)，机器映射在 project.json 的 features |
+| 加载与生成 | src/addin 的 ThisAddIn、Connect、AssemblyInfo 及生成文件；AA-Program 配置器和 src/configuration |
+| 跨产品共用 | C-00-Shared；产品只保留功能薄入口，经 @shared/ 直接编译引用共用实现 |
+| 构建与验证 | 根目录构建脚本；src/installer、src/pdf、src/tools、src/testharness；父目录 verify_shared.py |
+| 依赖与证据 | lib 为必要编译依赖；build 为中间物、候选包、缓存与验证证据 |
 
-单项目：`python rebuild.py --mode full` 后 `python validate.py --background`。联合文档/网页交付：Website `python rebuild.py --background --mode full`，随后 `python validate.py --background`。用已实际--version验证的解释器；新设备从[从零流程](B2-DevExperience.md#1-从零构建加载项)开始。
+单项目：运行 python rebuild.py --background --mode full，再运行 python validate.py --background。源码结构迁移验证使用 --installer-output 将候选包写入 build，并通过 validate.py 的 --installer 指定候选包。联合交付仍使用 Website 入口。
 
 ## 5. 当前状态与交付
 
@@ -195,6 +192,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 本轮沿用版本、原证书及稳定命令，公共实现改为C-00-Shared单源引用。更新链接与链接查看统一使用WordHostStateScope：完整取得提示、刷新状态后才修改，设置失败时恢复已触碰状态，恢复失败明确报告；移除诊断前固定等待，不关闭非自有进程。共享窗口尺寸和网格测宽采用统一生命周期与缓存。原逐格链接、Ctrl来源定位、表格结构、数值变化标黄及配置继续回归；本轮不连接实际宿主、不自动安装或关闭WPS。
 
 ### (2). 本轮交付证据
+
+本次功能源码分类完成 31 个末级入口迁移，完整路径见 [B4-Code Index](<B4-Code Index.md>)。两个候选包的完整重建、50项后台验证、公开接口与方法体对照、签名和载荷均通过；详见[源码分类验证记录](../C-01-ExcelIterate/build/feature-layout-audit/delivery-review.md)及[统计与候选包摘要](../C-01-ExcelIterate/build/feature-layout-audit/summary.json)。本次只交付源码组织与导航及已验证候选包，原正式安装包和网站保持原摘要；WPS实机点击待验收。
 
 后续本地完整重建后的包摘要已变化，当前安装包以[远端发布校验记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 

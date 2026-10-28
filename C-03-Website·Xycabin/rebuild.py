@@ -38,7 +38,7 @@ def rebuild():
     gates = []
     skipped = {'G-12': '--skip-ui', 'G-15': '--skip-ui'} if args.skip_ui else {}
     try:
-        # 文档、共享与入口类门禁前置：先核对五份文档、公共源码与三个 CMD 入口，再盘点与缓存。
+        # 文档、共享与入口类门禁前置：先核对六份文档、公共源码与三个 CMD 入口，再盘点与缓存。
         run([sys.executable, ROOT / 'src/tools/devlog_probe.py'], ROOT, ROOT / 'build/devlog-validation.log')
         checker = ROOT.parent / 'verify_shared.py'
         if not checker.is_file():

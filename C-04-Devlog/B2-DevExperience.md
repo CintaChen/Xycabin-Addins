@@ -49,6 +49,14 @@ ThisAddIn使用 `[StartupObject(0)]`、FullTrust，继承 `Microsoft.Office.Tool
 
 公共实现只在C-00-Shared维护，产品project.json通过@shared/引用。source_layout.resolve_source限制访问产品目录或公共目录，拒绝缺失及越界引用；共享Python通过产品薄入口显式取得PROJECT_ROOT，不能按共享文件位置推导产品。产品身份、生成文件、库依赖和输出保持产品隔离；不新增运行时公共DLL。源码探针读取与编译相同的物理实现；缓存和构建期指纹包含公共输入。SourceLayoutProbe用摘要注入验证公共改动使两产品缓存同时失效，不在构建中修改真实源文件。
 
+### (5). 功能目录与代码索引
+
+两个加载项的功能实现位于 AC-Original Code，层级为选项卡→分组→菜单→末级功能。末级 Connect 分部文件保存真实按钮回调，算法和弹窗按专属归叶子、共用归就近 _Shared 的原则维护；跨产品业务仍只在 C-00-Shared。加载框架、生成文件、配置器、安装器及校验保留原工程目录。
+
+完整导航仅维护在 [B4-Code Index](<B4-Code Index.md>)。新增功能时同步配置器、project.json 的 sources/features，再运行 python C-00-Shared/feature_index.py --write；默认不带 --write 为只读一致性检查。features 按稳定控件 ID 记录目录、入口、实现依赖与 tests，显示名称和排序变化不触发目录重命名。
+
+编译清单使用物理相对路径。历史源码守卫通过 source_aliases 显式连接拆分前文件名与实际编译片段；Python 读聚合文本用 source_text，读取单一物理文件用 source_path；C# SourcePaths 的目录扫描枚举实际编译文件，读取拆分别名组合对应片段。缺失、歧义或未参与编译的依赖必须失败，不因旧路径消失而跳过。缓存与清理盘点将 AC-Original Code 视为必要源码输入。
+
 ## 2. 功能区按钮、图标与菜单
 
 ### (1). 配置与接线
@@ -115,7 +123,7 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 | 独立下拉框（7）        | 顶部目标“工作表”targetSheet，Control.Name为targetSheetBox                       | ComboBox；选项、当前值、可否输入及宽度                                    |
 | 数值输入框（8，另窗例子）   | “自定排序”的“同一菜单中的顺序号”number，Name为orderNumber；“自定格式”的字号size，Name为fontSize  | NumericUpDown；带数值调节按钮，可改范围、步长、精度及尺寸；合并窗的“表头行”不是此类控件        |
 | 网格下拉列／下拉单元格（10） | 来源网格“工作表”列sheet；某条来源记录的row.Cells["sheet"]是下拉单元格。图中为空表，只标出列范围，尚无可见下拉单元格 | DataGridViewComboBoxColumn／Cell；明确整列或指定记录；各来源工作簿可有不同的工作表选项 |
-| 按钮／命令项（12）      | 底部“复制日志”按钮CopyLog；功能区命令另写完整菜单路径，如“审计工具箱→表头匹配增加”                        | 窗内RoundedButton或Ribbon命令；文字、图标、状态、尺寸及点击动作                  |
+| 按钮／命令项（12）      | 底部“复制日志”按钮CopyLog；功能区命令另写完整菜单路径，如“审计工具箱→表头匹配”                        | 窗内RoundedButton或Ribbon命令；文字、图标、状态、尺寸及点击动作                  |
 | 宽度拖柄（13）        | 顶部目标路径输入框右侧的细竖柄；部分按钮旁也有同类竖柄                                            | WidthGrip；鼠标左右拖动，调整对应输入框或按钮宽度；竖柄的外观方向不等于拖动方向               |
 | 高度拖柄（14）        | 日志卡片上方gripSamples、下方gripReport两条细横条                                    | RowGrip；鼠标上下拖动，调整父布局行高；上方同时调整公式样本区与日志区，下方只调整日志区、固定按钮栏      |
 | 垂直／纵向滚动条（15）    | 图2网格放大示例右侧的竖向滚动条；日志文本框也用同类纵向滚动条浏览多行文字                                  | 改变内容的垂直可见位置，不改变卡片或文本框尺寸                                    |
@@ -129,10 +137,10 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 | 准确称呼（对应图号）      | 实例或使用状态                               | 实现、修改范围及源码入口                                                                                                                                                                                        |
 | --------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)、[FileToolForms.cs](../C-01-ExcelIterate/src/addin/FileToolForms.cs)                              |
-| 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](../C-01-ExcelIterate/src/addin/ColumnFilterForm.cs)                                                                             |
-| 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](../C-01-ExcelIterate/src/addin/LinkAssistant.cs)                                                                                                 |
-| 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs)、[DialogSizeEditor.cs](../C-00-Shared/src/addin/DialogSizeEditor.cs) |
+| 独立复选框（19）       | “自定格式”的粗体／斜体；“文件批量整理”的替换、分类等选项        | CheckBox；勾选状态、独立多选、三态和事件；[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)、[FileToolForms.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileToolForms.cs>)                              |
+| 网格复选列／复选单元格（20） | Excel“按列筛选”的“显示”列；明确整列或某条记录           | DataGridViewCheckBoxColumn／Cell；复选值、提交时机、只读状态；[ColumnFilterForm.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnFilterForm.cs>)                                                                             |
+| 单选按钮／单选按钮组（21）  | Excel“链接助手”的当前工作簿、其他工作簿、其他文件夹         | RadioButton；同组互斥、默认选项、分组容器及切换事件；[LinkAssistant.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs>)                                                                                                 |
+| 网格按钮列／按钮单元格（27） | Excel“文件提取名称”的“候选”列；共享“交互弹窗”的“可视化调整”列 | DataGridViewButtonColumn／Cell；单元格内的命令，不等于窗外按钮；[Connect.FileNames.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.cs>)、[DialogSizeEditor.cs](../C-00-Shared/src/addin/DialogSizeEditor.cs) |
 
 **图4：树与分区。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-tree-map.svg)。
 
@@ -149,9 +157,9 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 | 准确称呼（对应图号）        | 实例或使用状态                      | 实现、修改范围及源码入口                                                                                                                                                                                                           |
 | ----------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 进度条（24）           | Excel“追踪从属”的扫描进度；“追踪引用”未创建此条 | UiProgressBar／ProgressBar；进度范围、当前值、连续或不确定状态，不用于滚动内容；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)                                                                                                    |
-| 上下文菜单／菜单项／分隔线（25） | 追踪网格的右键复制菜单，及OCR候选单元格打开的菜单   | ContextMenuStrip／ToolStripMenuItem／ToolStripSeparator；出现位置、命令、启用状态、分组与关闭释放；[TrackerForm.cs](../C-01-ExcelIterate/src/addin/TrackerForm.cs)、[Connect.FileNames.cs](../C-01-ExcelIterate/src/addin/Connect.FileNames.cs) |
-| 悬浮提示（26）          | 合并窗按钮的说明；Word“查看链接”的摘要全文提示   | ToolTip或网格单元格提示；提示文案、关联控件、显示时机及释放；[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)、[LinkViewForm.cs](../C-02-WordUpdater/src/addin/LinkViewForm.cs)                                           |
+| 进度条（24）           | Excel“追踪从属”的扫描进度；“追踪引用”未创建此条 | UiProgressBar／ProgressBar；进度范围、当前值、连续或不确定状态，不用于滚动内容；[TrackerForm.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Data/_Shared/TrackerForm.cs>)                                                                                                    |
+| 上下文菜单／菜单项／分隔线（25） | 追踪网格的右键复制菜单，及OCR候选单元格打开的菜单   | ContextMenuStrip／ToolStripMenuItem／ToolStripSeparator；出现位置、命令、启用状态、分组与关闭释放；[TrackerForm.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Data/_Shared/TrackerForm.cs>)、[Connect.FileNames.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.cs>) |
+| 悬浮提示（26）          | 合并窗按钮的说明；Word“查看链接”的摘要全文提示   | ToolTip或网格单元格提示；提示文案、关联控件、显示时机及释放；[MergeHeadersForm.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersForm.cs>)、[LinkViewForm.cs](<../C-02-WordUpdater/AC-Original Code/WordUpdater/Links/ViewLinks/LinkViewForm.cs>)                                           |
 
 **图6：通用选择与输入参考。** [可编辑SVG](../C-01-ExcelIterate/AB-Graphic/ui-common-input-map.svg)。
 
@@ -180,7 +188,7 @@ IPicture宽高是HIMETRIC，乘96/2540才得逻辑像素；DPI/OLE首次映射�
 
 **滚动与尺寸调整要分别描述。** 滚动条用于查看更多内容，13／14号拖柄用于调整控件或区域尺寸。合并窗日志logView当前为只读RichTextBox，WordWrap=true（自动换行）、ScrollBars=Vertical（仅启用纵向滚动）；长行通过换行显示，未启用横向滚动。内容未溢出时可能看不到滚动条；图2的滚动部件用独立网格构造样例展示，未给日志增加横向滚动条。若要求左右查看完整长行，应明确提出关闭自动换行、启用双向滚动，这是新增需求，不能描述为修复已有横向滚动条。该窗口三张数据网格已配置ScrollBars.Both，网格的滚动能力不能当作日志的既有能力。
 
-两图中的合并窗对象集中在[MergeHeadersForm.cs](../C-01-ExcelIterate/src/addin/MergeHeadersForm.cs)：构造函数组装布局和卡片，BuildSourcesGrid配置来源列，AppendLog添加时间戳。卡片与控件外观见[UiKit.cs](../C-00-Shared/src/addin/UiKit.cs)；另窗数值控件分别见[AgentCustomization.cs](../C-00-Shared/src/addin/AgentCustomization.cs)的CommandCustomizationForm和[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)的DialogFormatEditor。这些源码入口供两项目共享参考，不表示Word加载项具有Excel合并业务。
+两图中的合并窗对象集中在[MergeHeadersForm.cs](<../C-01-ExcelIterate/AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersForm.cs>)：构造函数组装布局和卡片，BuildSourcesGrid配置来源列，AppendLog添加时间戳。卡片与控件外观见[UiKit.cs](../C-00-Shared/src/addin/UiKit.cs)；另窗数值控件分别见[AgentCustomization.cs](../C-00-Shared/src/addin/AgentCustomization.cs)的CommandCustomizationForm和[DialogFormatting.cs](../C-00-Shared/src/addin/DialogFormatting.cs)的DialogFormatEditor。这些源码入口供两项目共享参考，不表示Word加载项具有Excel合并业务。
 
 典型关系为“窗口→布局容器→卡片→输入控件／日志文本框／数据网格”；仅数据网格继续区分数据行、列和单元格。布局容器也可直接放控件。TableLayoutPanel的布局行列用于排列，DataGridView的行列用于展示业务数据；界面网格单元格与宿主工作表单元格、Word文档表格单元格分别命名。“来源网格中的‘表头行’列”是输入工作表行号的数据列，“来源网格的列标题”才是顶部列名栏。涉及单条记录时用文件名、工作表名等业务身份定位，不能只靠排序后的可视行号。
 

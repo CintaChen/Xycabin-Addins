@@ -25,7 +25,7 @@ def verify():
     if 'HostDialogService.Register();' not in (ROOT / 'src/addin/ThisAddIn.cs').read_text(encoding='utf-8'):
         raise ValueError('VSTO初始化未登记宿主弹窗隔离')
     if project['host'] == 'Excel':
-        connect = (ROOT / 'src/addin/Connect.cs').read_text(encoding='utf-8')
+        connect = source_text('Connect.cs')
         if 'options.ShowDialog' in connect or 'FormulaInteraction.Open(' not in connect:
             raise ValueError('公式参数窗未接入隔离会话')
     print('PASS: active-source modal boundary audit; isolated UI calls: ' + ', '.join(calls))

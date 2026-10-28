@@ -15,6 +15,8 @@
 
 两个加载项通过 `project.json` 中的 `@shared/` 引用直接编译公共源码，产品脚本只保留传入产品根目录的薄入口，不增加运行时共享 DLL。`verify_shared.py` 校验公共实现唯一、引用有效、入口纯转发及必要依赖一致；`verify_devlog.py` 校验统一文档与门禁。开发入口见 [B0-Entry.md](C-04-Devlog/B0-Entry.md)。
 
+按界面功能定位代码请打开 [B4-Code Index.md](<C-04-Devlog/B4-Code Index.md>)：两个产品各自的 `AC-Original Code` 按选项卡、分组、菜单和末级功能归档，索引提供中文功能树、英文目录、实际回调和共用依赖。新增或迁移功能后运行 `python C-00-Shared/feature_index.py --write` 更新索引，省略 `--write` 执行只读校验。
+
 ## 技术栈
 
 - **加载项**：C# 5（由 .NET Framework 自带的 `csc.exe` 编译），VSTO vstov4 清单，无 Visual Studio 工程文件；独立 PDF 工具按锁定版本和 SHA-256 恢复依赖。
@@ -29,13 +31,15 @@
 ├── C-01-ExcelIterate/
 │   ├── AA-Program/        配置器、启动器与安装包
 │   ├── AB-Graphic/        界面截图、功能区图标与示意 SVG
-│   ├── src/               源码
+│   ├── AC-Original Code/  按菜单层级归类的功能入口、算法和弹窗
+│   ├── src/               加载框架、生成文件、配置、安装器与测试工具
+│   ├── build/             构建产物、缓存及验证证据（未入库）
 │   └── lib/               微软版权互操作程序集（未入库）
 ├── C-02-WordUpdater/      结构同上
 ├── C-03-Website·Xycabin/
 │   ├── AA-Program/        站点配置器、启动器与生成的网页
 │   └── src/               模板、控制器、资产
-├── C-04-Devlog/           唯一文档维护位置（B0、A-UserGuide、B1、B2、B3）
+├── C-04-Devlog/           唯一文档维护位置（B0、A-UserGuide、B1、B2、B3、B4）
 ├── verify_devlog.py       文档结构、概览、审计与规则注册表校验
 ├── verify_shared.py       公共实现、源引用和产品薄入口校验
 └── AGENTS.md              仅指向 B0-Entry.md

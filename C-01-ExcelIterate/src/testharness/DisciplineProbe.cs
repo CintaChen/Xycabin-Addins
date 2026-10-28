@@ -44,7 +44,7 @@ internal static class DisciplineProbe
             if (Directory.Exists(candidate)) { addin = candidate; break; }
             cur = Path.GetDirectoryName(cur);
         }
-        if (addin == null) { Console.WriteLine("找不到 src/addin（从 " + root + " 向上 6 级）"); return; }
+        if (addin == null) throw new DirectoryNotFoundException("找不到产品源码根目录（从 " + root + " 向上 6 级）");
         Console.WriteLine("扫描目录: " + addin);
 
         // ---- A. 格式：Write/Build 后必跟样式 ----

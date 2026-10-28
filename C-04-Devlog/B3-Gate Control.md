@@ -12,7 +12,7 @@
 
 | 编号   | 门禁              | 执行入口                                                  | 对应条款                          | 失败语义              |
 | ---- | --------------- | ----------------------------------------------------- | ----------------------------- | ----------------- |
-| G-01 | 五份文档与规则注册表      | devlog_probe→verify_devlog.py                         | R-01–R-16、R-20                | FAIL              |
+| G-01 | 六份文档与规则注册表      | devlog_probe→verify_devlog.py                         | R-01–R-16、R-20                | FAIL              |
 | G-02 | 公共实现与源引用校验 | verify_shared.py                                      | R-15                          | FAIL              |
 | G-03 | 三个 CMD 入口契约     | workflow_probe.py                                     | R-23                          | FAIL              |
 | G-04 | 加载项身份预检         | delivery.projects()                                   | R-17                          | FAIL              |
@@ -36,9 +36,9 @@
 | G-22 | 缓存提交与运行摘要       | build_cache.commit+两份 summary                         | R-20                          | FAIL              |
 | G-23 | 收尾独立验证          | bat 末尾 validate.py --background                       | R-01–R-29                     | FAIL              |
 
-**R-01** C-04-Devlog 恰好五份：B0-Entry、A-UserGuide、B1-Project-Files、B2-DevExperience、B3-Gate Control；三个项目内不得保留文档副本。仓库根 AGENTS.md 只放指向 B0 的指针，B0 只放阅读顺序与按角色分流。
+**R-01** C-04-Devlog 恰好六份：B0-Entry、A-UserGuide、B1-Project-Files、B2-DevExperience、B3-Gate Control、B4-Code Index；三个项目内不得保留文档副本。仓库根 AGENTS.md 只放指向 B0 的指针，B0 只放阅读顺序与按角色分流。
 
-**R-02** 三个项目只保留 AA-Program（配置器、启动器、正式产物）、AB-Graphic（PNG、SVG、README.txt、.gitkeep）、src 与 build；AP1-程序、AP2-美工、AP3-说明、icons、src/documentation 出现即失败。
+**R-02** 三个项目只保留 AA-Program（配置器、启动器、正式产物）、AB-Graphic（PNG、SVG、README.txt、.gitkeep）、src 与 build；两个加载项另设 AC-Original Code 专门存放按菜单归类的功能源码，lib 保留必要依赖；AP1-程序、AP2-美工、AP3-说明、icons、src/documentation 出现即失败。
 
 **R-03** 标题最多五级，同级连续编号、新父级重置，编号后一个半角空格；代码围栏内不参与编号。层级为 `# 一.` → `## 1.` → `### (1).` → `#### a.` → `##### i.`，不跳级、不为凑层级拆短句。
 
@@ -48,7 +48,7 @@
 
 **R-06** A-UserGuide 恰好三章，依次为 Excel-Iterate、WordUpdater、XyCabin。
 
-**R-07** B2 四个一级章节；B3 两个一级章节。
+**R-07** B2 四个一级章节；B3 两个一级章节；B4 两个一级章节依次为 Excel-Iterate 与 WordUpdater。
 
 **R-08** 一级章节标题决定范围：含 Excel-Iterate→excel、WordUpdater→word、XyCabin→site；其余必须是登记过的共享标题（B1“Agent及开发者接手概览”、B2“Word与Excel共享开发经验”、B3“Word与Excel共享门禁”）。未知标题或同时命中多个产品即失败。
 
@@ -64,7 +64,7 @@
 
 **R-14** 内嵌资源清单、文档与图片摘要必须与实际字节一致；A-UserGuide 与 B2 各整份内嵌一份，图片按摘要去重。
 
-**R-15** 公共源码和构建实现只在C-00-Shared维护，C-01/C-02经@shared/直接引用；产品仅保留薄入口、专属及生成源码。verify_shared拒绝公共实现副本、缺失或越界引用并核对必要公共二进制依赖；SourceLayoutProbe验证同一公共改动使两产品缓存失效。共享经验在B2、B3各只保留一份。
+**R-15** 公共源码和构建实现只在C-00-Shared维护，C-01/C-02经@shared/直接引用；产品仅保留薄入口、专属及生成源码。verify_shared拒绝公共实现副本、缺失或越界引用并核对必要公共二进制依赖；SourceLayoutProbe验证同一公共改动使两产品缓存失效。共享经验在B2、B3各只保留一份。 功能薄入口位于产品AC目录，业务实现不复制；project.json的features与菜单叶子一一对应，feature_index检查实际编译文件、回调唯一性、依赖及B4生成内容，失败不得跳过。
 
 **R-16** 版本唯一来源是各项目配置器的 INSTALLER_VERSION，四段 0～65534，仅用户指定才修改；安装器、加载项与清单同源；新第三段主版本把前一主版本子版本并入末段 0。
 

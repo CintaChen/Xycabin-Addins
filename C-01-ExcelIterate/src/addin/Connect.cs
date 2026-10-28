@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -140,27 +140,9 @@ namespace Excel_Iterate
         // --------------------------- Ribbon 回调 ---------------------------
         // 每按钮专属 getImage 回调（函数名即身份，不读 control.Id）。
         // 蓝色（追踪引用）
-        public IPictureDisp GetImage_btnTracePrecedents(object control)
-        { return GetTraceImage("btnTracePrecedents", false); }
+
 
         // 绿色（追踪从属）
-        public IPictureDisp GetImage_btnTraceDependents(object control)
-        { return GetTraceImage("btnTraceDependents", true); }
-
-        public IPictureDisp GetImage_btnFeedback(object control)
-        { return GetButtonImageCore("btnFeedback"); }
-
-        public IPictureDisp GetImage_menuOneClickFormula(object control) { return GetButtonImageCore("menuOneClickFormula"); }
-        public IPictureDisp GetImage_menuWrapFormula(object control) { return GetButtonImageCore("menuWrapFormula"); }
-        public IPictureDisp GetImage_menuIFErrorWrap(object control) { return GetButtonImageCore("menuIFErrorWrap"); }
-        public IPictureDisp GetImage_menuRoundWrap(object control) { return GetButtonImageCore("menuRoundWrap"); }
-        public IPictureDisp GetImage_btnWrapIFError(object control) { return GetButtonImageCore("btnWrapIFError"); }
-        public IPictureDisp GetImage_btnWrapAbs(object control) { return GetButtonImageCore("btnWrapAbs"); }
-        public IPictureDisp GetImage_btnWrapRound(object control) { return GetButtonImageCore("btnWrapRound"); }
-        public IPictureDisp GetImage_btnCustomIFError(object control) { return GetButtonImageCore("btnCustomIFError"); }
-        public IPictureDisp GetImage_btnCustomRound(object control) { return GetButtonImageCore("btnCustomRound"); }
-        public IPictureDisp GetImage_btnUnwrapFormula(object control) { return GetButtonImageCore("btnUnwrapFormula"); }
-        public IPictureDisp GetImage_btnCustomFunction(object control) { return GetButtonImageCore("btnCustomFunction"); }
 
         /// <summary>统一的图标分发：优先用配置里的自定义图片，没有则按配置回落内置图标。</summary>
         private static IPictureDisp GetTraceImage(string id, bool green)
@@ -195,171 +177,14 @@ namespace Excel_Iterate
             }
         }
 
-        public void OnCalculateAdd(object control) { RunFormula(FormulaOperation.Add); }
-        public void OnCustomCalculateAdd(object control) { RunFormula(FormulaOperation.Add, true); }
-        public void OnCalculateSubtract(object control) { RunFormula(FormulaOperation.Subtract); }
-        public void OnCustomCalculateSubtract(object control) { RunFormula(FormulaOperation.Subtract, true); }
-        public void OnCalculateMultiply(object control) { RunFormula(FormulaOperation.Multiply); }
-        public void OnCustomCalculateMultiply(object control) { RunFormula(FormulaOperation.Multiply, true); }
-        public void OnCalculateDivide(object control) { RunFormula(FormulaOperation.Divide); }
-        public void OnCustomCalculateDivide(object control) { RunFormula(FormulaOperation.Divide, true); }
-        public IPictureDisp GetImage_menuFilterEnhanced(object control) { return GetButtonImageCore("menuFilterEnhanced"); }
-        public IPictureDisp GetImage_btnFilterColumns(object control) { return GetButtonImageCore("btnFilterColumns"); }
-        public IPictureDisp GetImage_menuArithmetic(object control) { return GetButtonImageCore("menuArithmetic"); }
-        public IPictureDisp GetImage_menuCalculateAdd(object control) { return GetButtonImageCore("menuCalculateAdd"); }
-        public IPictureDisp GetImage_btnCalculateAdd(object control) { return GetButtonImageCore("btnCalculateAdd"); }
-        public IPictureDisp GetImage_btnCustomCalculateAdd(object control) { return GetButtonImageCore("btnCustomCalculateAdd"); }
-        public IPictureDisp GetImage_menuCalculateSubtract(object control) { return GetButtonImageCore("menuCalculateSubtract"); }
-        public IPictureDisp GetImage_btnCalculateSubtract(object control) { return GetButtonImageCore("btnCalculateSubtract"); }
-        public IPictureDisp GetImage_btnCustomCalculateSubtract(object control) { return GetButtonImageCore("btnCustomCalculateSubtract"); }
-        public IPictureDisp GetImage_menuCalculateMultiply(object control) { return GetButtonImageCore("menuCalculateMultiply"); }
-        public IPictureDisp GetImage_btnCalculateMultiply(object control) { return GetButtonImageCore("btnCalculateMultiply"); }
-        public IPictureDisp GetImage_btnCustomCalculateMultiply(object control) { return GetButtonImageCore("btnCustomCalculateMultiply"); }
-        public IPictureDisp GetImage_menuCalculateDivide(object control) { return GetButtonImageCore("menuCalculateDivide"); }
-        public IPictureDisp GetImage_btnCalculateDivide(object control) { return GetButtonImageCore("btnCalculateDivide"); }
-        public IPictureDisp GetImage_btnCustomCalculateDivide(object control) { return GetButtonImageCore("btnCustomCalculateDivide"); }
-
-        public void OnWrapIFError(object control) { RunFormula(FormulaOperation.IFError); }
-        public void OnWrapAbs(object control) { RunFormula(FormulaOperation.Abs); }
-        public void OnWrapRound(object control) { RunFormula(FormulaOperation.Round); }
-        public void OnUnwrapFormula(object control) { RunFormula(FormulaOperation.Unwrap); }
-
-        public void OnCustomIFError(object control) { RunFormula(FormulaOperation.IFError, true); }
-        public void OnCustomRound(object control) { RunFormula(FormulaOperation.Round, true); }
-        public void OnCustomFunction(object control) { RunFormula(FormulaOperation.Custom, true); }
-
-        public IPictureDisp GetImage_btnQuickAdvancedFilter(object control) { return GetButtonImageCore("btnQuickAdvancedFilter"); }
-        public IPictureDisp GetImage_btnLinkAssistant(object control) { return GetButtonImageCore("btnLinkAssistant"); }
-        public IPictureDisp GetImage_btnGenerateDirectory(object control) { return GetButtonImageCore("btnGenerateDirectory"); }
         internal static void CloseWorkbookWindows()
         { if (_columnForm != null && !_columnForm.IsDisposed) _columnForm.Close(); if (_trackerForm != null && !_trackerForm.IsDisposed) _trackerForm.Close(); }
         internal static void PrepareWorkbookSave(string path)
         { if (_trackerForm != null && !_trackerForm.IsDisposed) _trackerForm.CleanupForWorkbook(path); }
-        public IPictureDisp GetImage_menuFileOperations(object control) { return GetButtonImageCore("menuFileOperations"); }
-        public IPictureDisp GetImage_btnOrganizeFiles(object control) { return GetButtonImageCore("btnOrganizeFiles"); }
-        public IPictureDisp GetImage_btnRenameFiles(object control) { return GetButtonImageCore("btnRenameFiles"); }
+
         private static void ShowFileForm(Form form)
         { IntPtr owner = GetHostWindowHandle(); if (owner == IntPtr.Zero) form.Show(); else form.Show(new WindowWrapper(owner)); }
-        public void OnOrganizeFiles(object control)
-        {
-            if (_busy) return;
-            if (_organizeForm != null && !_organizeForm.IsDisposed) { _organizeForm.Activate(); return; }
-            try { var form = new OrganizeFilesForm(); _organizeForm = form; form.FormClosed += delegate { _organizeForm = null; form.Dispose(); }; ShowFileForm(form); }
-            catch (Exception ex) { Log("文件批量整理："+ex); UiDialog.Show(ex.Message,"文件批量整理",MessageBoxButtons.OK,MessageBoxIcon.Warning); }
-        }
-        public void OnRenameFiles(object control)
-        {
-            if (_busy) return;
-            if (_renameForm != null && !_renameForm.IsDisposed) { _renameForm.Activate(); return; }
-            try { if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格。"); var form = new RenameFilesForm(new RenameWorkbookSession(_app)); _renameForm = form; form.FormClosed += delegate { _renameForm = null; form.Dispose(); }; ShowFileForm(form); }
-            catch (Exception ex) { Log("文件批量命名："+ex); UiDialog.Show(ex.Message,"文件批量命名",MessageBoxButtons.OK,MessageBoxIcon.Warning); }
-        }
-        public void OnQuickAdvancedFilter(object control)
-        {
-            if (_busy) return; _busy = true;
-            try { if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格。"); int count = QuickAdvancedFilter.Run(_app); ShowStatus("快捷高筛：已输出 " + count + " 条记录至新工作表"); }
-            catch (Exception ex) { Log("快捷高筛：" + ex); UiDialog.Show(ex.Message, "快捷高筛", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-            finally { _busy = false; }
-        }
-        public void OnGenerateDirectory(object control)
-        {
-            if (_busy) return; _busy = true;
-            try { if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格。"); if (_directoryNavigation == null) _directoryNavigation = new DirectoryNavigation(_app); int count = DirectoryNavigation.Generate(_app); ShowStatus("生成目录：已链接 " + count + " 张工作表"); }
-            catch (Exception ex) { Log("生成目录：" + ex); UiDialog.Show(ex.Message, "生成目录", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-            finally { _busy = false; }
-        }
-        public void OnLinkAssistant(object control)
-        {
-            if (_busy) return;
-            if (_linkForm != null && !_linkForm.IsDisposed) { _linkForm.Activate(); return; }
-            try { if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格。"); LinkAssistantForm form = new LinkAssistantForm(new LinkAssistantSession(_app)); _linkForm = form; form.FormClosed += delegate { _linkForm = null; form.Dispose(); }; IntPtr owner = GetHostWindowHandle(); if (owner == IntPtr.Zero) form.Show(); else form.Show(new WindowWrapper(owner)); }
-            catch (Exception ex) { Log("链接助手：" + ex); UiDialog.Show(ex.Message, "链接助手", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-        }
-        public void OnFilterColumns(object control)
-        {
-            if (_busy) return;
-            if (_columnForm != null && !_columnForm.IsDisposed) { _columnForm.Activate(); return; }
-            _busy = true;
-            ComColumnVisibilityHost host = null;
-            try
-            {
-                if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格并选中一行。");
-                host = new ComColumnVisibilityHost(_app);
-                var columns = host.Collect();
-                ColumnFilterForm form = new ColumnFilterForm(columns, host.RangeDescription);
-                ComColumnVisibilityHost bound = host;
-                form.ApplyRequested += delegate(System.Collections.Generic.IList<ColumnChoice> choices)
-                {
-                    if (_busy) return;
-                    _busy = true;
-                    try
-                    {
-                        FormulaCommandResult result = ColumnVisibilityEngine.Apply(bound, choices,
-                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Excel_Iterate", "ColumnRecovery"));
-                        if (!result.Failed)
-                        {
-                            if (result.Changed > 0) ShowStatus("按列筛选：已修改 " + result.Changed + " 列的显示状态");
-                            form.Close();
-                        }
-                        else { Log(result.Details); UiDialog.Show(form, result.Details, "按列筛选", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-                    }
-                    finally { _busy = false; }
-                };
-                form.FormClosed += delegate { _columnForm = null; try { bound.Dispose(); } catch (Exception ex) { Log("列筛选引用释放：" + ex.Message); } form.Dispose(); };
-                _columnForm = form;
-                IntPtr owner = GetHostWindowHandle();
-                if (owner == IntPtr.Zero) form.Show(); else form.Show(new WindowWrapper(owner));
-                host = null; // The non-modal form owns the snapshot until it closes.
-            }
-            catch (Exception ex) { Log("按列筛选：" + ex); UiDialog.Show(ex.Message, "按列筛选", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-            finally { if (host != null) host.Dispose(); _busy = false; }
-        }
 
-        private static FormulaCapture CaptureFor(FormulaOperation operation)
-        { return operation == FormulaOperation.Custom ? FormulaCapture.Values : operation >= FormulaOperation.Add ? FormulaCapture.Numbers : FormulaCapture.Formulas; }
-        private static void RunFormula(FormulaOperation operation) { RunFormula(operation, false); }
-        internal static bool TryBeginFormulaExecution() { if (_busy) return false; _busy = true; return true; }
-        internal static void EndFormulaExecution() { _busy = false; }
-        private static void RunFormula(FormulaOperation operation, bool custom)
-        {
-            if (custom && FormulaInteraction.ActivatePending()) return;
-            if (!TryBeginFormulaExecution()) return;
-            IntPtr owner = IntPtr.Zero;
-            try
-            {
-                if (!EnsureApplication())
-                {
-                    FormulaWindowThread.Notice("请先打开 WPS 表格工作簿并选中单元格。", owner, true);
-                    return;
-                }
-                owner = FormulaWindowState.ResolveOwner(_app);
-                if (custom)
-                {
-                    // Open takes ownership. Waiting for parameters never holds _busy
-                    // and never starts a modal message loop on the Ribbon thread.
-                    FormulaInteraction.Open(new ComFormulaHost(_app, CaptureFor(operation)), operation, owner, _app);
-                    return;
-                }
-                using (ComFormulaHost host = new ComFormulaHost(_app, CaptureFor(operation)))
-                {
-                    PresentFormulaResult(FormulaCommandEngine.Run(host, FormulaRequest.Default(operation), Log,
-                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Excel_Iterate", "FormulaRecovery")), owner);
-                }
-            }
-            catch (Exception ex)
-            {
-                UiDiagnostics.Record("formula-command", ex);
-                FormulaWindowThread.Notice("一键公式发生错误：" + ex.Message, owner, true);
-            }
-            finally { EndFormulaExecution(); }
-        }
-        internal static void PresentFormulaResult(FormulaCommandResult result, IntPtr owner)
-        {
-            if (!result.Failed && result.Changed > 0) ShowFormulaStatus(result.Changed);
-            else FormulaWindowThread.Notice(result.Details, owner, result.Failed);
-        }
-        private static void ShowFormulaStatus(int count)
-        { ShowStatus("一键公式：已修改 " + count + " 个单元格"); }
         private static void ShowStatus(string message)
         {
             RestoreFormulaStatus();
@@ -390,68 +215,10 @@ namespace Excel_Iterate
 
         // --------------------------- 追踪回调 ---------------------------
 
-        public void OnTracePrecedents(object control)
-        {
-            if (_busy) return;
-            _busy = true;
-            try
-            {
-                if (!EnsureApplication())
-                {
-                    UiDialog.Show(
-                        "未检测到正在运行的 WPS 表格。\r\n请先打开 WPS 表格工作簿，再点击「追踪引用」。",
-                        "追踪引用", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                OpenTracker(TrackerMode.Precedents);
-            }
-            catch (Exception ex)
-            {
-                Log("OnTracePrecedents 异常：" + ex);
-                try
-                {
-                    UiDialog.Show("发生未预期的错误：" + ex.Message, "追踪引用",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                catch { }
-            }
-            finally { _busy = false; }
-        }
-
-        public void OnTraceDependents(object control)
-        {
-            if (_busy) return;
-            _busy = true;
-            try
-            {
-                if (!EnsureApplication())
-                {
-                    UiDialog.Show(
-                        "未检测到正在运行的 WPS 表格。\r\n请先打开 WPS 表格工作簿，再点击「追踪从属」。",
-                        "追踪从属", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                OpenTracker(TrackerMode.Dependents);
-            }
-            catch (Exception ex)
-            {
-                Log("OnTraceDependents 异常：" + ex);
-                try
-                {
-                    UiDialog.Show("发生未预期的错误：" + ex.Message, "追踪从属",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                catch { }
-            }
-            finally { _busy = false; }
-        }
-
         // ------------------ 网址回调（每个 url 按钮一个专属入口） ------------------
         //
         // 与图标同理：onAction="OnOpenUrl_<按钮id>"，回调名带来按钮身份。
         // 将来新增网址按钮时同样只加一行包装，不需要任何"唯一网址兜底"。
-
-        public void OnOpenUrl_btnFeedback(object control) { OpenUrlCore("btnFeedback"); }
 
         /// <summary>统一的打开网页/邮箱分发（行为与地址在配置区定义）。</summary>
         private static void OpenUrlCore(string id)

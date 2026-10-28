@@ -68,7 +68,7 @@ def environment():
 def inputs(base, snapshot):
     base = Path(base).resolve()
     paths = set(base.glob('*.py')) | {base / 'project.json'}
-    for directory in ('src', 'lib', 'AB-Graphic'):
+    for directory in ('src', 'AC-Original Code', 'lib', 'AB-Graphic'):
         paths.update(p for p in (base / directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
     paths.update(p for p in (base.parent / 'C-04-Devlog').rglob('*.md') if p.is_file())
     paths.add(base / 'AA-Program' / CONFIGURE[base.name])
@@ -185,7 +185,16 @@ def compile_cached(command, cwd, mode='full'):
         print('CACHE: 编译 ' + target.name, flush=True)
         return
     cache.unlink(missing_ok=True)
-    subprocess.run(command, cwd=cwd, check=True)
+    # The feature directory layout can exceed Windows CreateProcess's command
+    # length. Keep the full input list in the cache key; only transport it via rsp.
+    invocation = command
+    if len(subprocess.list2cmdline(command)) > 24000:
+        response = cache.with_suffix('.rsp')
+        response.parent.mkdir(parents=True, exist_ok=True)
+        response.write_text('\n'.join(subprocess.list2cmdline([arg]) for arg in command[1:]) + '\n',
+                            encoding='utf-8-sig')
+        invocation = [command[0], '@' + str(response)]
+    subprocess.run(invocation, cwd=cwd, check=True)
     save(cache, expected, [target])
 
 

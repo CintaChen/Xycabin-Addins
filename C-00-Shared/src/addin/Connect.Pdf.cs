@@ -12,21 +12,11 @@ namespace Excel_Iterate
     public partial class Connect
     {
         private static readonly Dictionary<string, PdfToolsForm> pdfForms = new Dictionary<string, PdfToolsForm>();
-        public void OnCurrentPdf(object control) { OpenPdfTool("current"); }
-        public IPictureDisp GetImage_btnCurrentPdf(object control) { return GetButtonImageCore("btnCurrentPdf"); }
-        public IPictureDisp GetImage_menuBatchProcessing(object control) { return GetButtonImageCore("menuBatchProcessing"); }
-        public IPictureDisp GetImage_menuFileConversion(object control) { return GetButtonImageCore("menuFileConversion"); }
+
 #if WPS_WORD
-        public IPictureDisp GetImage_menuFileOperations(object control) { return GetButtonImageCore("menuFileOperations"); }
+
 #endif
-        public void OnConvertPdf(object control) { OpenPdfTool("convert"); }
-        public void OnWatermarkPdf(object control) { OpenPdfTool("watermark"); }
-        public void OnSplitPdf(object control) { OpenPdfTool("split"); }
-        public void OnMergePdf(object control) { OpenPdfTool("merge"); }
-        public IPictureDisp GetImage_btnConvertPdf(object control) { return GetButtonImageCore("btnConvertPdf"); }
-        public IPictureDisp GetImage_btnWatermarkPdf(object control) { return GetButtonImageCore("btnWatermarkPdf"); }
-        public IPictureDisp GetImage_btnSplitPdf(object control) { return GetButtonImageCore("btnSplitPdf"); }
-        public IPictureDisp GetImage_btnMergePdf(object control) { return GetButtonImageCore("btnMergePdf"); }
+
         private static void OpenPdfTool(string mode)
         {
             PdfToolsForm current; if (pdfForms.TryGetValue(mode, out current) && !current.IsDisposed) { current.Activate(); return; }

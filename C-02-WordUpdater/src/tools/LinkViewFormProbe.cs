@@ -94,12 +94,12 @@ namespace WordUpdater.Tools
                     if (Directory.Exists(candidate)) { addin = candidate; break; }
                     dir = Path.GetDirectoryName(dir);
                 }
-                if (addin == null) { Console.WriteLine("[跳过] 找不到 src/addin，弹窗样式红线未扫描"); return; }
+                if (addin == null) throw new DirectoryNotFoundException("找不到产品源码根目录，无法执行弹窗样式扫描");
                 string file = Path.Combine(addin, "LinkViewForm.cs");
                 Check(ref failed, "LinkViewForm.cs 存在", WpsShared.SourcePaths.Exists(file));
                 if (!WpsShared.SourcePaths.Exists(file)) return;
                 var code = new StringBuilder();
-                foreach (string line in File.ReadAllLines(file))
+                foreach (string line in WpsShared.SourcePaths.ReadAllLines(file))
                 {
                     string t = line.TrimStart();
                     if (t.StartsWith("//") || t.StartsWith("*") || t.StartsWith("/*")) continue;

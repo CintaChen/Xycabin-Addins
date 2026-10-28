@@ -225,7 +225,7 @@ namespace Excel_Iterate.TestHarness
             int hits = 0; string detail = "";
             foreach (string file in WpsShared.SourcePaths.GetFiles(Path.Combine(root, "src", "addin"), "*.cs", SearchOption.AllDirectories))
             {
-                foreach (string raw in File.ReadAllLines(file))
+                foreach (string raw in WpsShared.SourcePaths.ReadAllLines(file))
                 {
                     string line = raw;
                     int comment = line.IndexOf("//", StringComparison.Ordinal);
@@ -246,7 +246,7 @@ namespace Excel_Iterate.TestHarness
             int toolHits = 0; string toolDetail = "";
             if (WpsShared.SourcePaths.Exists(trackerFile))
             {
-                foreach (string raw in File.ReadAllLines(trackerFile))
+                foreach (string raw in WpsShared.SourcePaths.ReadAllLines(trackerFile))
                 {
                     string line = raw;
                     int comment = line.IndexOf("//", StringComparison.Ordinal);

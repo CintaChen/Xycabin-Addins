@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / 'C-00-Shared'))
 from source_layout import manifest, resolve_source
 
 DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
-        'B2-DevExperience.md', 'B3-Gate Control.md'}
+        'B2-DevExperience.md', 'B3-Gate Control.md', 'B4-Code Index.md'}
 SHARED_TITLES = ('# 一. Word与Excel共享开发经验', '# 一. Word与Excel共享门禁')
 
 
@@ -50,7 +50,7 @@ def check_documents():
     docs = ROOT / 'C-04-Devlog'
     actual = {p.name for p in docs.iterdir()} if docs.is_dir() else set()
     if actual != DOCS:
-        raise ValueError('C-04-Devlog 必须恰好包含五份文档：' + ', '.join(sorted(actual)))
+        raise ValueError('C-04-Devlog 必须恰好包含六份文档：' + ', '.join(sorted(actual)))
     texts = {name: (docs / name).read_text(encoding='utf-8-sig') for name in DOCS}
     for title in SHARED_TITLES:
         count = sum(1 for text in texts.values() for line in text.splitlines() if line.strip() == title)
@@ -107,6 +107,8 @@ def main():
             errors.append('缺少集中网站接入文件：' + str(path))
     if errors:
         raise ValueError('\n'.join(errors))
+    from feature_index import check as check_feature_index
+    check_feature_index(ROOT)
     print('PASS: C-04 documents, %d unique linked implementations and both product source manifests' % len(layout['linked']))
 
 

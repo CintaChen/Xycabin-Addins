@@ -1,43 +1,107 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace WpsShared
 {
-    // Source assertions must read the implementations actually compiled, including
-    // linked common files. Non-source fixture/output paths retain normal IO behavior.
+    // Diagnostic-only source access. Runtime fixture/output paths keep normal IO.
+    // Explicit read aliases join split files; directory scans enumerate compiled files.
     internal static class SourcePaths
     {
-        internal static string Resolve(string path)
+        [DataContract]
+        private sealed class Manifest
         {
-            string full = Path.GetFullPath(path);
-            foreach (string product in new[] { "C-01-ExcelIterate", "C-02-WordUpdater" })
+            [DataMember(Name = "sources")] public string[] Sources;
+            [DataMember(Name = "source_aliases")] public Dictionary<string, string[]> Aliases;
+        }
+
+        private static string ProductRoot(string path)
+        {
+            for (string current = path; !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
+                if (File.Exists(Path.Combine(current, "project.json"))
+                    && (Path.GetFileName(current) == "C-01-ExcelIterate" || Path.GetFileName(current) == "C-02-WordUpdater"))
+                    return current;
+            return null;
+        }
+
+        private static Manifest ReadManifest(string root)
+        {
+            var serializer = new DataContractJsonSerializer(typeof(Manifest),
+                new DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true });
+            using (var stream = File.OpenRead(Path.Combine(root, "project.json")))
+                return (Manifest)serializer.ReadObject(stream);
+        }
+
+        private static string Physical(string root, string reference)
+        {
+            string relative = reference.Replace('\\', '/');
+            string basis = root;
+            if (relative.StartsWith("@shared/", StringComparison.Ordinal))
             {
-                string marker = Path.DirectorySeparatorChar + product + Path.DirectorySeparatorChar;
-                int offset = full.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-                if (offset < 0) continue;
-                string common = Path.Combine(full.Substring(0, offset), "C-00-Shared", full.Substring(offset + marker.Length));
-                if (File.Exists(common) && !File.Exists(full)) return common;
+                relative = relative.Substring(8);
+                basis = Path.Combine(Path.GetDirectoryName(root), "C-00-Shared");
             }
+            if (Path.IsPathRooted(relative) || relative.Split('/').Contains("..") || relative.Contains(":"))
+                throw new InvalidDataException("Source path escapes allowed roots: " + reference);
+            string full = Path.GetFullPath(Path.Combine(basis, relative));
+            if (!full.StartsWith(basis + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(full))
+                throw new FileNotFoundException("Missing compiled source: " + reference, full);
             return full;
         }
-        internal static bool Exists(string path) { return File.Exists(Resolve(path)); }
-        internal static string ReadAllText(string path) { return File.ReadAllText(Resolve(path)); }
-        internal static string ReadAllText(string path, Encoding encoding) { return File.ReadAllText(Resolve(path), encoding); }
+
+        private static string[] ReadTargets(string path)
+        {
+            string full = Path.GetFullPath(path);
+            string root = ProductRoot(full);
+            if (root == null) return new[] { full };
+            string legacy = Path.Combine(root, "src", "addin") + Path.DirectorySeparatorChar;
+            if (!full.StartsWith(legacy, StringComparison.OrdinalIgnoreCase)) return new[] { full };
+            var manifest = ReadManifest(root);
+            string name = Path.GetFileName(full);
+            string[] references;
+            if (manifest.Aliases != null && manifest.Aliases.TryGetValue(name, out references))
+            {
+                if (references.Length == 0 || references.Any(r => !manifest.Sources.Contains(r)))
+                    throw new InvalidDataException("Source read alias must refer to compiled sources: " + name);
+                return references.Select(r => Physical(root, r)).ToArray();
+            }
+            var matches = manifest.Sources.Where(r => Path.GetFileName(r) == name).ToArray();
+            if (matches.Length > 1) throw new InvalidDataException("Ambiguous source name: " + name);
+            if (matches.Length == 1) return new[] { Physical(root, matches[0]) };
+            string common = Path.Combine(Path.GetDirectoryName(root), "C-00-Shared", "src", "addin", name);
+            return new[] { !File.Exists(full) && File.Exists(common) ? common : full };
+        }
+
+        internal static string Resolve(string path)
+        {
+            string[] targets = ReadTargets(path);
+            if (targets.Length != 1) throw new InvalidDataException("Split source requires ReadAllText: " + path);
+            return targets[0];
+        }
+        internal static bool Exists(string path) { return ReadTargets(path).All(File.Exists); }
+        internal static string ReadAllText(string path) { return ReadAllText(path, Encoding.UTF8); }
+        internal static string ReadAllText(string path, Encoding encoding)
+        { return string.Join("\n", ReadTargets(path).Select(p => File.ReadAllText(p, encoding))); }
+        internal static string[] ReadAllLines(string path)
+        { return ReadAllText(path).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'); }
         internal static string[] GetFiles(string path, string pattern, SearchOption option)
         {
             string full = Path.GetFullPath(path);
-            var local = Directory.Exists(full) ? Directory.GetFiles(full, pattern, option) : new string[0];
-            foreach (string product in new[] { "C-01-ExcelIterate", "C-02-WordUpdater" })
+            string root = ProductRoot(full);
+            if (root != null && full.TrimEnd(Path.DirectorySeparatorChar).Equals(Path.Combine(root, "src", "addin"), StringComparison.OrdinalIgnoreCase))
             {
-                string marker = Path.DirectorySeparatorChar + product + Path.DirectorySeparatorChar;
-                int offset = full.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-                if (offset < 0 || !full.Substring(offset + marker.Length).StartsWith("src", StringComparison.OrdinalIgnoreCase)) continue;
-                string common = Path.Combine(full.Substring(0, offset), "C-00-Shared", full.Substring(offset + marker.Length));
-                if (Directory.Exists(common)) local = local.Concat(Directory.GetFiles(common, pattern, option)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var manifest = ReadManifest(root);
+                string expression = "^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+                return manifest.Sources.Select(r => Physical(root, r))
+                    .Where(p => Regex.IsMatch(Path.GetFileName(p), expression, RegexOptions.IgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             }
-            return local;
+            return Directory.Exists(full) ? Directory.GetFiles(full, pattern, option) : new string[0];
         }
         internal static string[] GetFiles(string path, string pattern) { return GetFiles(path, pattern, SearchOption.TopDirectoryOnly); }
         internal static string[] GetFiles(string path) { return GetFiles(path, "*"); }

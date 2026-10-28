@@ -15,79 +15,169 @@
   ],
   "legacy_name": "",
   "sources": [
-    "AssemblyInfo.cs",
+    "src/addin/AssemblyInfo.cs",
     "@shared/src/addin/InteropDefs.cs",
     "@shared/src/addin/UiKit.cs",
-    "Ribbon.g.cs",
-    "Connect.cs",
-    "ThisAddIn.cs",
-    "FormulaRefParser.cs",
-    "PrecedentTrackerEngine.cs",
-    "DependentTrackerEngine.cs",
-    "TrackerForm.cs",
-    "ErrorSourceEngine.cs",
-    "ErrorSourceForm.cs",
-    "FormulaWrapper.cs",
-    "WorksheetIdentity.cs",
-    "FormulaCommandEngine.cs",
-    "FormulaRequest.cs",
-    "FormulaOptionsForm.cs",
-    "CustomFunctionForm.cs",
-    "FormulaWindowThread.cs",
-    "FormulaInteraction.cs",
-    "ColumnVisibilityEngine.cs",
-    "ColumnFilterForm.cs",
-    "WorkbookFeatures.cs",
-    "XlsxLinkPackage.cs",
-    "LinkAssistant.cs",
-    "LinkOperationLog.cs",
-    "LinkBatch.cs",
-    "LinkBreakActions.cs",
-    "LinkNameAnalysis.cs",
+    "src/addin/Ribbon.g.cs",
+    "src/addin/Connect.cs",
+    "src/addin/ThisAddIn.cs",
+    "src/addin/WorkbookFeatures.cs",
     "@shared/src/addin/Connect.Agent.cs",
     "@shared/src/addin/AgentDocumentForm.cs",
     "@shared/src/addin/AgentLocalFiles.cs",
-    "WorkbookSaving.cs",
-    "FileOperations.cs",
-    "OperationBatch.cs",
-    "RecycleFiles.cs",
-    "FileToolForms.cs",
     "@shared/src/addin/DialogSizes.cs",
     "@shared/src/addin/DialogPreviewFactory.cs",
     "@shared/src/addin/DialogSizeEditor.cs",
     "@shared/src/addin/AgentCustomization.cs",
     "@shared/src/addin/DialogFormatting.cs",
     "@shared/src/addin/Connect.Customization.cs",
-    "CustomizationCallbacks.g.cs",
-    "ApiPlatforms.g.cs",
-    "Connect.FileNames.cs",
-    "FileNamesLayout.cs",
-    "FileOcr.cs",
-    "FileOcrSelection.cs",
+    "src/addin/CustomizationCallbacks.g.cs",
+    "src/addin/ApiPlatforms.g.cs",
     "@shared/src/addin/FormatSession.cs",
     "@shared/src/addin/FormatEditorThread.cs",
-    "CloudOcr.cs",
     "@shared/src/addin/CustomizationSaving.cs",
     "@shared/src/addin/UiDiagnostics.cs",
     "@shared/src/addin/HostDialogService.cs",
-    "FormulaRefRewriter.cs",
-    "MergeHeadersEngine.cs",
-    "MergeHeadersHost.cs",
-    "MergeHeadersForm.cs",
-    "Connect.MergeHeaders.cs",
-    "Connect.Elimination.cs",
-    "EliminationEngine.cs",
-    "EliminationMatrix.cs",
-    "EliminationDiff.cs",
-    "EliminationHost.cs",
-    "EliminationForm.cs",
     "@shared/src/addin/Connect.Pdf.cs",
     "@shared/src/addin/PdfToolsForm.cs",
     "@shared/src/addin/PdfCurrentDocument.cs",
-    "HostBatchRunner.cs",
-    "SourceChangeWatch.cs",
-    "DependentSnapshotReader.cs",
-    "EliminationSession.cs"
+    "AC-Original Code/ExcelIterate/Data/TracePrecedents/Connect.TracePrecedents.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/TraceDependents/Connect.TraceDependents.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/FilterEnhanced/Connect.FilterEnhanced.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/Connect.FilterColumns.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter/Connect.QuickAdvancedFilter.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Connect.AuditToolbox.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/Connect.MergeHeaders.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Connect.Elimination.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/Connect.EliminationReceivable.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/Connect.EliminationRevenueCost.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Connect.OneClickFormula.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/Connect.WrapFormula.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/Connect.IFErrorWrap.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/WrapIFError/Connect.WrapIFError.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/CustomIFError/Connect.CustomIFError.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/Connect.RoundWrap.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/WrapRound/Connect.WrapRound.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/CustomRound/Connect.CustomRound.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/WrapAbs/Connect.WrapAbs.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/Connect.CustomFunction.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/UnwrapFormula/Connect.UnwrapFormula.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Connect.Arithmetic.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Connect.CalculateAdd.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Default/Connect.CalculateAdd.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Custom/Connect.CustomCalculateAdd.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Connect.CalculateSubtract.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Default/Connect.CalculateSubtract.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Custom/Connect.CustomCalculateSubtract.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Connect.CalculateMultiply.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Default/Connect.CalculateMultiply.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Custom/Connect.CustomCalculateMultiply.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Connect.CalculateDivide.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Default/Connect.CalculateDivide.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Custom/Connect.CustomCalculateDivide.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/Connect.FileOperations.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/Connect.BatchProcessing.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/Connect.OrganizeFiles.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/Connect.RenameFiles.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/Connect.FileConversion.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/CurrentPdf/Connect.CurrentPdf.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/ConvertPdf/Connect.ConvertPdf.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/WatermarkPdf/Connect.WatermarkPdf.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/SplitPdf/Connect.SplitPdf.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/MergePdf/Connect.MergePdf.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/Connect.LinkAssistant.Entry.cs",
+    "AC-Original Code/ExcelIterate/Operations/GenerateDirectory/Connect.GenerateDirectory.Entry.cs",
+    "AC-Original Code/ExcelIterate/Feedback/Feedback/Connect.Feedback.Entry.cs",
+    "AC-Original Code/ExcelIterate/Extensions/AgentExtension/Connect.AgentExtension.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/Connect.AgentApi.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/Connect.AgentCloud.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentBaidu/Connect.AgentBaidu.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentAliyun/Connect.AgentAliyun.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/Connect.AgentSites.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/Connect.AgentChina.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentWorkBuddy/Connect.AgentWorkBuddy.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentTrae/Connect.AgentTrae.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentQoder/Connect.AgentQoder.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDeepSeek/Connect.AgentDeepSeek.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDoubao/Connect.AgentDoubao.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentKimi/Connect.AgentKimi.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/Connect.AgentOverseas.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentChatGPT/Connect.AgentChatGPT.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentClaude/Connect.AgentClaude.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentGemini/Connect.AgentGemini.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/Connect.AgentWorkflow.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentReadme/Connect.AgentReadme.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentUserGuide/Connect.AgentUserGuide.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentHome/Connect.AgentHome.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/Connect.AgentCustomization.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentSort/Connect.AgentSort.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentNames/Connect.AgentNames.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentFormats/Connect.AgentFormats.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentDialogSizes/Connect.AgentDialogSizes.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentExperiments/Connect.AgentExperiments.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentOcrPlaceholder/Connect.AgentOcrPlaceholder.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentRequirements/Connect.AgentRequirements.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/TracePrecedents/PrecedentTrackerEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentTrackerEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentSnapshotReader.cs",
+    "AC-Original Code/ExcelIterate/Data/_Shared/TrackerForm.cs",
+    "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceForm.cs",
+    "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnFilterForm.cs",
+    "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnVisibilityEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/Connect.MergeHeaders.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersForm.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationHost.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationSession.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/EliminationEngine.BuildReceivable.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/EliminationEngine.BuildRevenueCost.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/EliminationDiff.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrixBuilder.Common.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/EliminationRevenueCost.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrix.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/CustomFunctionForm.cs",
+    "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+    "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+    "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+    "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+    "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
+    "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkOperationLog.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBatch.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBreakActions.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkNameAnalysis.cs",
+    "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileNamesLayout.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileOcr.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileOcrSelection.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/CloudOcr.cs",
+    "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter/QuickAdvancedFilter.cs",
+    "AC-Original Code/ExcelIterate/Operations/GenerateDirectory/DirectoryNavigation.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/FileOrganizer.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/FileRenamer.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/RenameFilesForm.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/OrganizeFilesForm.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileOperations.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileToolForms.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/OperationBatch.cs",
+    "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs",
+    "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+    "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeColumnMapper.cs"
   ],
   "tools": [
     {
@@ -310,5 +400,1040 @@
       "offline": false
     }
   ],
-  "pdf_worker": true
+  "pdf_worker": true,
+  "features": {
+    "btnTracePrecedents": {
+      "directory": "AC-Original Code/ExcelIterate/Data/TracePrecedents",
+      "entry": "AC-Original Code/ExcelIterate/Data/TracePrecedents/Connect.TracePrecedents.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/TracePrecedents/PrecedentTrackerEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/TrackerForm.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceForm.cs",
+        "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentTrackerEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentSnapshotReader.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs"
+      ],
+      "tests": [
+        "src/testharness/TrackerProbe.cs",
+        "src/testharness/ErrorSourceProbe.cs",
+        "@shared/src/testharness/RuntimeQualityProbe.cs"
+      ]
+    },
+    "btnTraceDependents": {
+      "directory": "AC-Original Code/ExcelIterate/Data/TraceDependents",
+      "entry": "AC-Original Code/ExcelIterate/Data/TraceDependents/Connect.TraceDependents.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentTrackerEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentSnapshotReader.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/TrackerForm.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceForm.cs",
+        "AC-Original Code/ExcelIterate/Data/TracePrecedents/PrecedentTrackerEngine.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs"
+      ],
+      "tests": [
+        "src/testharness/TrackerProbe.cs",
+        "src/testharness/ErrorSourceProbe.cs",
+        "@shared/src/testharness/RuntimeQualityProbe.cs"
+      ]
+    },
+    "btnFilterColumns": {
+      "directory": "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns",
+      "entry": "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/Connect.FilterColumns.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnFilterForm.cs",
+        "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnVisibilityEngine.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/WorkbookToolsProbe.cs"
+      ]
+    },
+    "btnQuickAdvancedFilter": {
+      "directory": "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter",
+      "entry": "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter/Connect.QuickAdvancedFilter.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter/QuickAdvancedFilter.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/WorkbookToolsProbe.cs"
+      ]
+    },
+    "btnMergeHeaders": {
+      "directory": "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders",
+      "entry": "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/Connect.MergeHeaders.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/Connect.MergeHeaders.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersForm.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeColumnMapper.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs"
+      ],
+      "tests": [
+        "src/testharness/MergeHeadersProbe.cs"
+      ]
+    },
+    "btnEliminationReceivable": {
+      "directory": "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable",
+      "entry": "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/Connect.EliminationReceivable.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/EliminationEngine.BuildReceivable.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/EliminationDiff.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersEngine.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationSession.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrixBuilder.Common.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrix.cs",
+        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs"
+      ],
+      "tests": [
+        "src/testharness/EliminationProbe.cs",
+        "src/testharness/DisciplineProbe.cs",
+        "@shared/src/testharness/RuntimeQualityProbe.cs"
+      ]
+    },
+    "btnEliminationRevenueCost": {
+      "directory": "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost",
+      "entry": "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/Connect.EliminationRevenueCost.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/EliminationEngine.BuildRevenueCost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/EliminationRevenueCost.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersEngine.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationSession.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrixBuilder.Common.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrix.cs",
+        "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs",
+        "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs"
+      ],
+      "tests": [
+        "src/testharness/EliminationProbe.cs",
+        "src/testharness/DisciplineProbe.cs",
+        "@shared/src/testharness/RuntimeQualityProbe.cs"
+      ]
+    },
+    "btnWrapIFError": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/WrapIFError",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/WrapIFError/Connect.WrapIFError.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomIFError": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/CustomIFError",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/CustomIFError/Connect.CustomIFError.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnWrapRound": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/WrapRound",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/WrapRound/Connect.WrapRound.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomRound": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/CustomRound",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/CustomRound/Connect.CustomRound.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnWrapAbs": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/WrapAbs",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/WrapAbs/Connect.WrapAbs.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomFunction": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/Connect.CustomFunction.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/CustomFunctionForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnUnwrapFormula": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/UnwrapFormula",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/UnwrapFormula/Connect.UnwrapFormula.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCalculateAdd": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Default",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Default/Connect.CalculateAdd.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomCalculateAdd": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Custom",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Custom/Connect.CustomCalculateAdd.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCalculateSubtract": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Default",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Default/Connect.CalculateSubtract.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomCalculateSubtract": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Custom",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Custom/Connect.CustomCalculateSubtract.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCalculateMultiply": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Default",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Default/Connect.CalculateMultiply.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomCalculateMultiply": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Custom",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Custom/Connect.CustomCalculateMultiply.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCalculateDivide": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Default",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Default/Connect.CalculateDivide.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnCustomCalculateDivide": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Custom",
+      "entry": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Custom/Connect.CustomCalculateDivide.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs",
+        "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/FormulaProbe.cs",
+        "src/testharness/FormulaInteractionProbe.cs"
+      ]
+    },
+    "btnOrganizeFiles": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/Connect.OrganizeFiles.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/FileOrganizer.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/OrganizeFilesForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileOperations.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileToolForms.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/OperationBatch.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs"
+      ],
+      "tests": [
+        "src/testharness/FileOperationsProbe.cs",
+        "@shared/src/testharness/Feature099Probe.cs"
+      ]
+    },
+    "btnRenameFiles": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/Connect.RenameFiles.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/FileRenamer.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/RenameFilesForm.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileOperations.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileToolForms.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/OperationBatch.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBreakActions.cs"
+      ],
+      "tests": [
+        "src/testharness/FileOperationsProbe.cs",
+        "@shared/src/testharness/Feature099Probe.cs"
+      ]
+    },
+    "btnFileNames": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileNamesLayout.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileOcr.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileOcrSelection.cs",
+        "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/CloudOcr.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs"
+      ],
+      "tests": [
+        "src/testharness/FileOperationsProbe.cs",
+        "@shared/src/testharness/Feature099Probe.cs"
+      ]
+    },
+    "btnCurrentPdf": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/CurrentPdf",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/CurrentPdf/Connect.CurrentPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnConvertPdf": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/ConvertPdf",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/ConvertPdf/Connect.ConvertPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnWatermarkPdf": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/WatermarkPdf",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/WatermarkPdf/Connect.WatermarkPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnSplitPdf": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/SplitPdf",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/SplitPdf/Connect.SplitPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnMergePdf": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/MergePdf",
+      "entry": "AC-Original Code/ExcelIterate/Operations/FileOperations/FileConversion/MergePdf/Connect.MergePdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnLinkAssistant": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/LinkAssistant",
+      "entry": "AC-Original Code/ExcelIterate/Operations/LinkAssistant/Connect.LinkAssistant.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkOperationLog.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBatch.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBreakActions.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkNameAnalysis.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/WorkbookToolsProbe.cs"
+      ]
+    },
+    "btnGenerateDirectory": {
+      "directory": "AC-Original Code/ExcelIterate/Operations/GenerateDirectory",
+      "entry": "AC-Original Code/ExcelIterate/Operations/GenerateDirectory/Connect.GenerateDirectory.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Operations/GenerateDirectory/DirectoryNavigation.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+      ],
+      "tests": [
+        "src/testharness/WorkbookToolsProbe.cs"
+      ]
+    },
+    "btnFeedback": {
+      "directory": "AC-Original Code/ExcelIterate/Feedback/Feedback",
+      "entry": "AC-Original Code/ExcelIterate/Feedback/Feedback/Connect.Feedback.Entry.cs",
+      "implementation": [],
+      "tests": [
+        "src/testharness/WorkbookToolsProbe.cs"
+      ]
+    },
+    "btnAgentExtension": {
+      "directory": "AC-Original Code/ExcelIterate/Extensions/AgentExtension",
+      "entry": "AC-Original Code/ExcelIterate/Extensions/AgentExtension/Connect.AgentExtension.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentBaidu": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentBaidu",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentBaidu/Connect.AgentBaidu.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentAliyun": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentAliyun",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentAliyun/Connect.AgentAliyun.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentWorkBuddy": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentWorkBuddy",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentWorkBuddy/Connect.AgentWorkBuddy.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentTrae": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentTrae",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentTrae/Connect.AgentTrae.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentQoder": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentQoder",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentQoder/Connect.AgentQoder.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentDeepSeek": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDeepSeek",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDeepSeek/Connect.AgentDeepSeek.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentDoubao": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDoubao",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDoubao/Connect.AgentDoubao.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentKimi": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentKimi",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentKimi/Connect.AgentKimi.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentChatGPT": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentChatGPT",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentChatGPT/Connect.AgentChatGPT.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentClaude": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentClaude",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentClaude/Connect.AgentClaude.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentGemini": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentGemini",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentGemini/Connect.AgentGemini.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentReadme": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentReadme",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentReadme/Connect.AgentReadme.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/AgentDocumentForm.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentUserGuide": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentUserGuide",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentUserGuide/Connect.AgentUserGuide.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/AgentDocumentForm.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentHome": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentHome",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentHome/Connect.AgentHome.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/AgentLocalFiles.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentSort": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentSort",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentSort/Connect.AgentSort.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentNames": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentNames",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentNames/Connect.AgentNames.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentFormats": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentFormats",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentFormats/Connect.AgentFormats.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs",
+        "@shared/src/addin/DialogFormatting.cs",
+        "@shared/src/addin/FormatSession.cs",
+        "@shared/src/addin/FormatEditorThread.cs",
+        "@shared/src/addin/CustomizationSaving.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentDialogSizes": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentDialogSizes",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentDialogSizes/Connect.AgentDialogSizes.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/DialogSizeEditor.cs",
+        "@shared/src/addin/DialogSizes.cs",
+        "@shared/src/addin/DialogPreviewFactory.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentOcrPlaceholder": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentOcrPlaceholder",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentOcrPlaceholder/Connect.AgentOcrPlaceholder.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentRequirements": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentRequirements",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentRequirements/Connect.AgentRequirements.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    }
+  },
+  "source_aliases": {
+    "Connect.cs": [
+      "src/addin/Connect.cs",
+      "AC-Original Code/ExcelIterate/Data/TracePrecedents/Connect.TracePrecedents.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/TraceDependents/Connect.TraceDependents.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/FilterEnhanced/Connect.FilterEnhanced.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/Connect.FilterColumns.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter/Connect.QuickAdvancedFilter.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Connect.OneClickFormula.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/Connect.WrapFormula.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/Connect.IFErrorWrap.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/WrapIFError/Connect.WrapIFError.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/CustomIFError/Connect.CustomIFError.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/Connect.RoundWrap.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/WrapRound/Connect.WrapRound.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/RoundWrap/CustomRound/Connect.CustomRound.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/WrapAbs/Connect.WrapAbs.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/Connect.CustomFunction.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/UnwrapFormula/Connect.UnwrapFormula.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Connect.Arithmetic.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Connect.CalculateAdd.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Default/Connect.CalculateAdd.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Add/Custom/Connect.CustomCalculateAdd.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Connect.CalculateSubtract.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Default/Connect.CalculateSubtract.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Subtract/Custom/Connect.CustomCalculateSubtract.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Connect.CalculateMultiply.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Default/Connect.CalculateMultiply.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Multiply/Custom/Connect.CustomCalculateMultiply.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Connect.CalculateDivide.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Default/Connect.CalculateDivide.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Arithmetic/Divide/Custom/Connect.CustomCalculateDivide.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/Connect.FileOperations.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/Connect.OrganizeFiles.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/Connect.RenameFiles.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/Connect.LinkAssistant.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/GenerateDirectory/Connect.GenerateDirectory.Entry.cs",
+      "AC-Original Code/ExcelIterate/Feedback/Feedback/Connect.Feedback.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs"
+    ],
+    "Connect.MergeHeaders.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Connect.AuditToolbox.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/Connect.MergeHeaders.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/Connect.MergeHeaders.cs"
+    ],
+    "Connect.Elimination.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Connect.Elimination.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/Connect.EliminationReceivable.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/Connect.EliminationRevenueCost.Entry.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs"
+    ],
+    "Connect.FileNames.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.Entry.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/Connect.FileNames.cs"
+    ],
+    "PrecedentTrackerEngine.cs": [
+      "AC-Original Code/ExcelIterate/Data/TracePrecedents/PrecedentTrackerEngine.cs"
+    ],
+    "DependentTrackerEngine.cs": [
+      "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentTrackerEngine.cs"
+    ],
+    "DependentSnapshotReader.cs": [
+      "AC-Original Code/ExcelIterate/Data/TraceDependents/DependentSnapshotReader.cs"
+    ],
+    "TrackerForm.cs": [
+      "AC-Original Code/ExcelIterate/Data/_Shared/TrackerForm.cs"
+    ],
+    "ErrorSourceEngine.cs": [
+      "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceEngine.cs"
+    ],
+    "ErrorSourceForm.cs": [
+      "AC-Original Code/ExcelIterate/Data/_Shared/ErrorSourceForm.cs"
+    ],
+    "ColumnFilterForm.cs": [
+      "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnFilterForm.cs"
+    ],
+    "ColumnVisibilityEngine.cs": [
+      "AC-Original Code/ExcelIterate/Data/FilterEnhanced/FilterColumns/ColumnVisibilityEngine.cs"
+    ],
+    "MergeHeadersForm.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersForm.cs"
+    ],
+    "MergeHeadersHost.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
+      "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeColumnMapper.cs"
+    ],
+    "MergeHeadersEngine.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersEngine.cs"
+    ],
+    "EliminationForm.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs"
+    ],
+    "EliminationHost.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationHost.cs"
+    ],
+    "EliminationSession.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationSession.cs"
+    ],
+    "EliminationEngine.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/EliminationEngine.BuildReceivable.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/EliminationEngine.BuildRevenueCost.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationEngine.cs"
+    ],
+    "EliminationDiff.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/EliminationDiff.cs"
+    ],
+    "EliminationMatrix.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrixBuilder.Common.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/EliminationRevenueCost.cs",
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationMatrix.cs"
+    ],
+    "FormulaCommandEngine.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaCommandEngine.cs"
+    ],
+    "FormulaInteraction.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaInteraction.cs"
+    ],
+    "FormulaWindowThread.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWindowThread.cs"
+    ],
+    "FormulaOptionsForm.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaOptionsForm.cs"
+    ],
+    "FormulaRequest.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaRequest.cs"
+    ],
+    "FormulaWrapper.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/FormulaWrapper.cs"
+    ],
+    "CustomFunctionForm.cs": [
+      "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/CustomFunction/CustomFunctionForm.cs"
+    ],
+    "FormulaRefParser.cs": [
+      "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs"
+    ],
+    "FormulaRefRewriter.cs": [
+      "AC-Original Code/ExcelIterate/_Shared/FormulaRefRewriter.cs"
+    ],
+    "WorksheetIdentity.cs": [
+      "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs"
+    ],
+    "WorkbookSaving.cs": [
+      "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs"
+    ],
+    "HostBatchRunner.cs": [
+      "AC-Original Code/ExcelIterate/_Shared/HostBatchRunner.cs"
+    ],
+    "SourceChangeWatch.cs": [
+      "AC-Original Code/ExcelIterate/_Shared/SourceChangeWatch.cs"
+    ],
+    "LinkAssistant.cs": [
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkAssistant.cs"
+    ],
+    "LinkOperationLog.cs": [
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkOperationLog.cs"
+    ],
+    "LinkBatch.cs": [
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBatch.cs"
+    ],
+    "LinkBreakActions.cs": [
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkBreakActions.cs"
+    ],
+    "LinkNameAnalysis.cs": [
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/LinkNameAnalysis.cs"
+    ],
+    "XlsxLinkPackage.cs": [
+      "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs"
+    ],
+    "FileNamesLayout.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileNamesLayout.cs"
+    ],
+    "FileOcr.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileOcr.cs"
+    ],
+    "FileOcrSelection.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/FileOcrSelection.cs"
+    ],
+    "CloudOcr.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/FileNames/CloudOcr.cs"
+    ],
+    "WorkbookFeatures.cs": [
+      "src/addin/WorkbookFeatures.cs",
+      "AC-Original Code/ExcelIterate/Data/FilterEnhanced/QuickAdvancedFilter/QuickAdvancedFilter.cs",
+      "AC-Original Code/ExcelIterate/Operations/GenerateDirectory/DirectoryNavigation.cs"
+    ],
+    "FileOperations.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/FileOrganizer.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/FileRenamer.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileOperations.cs"
+    ],
+    "FileToolForms.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/RenameFiles/RenameFilesForm.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/OrganizeFiles/OrganizeFilesForm.cs",
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/FileToolForms.cs"
+    ],
+    "OperationBatch.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/OperationBatch.cs"
+    ],
+    "RecycleFiles.cs": [
+      "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs"
+    ]
+  }
 }

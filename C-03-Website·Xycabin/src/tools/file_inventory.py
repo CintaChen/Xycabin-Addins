@@ -69,7 +69,7 @@ def input_file(path,base,document_paths=None):
  if rel.parts[0]=='AB-Graphic' and path.suffix.lower() in ('.png','.svg') and base.name in NAMES[:2]:
   if document_paths is None:document_paths=set(referenced_paths(base))
   if path.resolve() in document_paths:return True
- return rel.parts[0] in ('src','lib') or (len(rel.parts)==1 and path.suffix.lower() in ('.py','.json')) or (rel.parts[0]=='AA-Program' and path.suffix.lower() in ('.py','.bat')) or path.suffix.lower() in SECRET
+ return rel.parts[0] in ('src','AC-Original Code','lib') or (len(rel.parts)==1 and path.suffix.lower() in ('.py','.json')) or (rel.parts[0]=='AA-Program' and path.suffix.lower() in ('.py','.bat')) or path.suffix.lower() in SECRET
 
 def references(files):
  # Positive references protect files; absence is never deletion authorization.
@@ -88,7 +88,9 @@ def references(files):
    for origin in (path.parent,base,base/'src/addin',base/'build'):add(origin/value,path)
   if path.name=='project.json':
    config=json.loads(text)
-   for value in config.get('sources',[]):add(base/'src/addin'/value,path)
+   for value in config.get('sources',[]):
+    if value.startswith('@shared/'):add(base.parent/'C-00-Shared'/value[8:],path)
+    else:add(base/value if '/' in value else base/'src/addin'/value,path)
    for tool in config.get('tools',[]):add(base/tool['source'],path);add(base/'build'/(tool['name']+'.exe'),path)
  for base in {base for _,base in files}:
   if base.name not in NAMES[:2] or not (base.parent/'C-04-Devlog/B1-Project-Files.md').is_file():continue

@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / 'src'))
 from document_assets import collect as collect_document_assets
 PROGRAM, DESIGN = 'AA-Program', 'AB-Graphic'
 DOCS = {'B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
-        'B2-DevExperience.md', 'B3-Gate Control.md'}
+        'B2-DevExperience.md', 'B3-Gate Control.md', 'B4-Code Index.md'}
 DEVLOG = 'C-04-Devlog'
 CONFIGURE = {'C-01-ExcelIterate': 'C1-Exceliterate_Configure.py',
              'C-02-WordUpdater': 'C2-Wordupdater_Configure.py',
@@ -95,7 +95,7 @@ def verify(parent=ROOT.parent, source_only=False, folders=None, strict_evidence=
     docs = Path(parent) / DEVLOG
     actual = {p.name for p in docs.iterdir()} if docs.is_dir() else set()
     if actual != DOCS or any(not p.is_file() or p.is_symlink() for p in docs.iterdir()):
-        raise ValueError('文档目录必须只包含五份规定文件：' + str(docs) + '；应为 ' + ', '.join(sorted(DOCS)))
+        raise ValueError('文档目录必须只包含六份规定文件：' + str(docs) + '；应为 ' + ', '.join(sorted(DOCS)))
     count += len(DOCS)
     for doc in sorted(docs.glob('*.md')):
         text = doc.read_text(encoding='utf-8-sig')
@@ -140,6 +140,7 @@ def self_test():
         (docs / 'B1-Project-Files.md').write_text('**项目档案**\n\n最后更新：2026-10-18\n\n# 一. Agent及开发者接手概览\n概览。\n', encoding='utf-8')
         (docs / 'B2-DevExperience.md').write_text('**经验**\n\n# 一. Word与Excel共享开发经验\n正文。\n', encoding='utf-8')
         (docs / 'B3-Gate Control.md').write_text('**门禁**\n\n# 一. Word与Excel共享门禁\n正文。\n', encoding='utf-8')
+        (docs / 'B4-Code Index.md').write_text('**代码索引**\n\n# 一. Excel-Iterate\n索引。\n# 二. WordUpdater\n索引。\n', encoding='utf-8')
         (docs / 'A-UserGuide.md').write_text('**使用说明**\n\n概览。\n\n# 一. Excel-Iterate\n[入口](../C-01-ExcelIterate/AA-Program/C1-Exceliterate_Configure.py)\n', encoding='utf-8')
         verify(parent, folders={'C-01-ExcelIterate'})
         (base / PROGRAM / 'Excel_Iterate_Setup.exe').unlink()

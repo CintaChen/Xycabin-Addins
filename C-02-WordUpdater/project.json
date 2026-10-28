@@ -15,21 +15,12 @@
   ],
   "legacy_name": "WpsLinkUpdater",
   "sources": [
-    "AssemblyInfo.cs",
+    "src/addin/AssemblyInfo.cs",
     "@shared/src/addin/InteropDefs.cs",
     "@shared/src/addin/UiKit.cs",
-    "Ribbon.g.cs",
-    "Connect.cs",
-    "ThisAddIn.cs",
-    "EtCleanup.cs",
-    "UpdateEngine.cs",
-    "LinkPasteGeometry.cs",
-    "LinkPasteEngine.cs",
-    "EtSelectionReader.cs",
-    "LinkViewEngine.cs",
-    "FlashHighlighter.cs",
-    "LinkViewForm.cs",
-    "TableSelectEngine.cs",
+    "src/addin/Ribbon.g.cs",
+    "src/addin/Connect.cs",
+    "src/addin/ThisAddIn.cs",
     "@shared/src/addin/Connect.Agent.cs",
     "@shared/src/addin/AgentDocumentForm.cs",
     "@shared/src/addin/AgentLocalFiles.cs",
@@ -39,7 +30,7 @@
     "@shared/src/addin/AgentCustomization.cs",
     "@shared/src/addin/DialogFormatting.cs",
     "@shared/src/addin/Connect.Customization.cs",
-    "CustomizationCallbacks.g.cs",
+    "src/addin/CustomizationCallbacks.g.cs",
     "@shared/src/addin/FormatSession.cs",
     "@shared/src/addin/FormatEditorThread.cs",
     "@shared/src/addin/CustomizationSaving.cs",
@@ -48,7 +39,59 @@
     "@shared/src/addin/Connect.Pdf.cs",
     "@shared/src/addin/PdfToolsForm.cs",
     "@shared/src/addin/PdfCurrentDocument.cs",
-    "WordHostStateScope.cs"
+    "AC-Original Code/WordUpdater/Links/UpdateLinks/Connect.UpdateLinks.Entry.cs",
+    "AC-Original Code/WordUpdater/Links/LinkToExcel/Connect.LinkToExcel.Entry.cs",
+    "AC-Original Code/WordUpdater/Links/ViewLinks/Connect.ViewLinks.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/SelectAllTables/Connect.SelectAllTables.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/Connect.FileOperations.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/Connect.FileConversion.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/CurrentPdf/Connect.CurrentPdf.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/ConvertPdf/Connect.ConvertPdf.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/WatermarkPdf/Connect.WatermarkPdf.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/SplitPdf/Connect.SplitPdf.Entry.cs",
+    "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/MergePdf/Connect.MergePdf.Entry.cs",
+    "AC-Original Code/WordUpdater/Feedback/Feedback/Connect.Feedback.Entry.cs",
+    "AC-Original Code/WordUpdater/Extensions/AgentExtension/Connect.AgentExtension.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/Connect.AgentApi.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/Connect.AgentCloud.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentBaidu/Connect.AgentBaidu.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentAliyun/Connect.AgentAliyun.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/Connect.AgentSites.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/Connect.AgentChina.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentWorkBuddy/Connect.AgentWorkBuddy.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentTrae/Connect.AgentTrae.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentQoder/Connect.AgentQoder.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDeepSeek/Connect.AgentDeepSeek.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDoubao/Connect.AgentDoubao.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentKimi/Connect.AgentKimi.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/Connect.AgentOverseas.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentChatGPT/Connect.AgentChatGPT.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentClaude/Connect.AgentClaude.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentGemini/Connect.AgentGemini.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/Connect.AgentWorkflow.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentReadme/Connect.AgentReadme.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentUserGuide/Connect.AgentUserGuide.Entry.cs",
+    "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentHome/Connect.AgentHome.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/Connect.AgentCustomization.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentSort/Connect.AgentSort.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentNames/Connect.AgentNames.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentFormats/Connect.AgentFormats.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentDialogSizes/Connect.AgentDialogSizes.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentExperiments/Connect.AgentExperiments.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentOcrPlaceholder/Connect.AgentOcrPlaceholder.Entry.cs",
+    "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentRequirements/Connect.AgentRequirements.Entry.cs",
+    "AC-Original Code/WordUpdater/Links/_Shared/UpdateEngine.cs",
+    "AC-Original Code/WordUpdater/Links/UpdateLinks/FlashHighlighter.cs",
+    "AC-Original Code/WordUpdater/Links/_Shared/LinkPasteEngine.cs",
+    "AC-Original Code/WordUpdater/Links/LinkToExcel/LinkPasteGeometry.cs",
+    "AC-Original Code/WordUpdater/Links/LinkToExcel/EtSelectionReader.cs",
+    "AC-Original Code/WordUpdater/Links/_Shared/LinkViewEngine.cs",
+    "AC-Original Code/WordUpdater/Links/ViewLinks/LinkViewForm.cs",
+    "AC-Original Code/WordUpdater/Operations/SelectAllTables/TableSelectEngine.cs",
+    "AC-Original Code/WordUpdater/Links/_Shared/EtCleanup.cs",
+    "AC-Original Code/WordUpdater/Links/_Shared/WordHostStateScope.cs",
+    "AC-Original Code/WordUpdater/Links/LinkToExcel/Connect.LinkPasteResult.cs",
+    "AC-Original Code/WordUpdater/Links/UpdateLinks/Connect.UpdateResult.cs"
   ],
   "tools": [
     {
@@ -206,5 +249,423 @@
       "offline": true
     }
   ],
-  "pdf_worker": true
+  "pdf_worker": true,
+  "features": {
+    "btnUpdateLinks": {
+      "directory": "AC-Original Code/WordUpdater/Links/UpdateLinks",
+      "entry": "AC-Original Code/WordUpdater/Links/UpdateLinks/Connect.UpdateLinks.Entry.cs",
+      "implementation": [
+        "AC-Original Code/WordUpdater/Links/UpdateLinks/FlashHighlighter.cs",
+        "AC-Original Code/WordUpdater/Links/UpdateLinks/Connect.UpdateResult.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/UpdateEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/LinkPasteEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/LinkViewEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/WordHostStateScope.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/EtCleanup.cs"
+      ],
+      "tests": [
+        "src/tools/UpdateProbe.cs"
+      ]
+    },
+    "btnLinkToExcel": {
+      "directory": "AC-Original Code/WordUpdater/Links/LinkToExcel",
+      "entry": "AC-Original Code/WordUpdater/Links/LinkToExcel/Connect.LinkToExcel.Entry.cs",
+      "implementation": [
+        "AC-Original Code/WordUpdater/Links/LinkToExcel/LinkPasteGeometry.cs",
+        "AC-Original Code/WordUpdater/Links/LinkToExcel/EtSelectionReader.cs",
+        "AC-Original Code/WordUpdater/Links/LinkToExcel/Connect.LinkPasteResult.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/UpdateEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/LinkPasteEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/LinkViewEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/WordHostStateScope.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/EtCleanup.cs"
+      ],
+      "tests": [
+        "src/testharness/EtSelectionReaderProbe.cs",
+        "src/tools/LinkMapProbe.cs"
+      ]
+    },
+    "btnViewLinks": {
+      "directory": "AC-Original Code/WordUpdater/Links/ViewLinks",
+      "entry": "AC-Original Code/WordUpdater/Links/ViewLinks/Connect.ViewLinks.Entry.cs",
+      "implementation": [
+        "AC-Original Code/WordUpdater/Links/ViewLinks/LinkViewForm.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/UpdateEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/LinkPasteEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/LinkViewEngine.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/WordHostStateScope.cs",
+        "AC-Original Code/WordUpdater/Links/_Shared/EtCleanup.cs"
+      ],
+      "tests": [
+        "src/tools/LinkViewProbe.cs",
+        "src/tools/LinkViewFormProbe.cs"
+      ]
+    },
+    "btnSelectAllTables": {
+      "directory": "AC-Original Code/WordUpdater/Operations/SelectAllTables",
+      "entry": "AC-Original Code/WordUpdater/Operations/SelectAllTables/Connect.SelectAllTables.Entry.cs",
+      "implementation": [
+        "AC-Original Code/WordUpdater/Operations/SelectAllTables/TableSelectEngine.cs"
+      ],
+      "tests": []
+    },
+    "btnCurrentPdf": {
+      "directory": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/CurrentPdf",
+      "entry": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/CurrentPdf/Connect.CurrentPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnConvertPdf": {
+      "directory": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/ConvertPdf",
+      "entry": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/ConvertPdf/Connect.ConvertPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnWatermarkPdf": {
+      "directory": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/WatermarkPdf",
+      "entry": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/WatermarkPdf/Connect.WatermarkPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnSplitPdf": {
+      "directory": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/SplitPdf",
+      "entry": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/SplitPdf/Connect.SplitPdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnMergePdf": {
+      "directory": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/MergePdf",
+      "entry": "AC-Original Code/WordUpdater/Operations/FileOperations/FileConversion/MergePdf/Connect.MergePdf.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Pdf.cs",
+        "@shared/src/addin/PdfToolsForm.cs",
+        "@shared/src/addin/PdfCurrentDocument.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/PdfToolsProbe.cs",
+        "@shared/src/testharness/PdfCurrentDocumentProbe.cs"
+      ]
+    },
+    "btnFeedback": {
+      "directory": "AC-Original Code/WordUpdater/Feedback/Feedback",
+      "entry": "AC-Original Code/WordUpdater/Feedback/Feedback/Connect.Feedback.Entry.cs",
+      "implementation": [],
+      "tests": []
+    },
+    "btnAgentExtension": {
+      "directory": "AC-Original Code/WordUpdater/Extensions/AgentExtension",
+      "entry": "AC-Original Code/WordUpdater/Extensions/AgentExtension/Connect.AgentExtension.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentBaidu": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentBaidu",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentBaidu/Connect.AgentBaidu.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentAliyun": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentAliyun",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentCloud/AgentAliyun/Connect.AgentAliyun.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentWorkBuddy": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentWorkBuddy",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentWorkBuddy/Connect.AgentWorkBuddy.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentTrae": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentTrae",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentTrae/Connect.AgentTrae.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentQoder": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentQoder",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentQoder/Connect.AgentQoder.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentDeepSeek": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDeepSeek",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDeepSeek/Connect.AgentDeepSeek.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentDoubao": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDoubao",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentDoubao/Connect.AgentDoubao.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentKimi": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentKimi",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentChina/AgentKimi/Connect.AgentKimi.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentChatGPT": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentChatGPT",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentChatGPT/Connect.AgentChatGPT.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentClaude": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentClaude",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentClaude/Connect.AgentClaude.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentGemini": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentGemini",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentApi/AgentSites/AgentOverseas/AgentGemini/Connect.AgentGemini.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentReadme": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentReadme",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentReadme/Connect.AgentReadme.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/AgentDocumentForm.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentUserGuide": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentUserGuide",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentUserGuide/Connect.AgentUserGuide.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/AgentDocumentForm.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentHome": {
+      "directory": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentHome",
+      "entry": "AC-Original Code/AgentEvo/Details/AgentWorkflow/AgentHome/Connect.AgentHome.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/AgentLocalFiles.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentSort": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentSort",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentSort/Connect.AgentSort.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentNames": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentNames",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentNames/Connect.AgentNames.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentFormats": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentFormats",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentFormats/Connect.AgentFormats.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs",
+        "@shared/src/addin/DialogFormatting.cs",
+        "@shared/src/addin/FormatSession.cs",
+        "@shared/src/addin/FormatEditorThread.cs",
+        "@shared/src/addin/CustomizationSaving.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentDialogSizes": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentDialogSizes",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentCustomization/AgentDialogSizes/Connect.AgentDialogSizes.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Agent.cs",
+        "@shared/src/addin/DialogSizeEditor.cs",
+        "@shared/src/addin/DialogSizes.cs",
+        "@shared/src/addin/DialogPreviewFactory.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentOcrPlaceholder": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentOcrPlaceholder",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentOcrPlaceholder/Connect.AgentOcrPlaceholder.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    },
+    "btnAgentRequirements": {
+      "directory": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentRequirements",
+      "entry": "AC-Original Code/AgentEvo/Operations/AgentExperiments/AgentRequirements/Connect.AgentRequirements.Entry.cs",
+      "implementation": [
+        "@shared/src/addin/Connect.Customization.cs",
+        "@shared/src/addin/AgentCustomization.cs"
+      ],
+      "tests": [
+        "@shared/src/testharness/Feature099Probe.cs",
+        "@shared/src/testharness/HostDialogProbe.cs"
+      ]
+    }
+  },
+  "source_aliases": {
+    "Connect.cs": [
+      "src/addin/Connect.cs",
+      "AC-Original Code/WordUpdater/Links/UpdateLinks/Connect.UpdateLinks.Entry.cs",
+      "AC-Original Code/WordUpdater/Links/LinkToExcel/Connect.LinkToExcel.Entry.cs",
+      "AC-Original Code/WordUpdater/Links/ViewLinks/Connect.ViewLinks.Entry.cs",
+      "AC-Original Code/WordUpdater/Operations/SelectAllTables/Connect.SelectAllTables.Entry.cs",
+      "AC-Original Code/WordUpdater/Feedback/Feedback/Connect.Feedback.Entry.cs",
+      "AC-Original Code/WordUpdater/Links/LinkToExcel/Connect.LinkPasteResult.cs",
+      "AC-Original Code/WordUpdater/Links/UpdateLinks/Connect.UpdateResult.cs"
+    ],
+    "UpdateEngine.cs": [
+      "AC-Original Code/WordUpdater/Links/_Shared/UpdateEngine.cs"
+    ],
+    "FlashHighlighter.cs": [
+      "AC-Original Code/WordUpdater/Links/UpdateLinks/FlashHighlighter.cs"
+    ],
+    "LinkPasteEngine.cs": [
+      "AC-Original Code/WordUpdater/Links/_Shared/LinkPasteEngine.cs"
+    ],
+    "LinkPasteGeometry.cs": [
+      "AC-Original Code/WordUpdater/Links/LinkToExcel/LinkPasteGeometry.cs"
+    ],
+    "EtSelectionReader.cs": [
+      "AC-Original Code/WordUpdater/Links/LinkToExcel/EtSelectionReader.cs"
+    ],
+    "LinkViewEngine.cs": [
+      "AC-Original Code/WordUpdater/Links/_Shared/LinkViewEngine.cs"
+    ],
+    "LinkViewForm.cs": [
+      "AC-Original Code/WordUpdater/Links/ViewLinks/LinkViewForm.cs"
+    ],
+    "TableSelectEngine.cs": [
+      "AC-Original Code/WordUpdater/Operations/SelectAllTables/TableSelectEngine.cs"
+    ],
+    "EtCleanup.cs": [
+      "AC-Original Code/WordUpdater/Links/_Shared/EtCleanup.cs"
+    ],
+    "WordHostStateScope.cs": [
+      "AC-Original Code/WordUpdater/Links/_Shared/WordHostStateScope.cs"
+    ]
+  }
 }

@@ -1,4 +1,4 @@
-"""Read-only gate for the five documents in C-04-Devlog.
+"""Read-only gate for the six documents in C-04-Devlog.
 
 Structure is derived from level-one chapter titles; no invisible HTML markers
 are used. Scopes, overview and delivery-evidence sections are computed by the
@@ -14,7 +14,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent
 DOCS = ROOT / 'C-04-Devlog'
 FILES = ('B0-Entry.md', 'A-UserGuide.md', 'B1-Project-Files.md',
-         'B2-DevExperience.md', 'B3-Gate Control.md')
+         'B2-DevExperience.md', 'B3-Gate Control.md', 'B4-Code Index.md')
 LIMIT = 200
 AUDIT_HEAD = re.compile(r'^###\s+\(\d+\)\.\s*本轮交付证据\s*$')
 EXPECTED_SCOPES = {
@@ -22,6 +22,7 @@ EXPECTED_SCOPES = {
     'B1-Project-Files.md': ['shared', 'excel', 'word', 'site'],
     'B2-DevExperience.md': ['shared', 'excel', 'word', 'site'],
     'B3-Gate Control.md': ['shared', 'site'],
+    'B4-Code Index.md': ['excel', 'word'],
 }
 RULE_LINE = re.compile(r'(?m)^\*\*(R-\d{2})\*\*')
 RULE_MARK = re.compile(r'rule=(R-\d{2})')
@@ -158,7 +159,7 @@ SEMANTICS = {
     'G-20': 'FAIL(回滚)', 'G-21': 'FAIL', 'G-22': 'FAIL', 'G-23': 'FAIL',
 }
 GATE_REGISTRY = {
-    'G-01': ('五份文档与规则注册表', 'R-01–R-16,R-20'),
+    'G-01': ('六份文档与规则注册表', 'R-01–R-16,R-20'),
     'G-02': ('C-01/C-02 共享一致性', 'R-15'),
     'G-03': ('三个 CMD 入口契约', 'R-23'),
     'G-04': ('加载项身份预检', 'R-17'),
@@ -471,6 +472,9 @@ def verify_file(path):
     elif name == 'B3-Gate Control.md':
         if len(chapters) != 2:
             errors.append(name + ': 必须包含两个一级章节')
+    elif name == 'B4-Code Index.md':
+        if len(chapters) != 2:
+            errors.append(name + ': 必须依次包含 Excel-Iterate 与 WordUpdater 两章')
     return errors
 
 
@@ -490,7 +494,7 @@ def verify(files=None):
         errors += check_gate_inventory(text)
     if errors:
         raise ValueError('\n'.join(errors))
-    print('PASS: C-04 五份文档的章节范围、概览、交付证据、版本表、日期、R/H 门禁分类与规则注册表；' + str(len(paths)) + ' 份')
+    print('PASS: C-04 六份文档的章节范围、概览、交付证据、版本表、日期、R/H 门禁分类与规则注册表；' + str(len(paths)) + ' 份')
 
 
 def self_test():

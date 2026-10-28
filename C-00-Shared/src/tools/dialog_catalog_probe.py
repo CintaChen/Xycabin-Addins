@@ -59,7 +59,7 @@ def main():
  if project['host']=='Word':checks['LinkViewForm.cs']=['word.links']
  else:checks.update({'TrackerForm.cs':['trace.precedents','trace.dependents'],'ErrorSourceForm.cs':['trace.errorsources'],'ColumnFilterForm.cs':['columns.filter'],'FormulaOptionsForm.cs':['"formula." + operation.ToString().ToLowerInvariant()'],'CustomFunctionForm.cs':['formula.custom'],'LinkAssistant.cs':['links.assistant'],'FileToolForms.cs':['file.organize','file.rename'],'Connect.FileNames.cs':['file.names'],'MergeHeadersForm.cs':['merge.headers'],'EliminationForm.cs':['elimination.receivable','elimination.revenuecost']})
  for name,tokens in checks.items():
-  text=source_path(name, addin=True).read_text(encoding='utf-8-sig')
+  text=source_text(name)
   if any(token not in text for token in tokens):raise ValueError('缺少稳定尺寸标识：'+name)
  import importlib.util
  sys.dont_write_bytecode=True

@@ -49,6 +49,18 @@ def verify(project_root):
         after = [build_cache.inputs(product, snapshot) for product in existing]
     for old, new in zip(before, after):
         check(old != new, 'shared source change invalidates each product cache')
+    check(before == [build_cache.inputs(product, snapshot) for product in existing],
+          'unchanged inputs retain stable cache fingerprints')
+    for selected in existing:
+        feature = next(path for path in addin_sources(selected)
+                       if path.is_relative_to(selected / 'AC-Original Code'))
+        def changed_feature(path):
+            return 'changed-feature-source' if Path(path).resolve() == feature else digest(path)
+        with patch.object(build_cache, 'digest', side_effect=changed_feature):
+            modified = [build_cache.inputs(product, snapshot) for product in existing]
+        check(all((old != new) == (product == selected)
+                  for product, old, new in zip(existing, before, modified)),
+              'a product feature edit invalidates only that product cache')
     print('SourceLayoutProbe: %d PASS, 0 FAIL' % checks)
 
 
