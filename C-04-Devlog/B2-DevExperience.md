@@ -22,6 +22,12 @@
 
 六个lib为 Tools、Common、Common.v4.0.Utilities、对应Word/Excel宿主库、VSTO Runtime、Office.Core。Utilities与Office.Core随包分发；用户机仍须安装完整VSTO Runtime。公共文件选择以 `verify_shared.py` 的 SHARED_FILES 和当前编译依赖闭包为准，不按历史数量复制全部业务。
 
+构建缓存读取字体注册表时，非字符串值只计入环境指纹，不作为字体路径传给 Path，避免本机注册表中的数值项中断编译。
+
+安装成功后以 MaintenanceEntry 在当前用户的 Windows Uninstall 项登记名称、版本、安装位置及带引号的卸载命令；命令指向本地保留的维护工具，不依赖下载的 EXE 仍存在。仅有明确 --uninstall 才进入卸载视图，不自动执行删除；官方订阅注销成功后才移除本产品挂载、白名单、载荷与有产品标记的卸载项。保留配置、日志及维护缓存，不移除运行库。InstallFlowProbe 使用假运行库核安装顺序和维护入口元数据，不安装或改写真实注册表。
+
+清单的 codebase 是文件名，不是 CLR 程序集标识。Interop.Microsoft.Office.Core.dll 可能实际装的是强签 office 15 PIA，而非历史未签 Interop 2.8。GetPkt --json 只读 PE 元数据及 AssemblyRef；gen_manifest 按实际名称、版本、文化、架构和 token 生成依赖与入口身份，verify_package 核实际绑定后才核签名。PackageIdentityProbe 重现旧声明配新版二进制的安装失败，覆盖强/弱签、名称、版本、文化、架构、入口与 AssemblyRef；摘要和签名正确不能代替此项。
+
 ### (2). 先隔离产品身份
 
 | 项目项                    | WordUpdater                                              | Excel-Iterate                                                |
@@ -512,6 +518,36 @@ EliminationSession集中持有网关、预检、目标、双表快照和备份�
 - **「写数值不写公式」复选框删除**：写公式多次在宿主核对环节报错（跨表引用 `$` 规范化等），`request.StaticValues` 恒 true、金额恒写静态数值；确认文案同步
 - **拖柄加固 + 留白根除**：`WidthGrip.OnPaintBackground` 由空改为铺底色（双保险）；删除 `gripSource/gripTarget` 两个行拖柄；`Ui.Grip` 包按钮时清其底边距，前导 Label 上边距 8→6、非按钮输入框上下边距归零、hint 上下边距 8→2、来源/目标间隔行 8→2、两卡片纵向 Padding 8→4。**多轮压缩无效的真根因（新增 LayoutProbe 离线测量证实）**：AutoSize 行里放 `Dock=Fill` 的子控件时，TLP 读的是子控件「当前实际高度」而非期望高度（循环依赖），卡片渲染高 100px 而内容仅需 46/38px——改 `AutoSize=true + Dock=Top` 后卡片高度由内容决定（46/38px），留白彻底消失。`UiKit.cs` 现由 C-00-Shared 单源维护
 - **公式写入核对失败（G4）修复**：结果表跨表引用 `='差异表(2)'!I3` 写入后，宿主把相对引用规范化为 `$I$3` 回读，`NormalizeFormula` 不去 `$` 致逐字符比对失败。修复：NormalizeFormula 追加 `Replace("$","")`；核对失败消息附带期望/实际公式便于诊断；写入顺序改为**先写差异表、后写结果表**（引用目标先有数据）。`MergeHeadersHost.cs` 的宿主专属差异按两产品契约分别验证
+
+## 6. 批量迁移数据
+
+与上游源码分类合并后，迁移入口与六份专属实现统一位于 `AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/`，通过 sources、features、code_layout 和 B4 登记参与编译；测试仍保留在 src/testharness 与 src/tools。迁移依赖的 SourceChangeWatch 位于 Data/_Shared；事件契约 SourceEvent 随 DirectoryEventSink 的上游拆分移入 Operations/GenerateDirectory/DirectoryNavigation.cs，不能重新在 WorkbookFeatures.cs 声明重复事件接收器。既有表头匹配语义不变，两产品共享登记须同步编译验证。
+
+工作表下拉框保留 ComboBox 形态，不用隐藏编辑器解决留空。DataGridView 列 Padding.Empty 会继承网格左右内边距，因此网格正文设为零，其余列单独保留原留白；HandleCreated 后执行且兼容控件已创建句柄。编辑器沿用单元格 Font，OwnerDrawFixed 的 ItemHeight 按单元格高度减分隔线与原生 PreferredHeight 的差值调整，避免系统按字体缩小编辑态高度；不缩字号。列表宽度同时设置编辑器与当前 ComboBoxCell，按该目标表名测量，避免展开时被单元格默认宽度重置。单击展开和即时提交沿用宿主线程，任务运行时禁止编辑；交互桌面探针记录实际编辑器、单元格尺寸及字体，静态截图不能证明编辑态正确。
+
+目标表格复用 ResultGrid.ColumnFitOverride，按 TargetColumnWeights 分配实际视口：Ui.EnsureGridHeaders 测量字体、DPI 和标题下限，固定勾选列，优先锁定低于下限的列，再将剩余像素按权重分配，舍入余数归最后一列。工作表列保留可读下限，计算扣除竖向滚动条；列宽不依赖上次布局，避免最小宽度边界的反复缩放产生累积偏差和多余横向滚动。窗口尺寸、滚动条显隐、文件添加与结果刷新共用回调并防重入，不改其他表格；不再使用通用 AllCells 把工作表下拉项撑宽。完整路径保留单元格提示；真正不足以容纳全部标题下限时才横向滚动。
+
+目标文件与文件夹统一在“添加目标”的原生选择器中选择，不新增主窗文件夹入口或自有 Form。MigrationTargetPicker 通过 HostDialogService.Run 在独立 STA 显示 Windows Common Item Dialog，GetSelectedItems 与对话框内的添加选中项命令接受文件夹；事件接口及回调类须对 COM 可见，所有 Shell 引用在该 STA 释放，回宿主只传路径字符串。接口契约见 [IFileOpenDialog.GetSelectedItems](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileopendialog-getselecteditems)。交互桌面探针与无界面命令环境分开记录，命令环境自动取消不能算成功选择。MigrationTargetScan 只展开当前层，过滤四种格式、源文件、锁及自建临时/结果，去重后逐项读取，失败仍保留清单和原因。
+
+勾选列采用稳定的 include 名称并只把 DisplayIndex 设为零，保留原有七列的索引契约。Request 只创建已勾选目标，全不选明确阻止；取消勾选、全选或全不选均使旧预检失效，执行按钮还须核对目标属于当前请求。任务运行期间禁止改变选择，失败目标不阻止其他已勾选目标。
+
+顶部源配置采用紧凑宽度，将源文件、工作表、区域、两种选择按钮、读取当前选区和允许全空白复选框放入同一行；按实际控件高度对齐中心。既有保存的格式可能在 Load 恢复旧版默认宽度，因此只在当前窗口的格式副本内清除对应旧默认宽度规则，保留其他自定义宽度与磁盘配置；字段容器按实际 Bounds 排列，避免 FlowLayoutPanel 继续使用旧指定宽度留下空隙。工作表下拉菜单独立加宽以显示表名；窗口缩窄时安全换行，不改共享弹窗布局。
+
+源区域鼠标选择复用宿主 InputBox(Type=8)，选择期间暂时隐藏迁移窗口并设置忙标记，完成、取消或失败均在 finally 恢复窗口；只在返回非空有效选区时回填。选区须与指定源工作簿及工作表对象身份一致，Areas=1，且不超过十万格。已打开文档仅借用坐标，未保存也不替用户保存；迁移预检仍要求原件已保存。未打开原件沿用只读读取副本，结束恢复先前活动表并仅清理本会话副本；所有 COM 留在原宿主线程。托管夹具覆盖取消、错误归属、离散选区及资源清理，原生范围注入只能证明宿主适配，真实鼠标框选与焦点须另验。
+
+文件级保真不能只依赖 COM 读回：WPS 会把保存的日期格式代码改写，并在 Merge/Save 时清除合并从属格中的原始隐藏常量。MigrationPackagePreservation 从已保存源包采集选区内的原始数字格式及合并从属格常量，宿主保存并关闭副本后按目标坐标恢复，再经宿主重开核验及最终包级核验；格式样式克隆追加，不能修改其他单元格共用的 xf。隐藏公式或不能保真的二进制目标预检拒绝，普通二进制迁移保持原流程；原件不改。独立 XML 审计须逐格比较最终交付文件，不能用同一宿主的归一化结果自证正确。
+
+SourceChangeWatch 默认保留从属扫描/抵消的旧失效规则；迁移模式只快照公式文本及常量，所以 SheetCalculate 本身不作数据编辑处理。SheetChange、关闭、删除、新增表仍受保护；异线程事件只暂存参数，在宿主线程检查受监测工作簿身份，不能把其他工作簿的关闭直接视作来源修改。关闭自建副本后先处理通知，再释放 COM 引用。日志分别记录监听角色、事件类型、线程和匹配结果；旧版本只记 changed 布尔值，历史组合错误无法反推确切事件，不得把重算推测写成历史定论。
+
+旧 WPS 将 OOXML 的 ISO 日期单元格 t=d 导入为年份数字，按原日期格式显示后变成早年的日期；只比迁移前后 Value2 会把宿主同样的误读当成通过。MigrationPackageCompatibility 只处理自建副本，将日期转为该包 1900/1904 基准的数字序列并保留格式及 VBA 载荷；原件保持原字节，已打开原件仍先检查 Saved，需兼容时另读副本。实机断言必须独立核日历日期和序列值。WPS 会把逆序矩形范围规范化：ComparisonFormula 仅在核验时按各轴排序端点、保留 $，跳过字符串与表名；不能删掉 $ 以图通过。迁移引入的直接单格自引用在预检明确指出目标位置。失败输出关闭后以“原名_未通过校验_短标识”移入本批诊断目录；正式发布使用原目标名称加迁移结果，不把临时长标识当作输出。读取副本隐藏且清理置于 finally，网关关闭失败也尝试清理。
+
+迁移计时器必须防重入：COM 调用可能在原 STA 处理窗口消息，重复 Tick 会对尚在 MoveNext 的迭代器再次 MoveNext，误判结束并释放当前工作簿。Tick 入口检查 ticking 并 Stop 计时器，finally 在会话仍存活时重启，失败与关闭路径同样保护。PumpChecks 主动注入嵌套 Tick，旧实现提前完成/释放而失败，新实现通过；真实 WPS 回归须使用正式 DataMigrationForm.Run 的消息泵处理至少两个目标，不能只同步 Drain。MacroFingerprints 与摘要读取均使用 FileShare.ReadWrite，避免已打开目标对新只读句柄的共享写冲突。源区域必须显式选择或输入，空白默认阻止、主动清空须勾选并二次确认；显示源非空数/公式数与逐目标成功失败计数，日志保留范围及异常阶段/堆栈。仅在结果副本保存目标表、选区和滚动位置，重开应直接看到迁移区域。
+
+源选择与执行分开：窗口初始来源为空，读取当前选区只由用户按钮触发；xlsx/xlsm 选文件仅通过只读 ZIP/XML 读取表名，禁用 DTD，不在 WPS 内打开再关闭工作簿。WPS 打开外部生成文件可能重算并将只读读取副本标为 Saved=false；保存检查按本会话原件到读取副本的精确路径映射判定所有权，不能只看共享 gateway 的 OpenedByUs（再次 Resolve 自建副本时为假）。只豁免自建读取副本的脏标记，用户打开的原件仍须保存；不写 Saved=true，不自动保存原件，事件监听、对象身份和原件摘要复查保留。关闭自建读取簿也在 Quiet 内执行。合并区域只保留左上角内容，从属格的 WPS 回读内容按空白规范化；重建合并后重新施加各格样式，以恢复 WPS 合并时重置的边框。写完字体、换行和合并后显式恢复目标行高列宽，避免 WPS 自动调高；保存重开仍逐项核对。
+
+DataMigrationEngine 独立于表头合并策略：内部 A1/整行/整列引用按目标行列差平移，$ 锁定保留，源表显式限定映射到选定目标表，其他内部表要求同名；第三方引用地址冻结，缺省目录按源 LinkSources 解析为完整路径，避免目标目录改变外链含义。必要名称递归收集、作用域映射、冲突与遮蔽预检；相对定义名称、循环依赖、结构化表、数组/溢出、三维及不能可靠解释的公式拒绝迁移，不直接复用会产生源文件外链的普通跨簿粘贴。
+
+DataMigrationHost 在宿主线程由窗口计时器分步读取及写入，后台不携带 COM；每步恢复事件、刷新、提示与宏安全设置，不切换宿主计算模式。源和目标须已保存，执行前核对象身份及磁盘摘要；WPS 对旧格式的只读打开仍可能在关闭时改变复合文件元数据，故未打开原件先复制到同目录的读取副本，关闭后仅删除自建读取副本；原目录须可写。迁移只修改同目录临时输出副本，保存后重开逐格核内容与静态样式、名称、外链、合并和目标行高列宽，再不覆盖地发布新文件。失败保留诊断与未交付副本，取消保留已成功目标。DataMigrationProbe 用托管宿主夹具核规则和副本流程，不代表 WPS 实机或 xls/et 格式兼容通过；DataMigrationLiveProbe 经 LiveProbeSafety 在自建样本中验证四种格式、完整合并区域、样式、外链、名称与原件摘要；实际宏代码、窗口焦点与大区域耗时另验。ZIP 工作簿还核对 vbaProject 载荷摘要，避免保存时静默丢弃宏。
 
 # 三. WordUpdater 专属开发经验
 

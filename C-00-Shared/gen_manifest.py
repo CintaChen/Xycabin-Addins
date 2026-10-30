@@ -5,7 +5,7 @@ import hashlib
 import os
 import sys
 sys.dont_write_bytecode = True
-from project_support import PROJECT, CONFIGURE_NAME
+from project_support import PROJECT, CONFIGURE_NAME, assembly_metadata
 from xml.sax.saxutils import escape
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -34,15 +34,9 @@ ADDIN_VERSION = _load_configure().get_version()
 ASSEMBLY = PROJECT["assembly"]
 MAIN_DLL = ASSEMBLY + ".dll"
 PRODUCT = escape(PROJECT["display_name"], {'"': "&quot;"})
-# 随包分发（不在 GAC）的依赖：文件名 -> (程序集名, 版本, publicKeyToken 或 None)
-# 注意：Interop.Microsoft.Office.Core 是未签名程序集（无 pkt，v2.8.0.0），
-# 与本产物 AssemblyRef 完全一致（ReflectionProbe 实测）。
-BUNDLED = {
-    "Microsoft.Office.Tools.Common.v4.0.Utilities.dll":
-        ("Microsoft.Office.Tools.Common.v4.0.Utilities", "10.0.0.0", "B03F5F7F11D50A3A"),
-    "Interop.Microsoft.Office.Core.dll":
-        ("Interop.Microsoft.Office.Core", "2.8.0.0", None),
-}
+# Filenames are deployment locations, not CLR assembly identities. For example,
+# Interop.Microsoft.Office.Core.dll can contain the strong-named office 15 PIA.
+BUNDLED = ("Microsoft.Office.Tools.Common.v4.0.Utilities.dll", "Interop.Microsoft.Office.Core.dll")
 # 需存在于 GAC 的引用（preRequisite）：程序集名 -> (版本, publicKeyToken)
 PREREQ = [
     ("Microsoft.Windows.CommonLanguageRuntime", "4.0.30319.0", None),
@@ -83,8 +77,21 @@ def hash_block(path):
     )
 
 
+def identity_xml(identity):
+    attributes = []
+    for key in ('name', 'version', 'publicKeyToken', 'language', 'processorArchitecture'):
+        value = identity.get(key)
+        if value and value != 'none':
+            attributes.append(key + '="' + escape(value, {'"': '&quot;'}) + '"')
+    return '      <assemblyIdentity ' + ' '.join(attributes) + ' />\r\n'
+
+
 def gen_app_manifest(dirpath):
     main_path = os.path.join(dirpath, MAIN_DLL)
+    records = assembly_metadata([main_path] + [os.path.join(dirpath, name) for name in BUNDLED])
+    main_identity = records[0]['identity']
+    if main_identity['name'] != ASSEMBLY or main_identity['version'] != ADDIN_VERSION:
+        raise ValueError('主 DLL 实际名称或版本与产品配置不一致')
     parts = []
     parts.append('<?xml version="1.0" encoding="utf-8"?>\r\n')
     parts.append('<asmv1:assembly xsi:schemaLocation="urn:schemas-microsoft-com:asm.v1 assembly.adaptive.xsd" manifestVersion="1.0" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns="urn:schemas-microsoft-com:asm.v2" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:co.v1="urn:schemas-microsoft-com:clickonce.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:co.v2="urn:schemas-microsoft-com:clickonce.v2">\r\n')
@@ -132,22 +139,19 @@ def gen_app_manifest(dirpath):
     # 不会触及此处。
     parts.append('  <dependency>\r\n')
     parts.append('    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="' + MAIN_DLL + '" size="' + str(file_size(main_path)) + '">\r\n')
-    parts.append('      <assemblyIdentity name="' + ASSEMBLY + '" version="' + ADDIN_VERSION + '" language="neutral" processorArchitecture="msil" />\r\n')
+    parts.append(identity_xml(main_identity))
     parts.append(hash_block(main_path))
     parts.append('    </dependentAssembly>\r\n')
     parts.append('  </dependency>\r\n')
     # 随包依赖（install + hash）
-    for fname, (aname, aver, apkt) in BUNDLED.items():
+    for fname, metadata in zip(BUNDLED, records[1:]):
         fpath = os.path.join(dirpath, fname)
         if not os.path.exists(fpath):
             print("missing bundled file: " + fpath)
             sys.exit(3)
         parts.append('  <dependency>\r\n')
         parts.append('    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="' + fname + '" size="' + str(file_size(fpath)) + '">\r\n')
-        id_attr = '      <assemblyIdentity name="' + aname + '" version="' + aver + '"'
-        if apkt:
-            id_attr += ' publicKeyToken="' + apkt + '"'
-        parts.append(id_attr + ' language="neutral" processorArchitecture="msil" />\r\n')
+        parts.append(identity_xml(metadata['identity']))
         parts.append(hash_block(fpath))
         parts.append('    </dependentAssembly>\r\n')
         parts.append('  </dependency>\r\n')
@@ -158,7 +162,7 @@ def gen_app_manifest(dirpath):
     parts.append('    <vstav3:entryPointsCollection>\r\n')
     parts.append('      <vstav3:entryPoints>\r\n')
     parts.append('        <vstav3:entryPoint class="' + PROJECT['namespace'] + '.ThisAddIn">\r\n')
-    parts.append('          <assemblyIdentity name="' + ASSEMBLY + '" version="' + ADDIN_VERSION + '" language="neutral" processorArchitecture="msil" />\r\n')
+    parts.append('    ' + identity_xml(main_identity))
     parts.append('        </vstav3:entryPoint>\r\n')
     parts.append('      </vstav3:entryPoints>\r\n')
     parts.append('    </vstav3:entryPointsCollection>\r\n')
@@ -240,7 +244,7 @@ def gen_vsto(dirpath, app_manifest_path):
 
 def main():
     # 确认部署文件齐备
-    for f in [MAIN_DLL] + list(BUNDLED.keys()):
+    for f in [MAIN_DLL] + list(BUNDLED):
         p = os.path.join(BUILD, f)
         if not os.path.exists(p):
             print("missing: " + p + "  (bundled deps should be copied to build/ first)")

@@ -76,7 +76,7 @@
 
 **R-18** 安装器内嵌主 DLL、Utilities、Office.Core、应用清单、部署清单共五载荷，版本与 DLL、清单一致。
 
-**R-19** 清单保留 customHostSpecified、GAC 依赖与 vstav3/vstov4 结构；ThisAddIn 作为 vstav3 入口，FullTrust 由 VSTO 运行时授予，不在应用清单中声明。未强签依赖不带 token；签后读顶层 identity 重建 vsto 引用，记录 manifest 精确大小与 SHA-256 Base64 摘要；UTF-8 BOM、CRLF。SignCmi 采用 SHA-256，两清单分别有 StrongName 与 Authenticode 签名；ValidateManifest 解析并转储清单结构，ValidateXmlSig 校验整清单及 license 绑定。
+**R-19** 清单保留 customHostSpecified、GAC 依赖与 vstav3/vstov4 结构；ThisAddIn 作为 vstav3 入口，FullTrust 由 VSTO 运行时授予，不在应用清单中声明。依赖与入口 identity 从实际 PE 元数据读取，codebase 文件名不能当程序集名；名称、版本、文化、架构、token 及引用到随包 DLL 的 AssemblyRef 必须相符。未强签依赖不带 token；签后读顶层 identity 重建 vsto 引用，记录 manifest 精确大小与 SHA-256 Base64 摘要；UTF-8 BOM、CRLF。SignCmi 采用 SHA-256，两清单分别有 StrongName 与 Authenticode 签名；ValidateManifest 解析并转储清单结构，ValidateXmlSig 校验整清单及 license 绑定。
 
 ### (1). 门禁一致性与构建期保护
 
@@ -84,7 +84,7 @@
 
 **H-02** 重建运行期间不得编辑 C-04-Devlog 文档、共享源码与内嵌图片；确需修改，等待本次构建完整结束后再改并重跑。input_fingerprint 在构建前与发布前各取一次，发现构建期间变更即中止发布、保留上轮正式产物，不带着不一致资产交付。 验收：构建前后指纹一致且无编辑。证据：last-run-summary.json 的 G-08/G-19 记录。
 
-**H-03** 信任缺失与签名损坏须分别报告；缺校验器或载荷不符阻止交付。安装需完整 VSTO Runtime 和官方 VSTOInstaller：RuntimeLocator 查 HKLM 两视图及 Common Files，缺少先停止，不释放新载荷、不写信任。用户保存文件并完全退出 WPS 后运行安装器，在官方窗口授权；注销本产品旧订阅成功才替换或重装，真实退出 0 才补 Manifest、LoadBehavior=3、AddinsWL。取消或非零退出如实报告，不静默安装。卸载只清自身订阅、挂载、白名单、信任与载荷，保留 LastInstallDir。 验收：真实环境安装/卸载并记录退出码与载荷状态。证据：SetupLogs 与宿主加载项列表。
+**H-03** 信任缺失与签名损坏须分别报告；缺校验器或载荷不符阻止交付。安装需完整 VSTO Runtime 和官方 VSTOInstaller：RuntimeLocator 查 HKLM 两视图及 Common Files，缺少先停止，不释放新载荷、不写信任。用户保存文件并完全退出 WPS 后运行安装器，在官方窗口授权；注销本产品旧订阅成功才替换或重装，真实退出 0 才补 Manifest、LoadBehavior=3、AddinsWL。取消或非零退出如实报告，不静默安装。卸载只清自身订阅、挂载、白名单、信任、载荷及有本产品标记的 Windows 卸载项，保留 LastInstallDir、用户配置、日志和维护工具缓存；Windows 卸载入口使用保留工具而非下载路径。 验收：真实环境安装/卸载并记录退出码与载荷状态。证据：SetupLogs 与宿主加载项列表。
 
 **H-04** 排障按“运行库→SetupLogs→五载荷、挂载、白名单、订阅信任→签名摘要→真实宿主”。Manifest 是绝对 file URL 加 `|vstolocal`，codebase 相对；移动目录须重装。同版本不代表同字节，查安装路径与实际加载 DLL 摘要。COMAddIns.Connect 可作连接证据，Object=null、模块扫描或文件释放不能单独定启用。SetupDoctor 在 build，只读诊断不随正式输出交付。 验收：按链路逐层取证后定位。证据：SetupLogs、五载荷校验输出与签名摘要。
 
@@ -120,7 +120,7 @@
 
 ### (1). 弹窗中数据网格的格式规范
 
-**R-27** 弹窗网格表头与列宽：生产网格（Excel 11 张、Word 2 张）表头完整单行、居中、默认加粗；用户显式关闭粗体时尊重其选择，字号、字体、颜色与表头文字可自定，但不得因此换行或截断；单行表头高度按实际字体、字号与 DPI 重测，不上下裁剪。列宽下限按表头字体、文字、内边距与排序图标测量，覆盖 Fill、复选、下拉与按钮列；手动缩窄不得低于完整表头宽度，超出窗口以横向滚动查看。文件提取名称正文仍按当前字体 30 个“0”加内边距适配（通常下限 50 逻辑像素），表头更宽时优先表头；新扫描重启适配周期，本周期尊重已手调列宽。两项目 GridHeadersProbe 构造真实生产控件核对，Feature099Probe 默认运行即执行 GridHeaderChecks（G-12/G-15）。
+**R-27** 弹窗网格表头与列宽：生产网格（Excel 12 张、Word 2 张）表头完整单行、居中、默认加粗；用户显式关闭粗体时尊重其选择，字号、字体、颜色与表头文字可自定，但不得因此换行或截断；单行表头高度按实际字体、字号与 DPI 重测，不上下裁剪。列宽下限按表头字体、文字、内边距与排序图标测量，覆盖 Fill、复选、下拉与按钮列；手动缩窄不得低于完整表头宽度，超出窗口以横向滚动查看。文件提取名称正文仍按当前字体 30 个“0”加内边距适配（通常下限 50 逻辑像素），表头更宽时优先表头；新扫描重启适配周期，本周期尊重已手调列宽。两项目 GridHeadersProbe 构造真实生产控件核对，Feature099Probe 默认运行即执行 GridHeaderChecks（G-12/G-15）。
 
 ![弹窗数据网格表头格式的离线控件渲染](../C-01-ExcelIterate/AB-Graphic/格式规范-弹窗网格表头-离线渲染.png)
 

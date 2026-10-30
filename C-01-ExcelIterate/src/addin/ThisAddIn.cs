@@ -55,6 +55,7 @@ namespace Excel_Iterate
             LiveCustomization.Stop();
             Connect.CloseTrackerForm();       // 关掉还开着的「增强追踪」非模态窗
             Connect.CloseMergeForm();         // 关掉还开着的「表头匹配合并」非模态窗
+            Connect.CloseDataMigrationForm();
             Connect.CloseEliminationForm();   // 关掉还开着的「合并抵消」非模态窗
             Connect.ClosePdfTools();
             Connect.HostApplication = null;

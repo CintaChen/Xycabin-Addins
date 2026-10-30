@@ -6,6 +6,7 @@ Versions and user-facing button settings still belong to the AA-Program configur
 from pathlib import Path
 import importlib.util
 import json
+import subprocess
 import os
 import re
 import sys
@@ -43,6 +44,25 @@ PAYLOAD = [PROJECT['assembly'] + '.dll', 'Microsoft.Office.Tools.Common.v4.0.Uti
            PROJECT['assembly'] + '.vsto']
 COMMON_REF = ['/r:System.dll', '/r:System.Core.dll', '/r:Microsoft.CSharp.dll', '/r:System.Drawing.dll', '/r:System.IO.Compression.dll', '/r:System.Xml.dll', '/r:System.Security.dll', '/r:System.Runtime.Serialization.dll', '/r:System.Net.Http.dll']
 INFO_CS = SRC / 'shared/ProjectInfo.g.cs'
+
+
+def assembly_metadata(paths, reader=None):
+    """Read actual CLR identities/references without executing the payload DLLs."""
+    reader = Path(reader) if reader is not None else BUILD / 'GetPkt.exe'
+    if not reader.is_file():
+        raise ValueError('缺少程序集标识读取工具，请先运行 build.py：' + str(reader))
+    paths = [Path(path).resolve() for path in paths]
+    result = subprocess.run([str(reader), '--json', *map(str, paths)], capture_output=True, timeout=60)
+    output = result.stdout.decode('utf-8-sig', 'replace')
+    if result.returncode:
+        raise ValueError('无法读取实际程序集标识：' + output + result.stderr.decode('utf-8', 'replace'))
+    records = json.loads(output)
+    if not isinstance(records, list) or len(records) != len(paths):
+        raise ValueError('程序集标识读取结果不完整')
+    for path, record in zip(paths, records):
+        if Path(record['path']).resolve() != path or not all(key in record['identity'] for key in ('name', 'version', 'language', 'processorArchitecture')):
+            raise ValueError('程序集标识读取结果与请求不一致：' + str(path))
+    return records
 
 
 def load_configure():

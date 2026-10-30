@@ -1,6 +1,6 @@
 **三项目档案与版本**
 
-最后更新：2026-10-28 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
+最后更新：2026-10-30 ｜ 当前版本：**0.9.9.3** ｜ 交付物：`Excel_Iterate_Setup.exe`、`WordUpdater_Setup.exe`、`XyCabin.html`
 
 # 一. Agent及开发者接手概览
 
@@ -62,7 +62,7 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 追踪引用 | Excel-Iterate·数据 | — | 解析当前单元格公式，逐项展开被引用单元格的详情；错误行红字，选中后可「显示错误来源」回溯定位源头格并跳转 |
 | 追踪从属 | Excel-Iterate·数据 | — | 遍历所有已打开工作簿，找出哪些单元格的公式引用了当前单元格 |
 | 筛选增强 | Excel-Iterate·数据 | 按列筛选、快捷高筛 | 按活动单元格所在表格的表头选择显示列 |
-| 审计工具箱 | Excel-Iterate·数据 | 表头匹配、合并抵消（往来抵消、收入成本抵消） | 按表头列名批量匹配多个工作簿，把列数据合并到目标工作簿；往来抵消按列映射生成抵消分录，收入成本抵消按三维聚合生成矩阵式底稿（借贷恒等式保证平衡），两者均写入前备份、可一键还原 |
+| 审计工具箱 | Excel-Iterate·数据 | 批量迁移数据、表头匹配、合并抵消（往来抵消、收入成本抵消） | 按表头列名批量匹配多个工作簿，把列数据合并到目标工作簿；往来抵消按列映射生成抵消分录，收入成本抵消按三维聚合生成矩阵式底稿（借贷恒等式保证平衡），两者均写入前备份、可一键还原 |
 | 一键公式 | Excel-Iterate·操作 | 进行公式封装（IFERROR封装（默认返回空、自定义封装）、ROUND封装（默认保留2位、自定义封装）、ABS封装、自定义函数）、移除公式封装、数值计算（加（默认加、自定义计算）、减（默认减、自定义计算）、乘（默认乘、自定义计算）、除（默认除、自定义计算）） | 封装或移除当前选区公式的最外层函数 |
 | 文件操作 | Excel-Iterate·操作 | 批量处理（文件批量整理、文件批量命名、文件提取名称）、文件转换与 PDF 工具（当前文档转 PDF、批量文件转 PDF、PDF 添加水印、PDF 拆分、PDF 合并） | 文件批量整理、命名、名称提取；当前文档或批量转 PDF，以及 PDF 水印、拆分和合并。 |
 | 链接助手 | Excel-Iterate·操作 | — | 扫描并说明名称外链，C列填新路径或“断开链接”；名称清理先预检，整簿备份可恢复 |
@@ -84,13 +84,28 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 | 构建与验证 | 根目录构建脚本；src/installer、src/pdf、src/tools、src/testharness；父目录 verify_shared.py |
 | 依赖与证据 | lib 为必要编译依赖；build 为中间物、候选包、缓存与验证证据 |
 
+批量迁移数据位于审计工具箱，支持选择源区域、批量添加文件或文件夹、勾选目标、逐项预检及输出校验后的独立副本。入口及专属实现位于 `C-01-ExcelIterate/AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/`，验证入口为 DataMigrationProbe 与 DataMigrationLiveProbe；详细规则见 A 与 B2。
+
+
 单项目：运行 python rebuild.py --background --mode full，再运行 python validate.py --background。源码结构迁移验证使用 --installer-output 将候选包写入 build，并通过 validate.py 的 --installer 指定候选包。联合交付仍使用 Website 入口。
 
 ## 5. 当前状态与交付
 
 ### (1). 当前实现与待验收
 
+新增审计工具箱“批量迁移数据”：Connect.DataMigration → DataMigrationForm/Host/Engine，单源矩形区域到多个目标位置，内部引用平移、第三方地址冻结、必要名称按作用域迁移，仅输出原格式副本；预检覆盖与冲突，保存重开核对，目标独立失败。源区域旁新增“在表中选择…”按钮，通过宿主鼠标框选回填地址，取消保留原值。顶部缩短三个输入框，选择源文件、读取当前选区与允许全空白复选框同排，控件按中心线对齐。添加目标在同一原生窗口接受文件或文件夹，识别后逐项勾选，只有勾选目标进入本轮请求。目标清单列宽按当前窗口分配，保留标题与工作表可读下限，长路径通过悬停查看。工作表下拉框贴合单元格，编辑与非编辑态保持宽度、字号和行高一致，单击展开长表名列表。首版边界及十万单元格上限见 A-UserGuide；离线托管夹具不等于真实 WPS 或四种格式验收，本轮不安装或发布。
+
+源选择修复：窗口不再自动绑定活动工作簿；xlsx/xlsm 的表名直接从文件读取，选文件不引起临时工作簿开关。预检区分用户未保存原件与 WPS 重算后的自建只读副本，所有权按会话路径映射判定，重复解析仍有效；字体和换行写入后恢复目标行高列宽。实际按钮与宿主焦点体验单列验收。
+
+批次交互加固：取消源区域的 A1 默认值，全空白区域需明确允许及确认；缺少同名目标表时要求选择实际存在的表。汇总显示源非空数/公式数和目标成功失败数量，结果保存目标表及显示位置。窗口计时器防 COM 消息泵重入，已打开目标的宏指纹读取使用共享读写；日志增加异常阶段和完整堆栈。
+
+兼容核验修复：仅在自建读取/输出副本中把 OOXML ISO 日期转换为相应日期基准的数字序列，防止旧 WPS 只读到年份；核验认可范围端点的等价排序，保留各轴 $ 锁定。预检阻止迁移后直接单格自引用。失败输出副本以可读名称归档到诊断目录，正式结果仍保留目标原名和扩展名。
+
+保真与监听修正：增加源包数字格式和合并从属格常量的恢复与最终包级核验，避免宿主读回归一化掩盖实际文件差异。迁移监听细分事件与线程，排除单纯重算；异线程事件回宿主核对对象，真实编辑、关闭等保护保留。其他扫描/抵消仍使用默认监听语义。
+
 本次将文档整理为五部分，共享方法与门禁分开，删重复流水和外部历史范例依赖；保留宿主独有算法/恢复边界，修正控件与四种拖动术语、窗口过度因果和内嵌网页一致性表述。新增表头匹配合并的接线、公式相对行规则与独立验收边界。
+
+批量迁移已用探针自建样本验证 WPS 的 xlsx、xlsm、xls、et 四种格式迁移及保存重开，源与目标原文件摘要保持不变；实机按钮、键入焦点、真实宏代码和大区域耗时仍单列待验收。本轮不安装或发布；按用户要求单独生成本机开发签名安装包，正式签名配置保持不变。
 
 本轮修复链接助手的名称外链：来源可能仅存在于名称定义，扫描仍应列出并说明数量。LinkNameAnalysis按完整来源路径、外部引用顺序与名称作用域分析依赖；混合来源、仍被公式/对象使用或无法安全分析时在修改前停止。预检通过后沿用整簿备份，精确删除所选来源未使用名称，再调用宿主BreakLink并保存核对；不直接删除ZIP关系，不触碰其他来源。C列仅接受“断开链接”，旧文本提示改填。四列清单、旧批次及恢复边界沿用；实测结果、安装包及待验收项目见本轮交付证据。
 
@@ -106,7 +121,37 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
+本轮本地源码合并：接入上游 `09fc962` 的七个提交，将批量迁移七份源码归入审计工具箱 DataMigration 功能目录；保留上游表头匹配更名、分类门禁与代码索引。迁移七份源码的规范化文本与合并前备份一致，迁移事件接收契约随上游拆分迁至 DirectoryNavigation。两个产品均重新编译，Excel 本轮后台探针全部通过，含迁移 133 项、表头匹配 104 项、Feature099 10875 项、弹窗核心 107 项及卸载流程 54 项；分类门禁正反测试 55 项通过。见[合并与验证摘要](../C-01-ExcelIterate/build/local-delivery/upstream-integration/integration-summary.json)、[逐探针结果](../C-01-ExcelIterate/build/local-delivery/upstream-integration/regressions.json)。本轮仅本地未签名编译及离线回归，未运行正式签名打包、完整包验收或真实 WPS 四格式复验；未安装、提交、推送或发布，版本与正式签名配置沿用。
+
 本轮分类门禁实现提交 [3cff8c5](https://github.com/Xymircai/Xycabin-Addins/commit/3cff8c5856b6d32c2fc20a10994dd2228cb80892)；构建源码与 README 提交 [bfccdec](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)，原有四个未推送提交完整保留并一并推送。详见 [本轮验证与发布记录](../C-03-Website·Xycabin/build/github-release-r30/delivery-review.md) 与 [完整证据摘要](../C-03-Website·Xycabin/build/github-release-r30/delivery-summary.json)。
+
+以下为本地迁移开发期间的历史验证记录，独立于上述远端发布记录；不代表本轮合并已重新发布。
+
+工作表下拉框修正留空与编辑态缩小，保留 ComboBox 形态。[交互尺寸核对](../C-01-ExcelIterate/build/local-delivery/sheetfit/interactive-check.json)在自建清单实际点击：编辑器与单元格同宽 124，编辑器高 33 对应单元格高 34（预留一像素行分隔），两者字号均为 10，内边距为零；展开列表宽 217，可完整选择中文长表名并即时提交。[交互记录](../C-01-ExcelIterate/build/local-delivery/sheetfit/migration-sheet-interactive.log)保留过程；此为交互桌面托管清单，不等同 WPS 安装后的宿主验收。[完整后台验证](../C-01-ExcelIterate/build/local-delivery/sheetfit/package-validation.log)通过，含迁移 133 项和弹窗核心 107 项；[载荷及卸载入口](../C-01-ExcelIterate/build/local-delivery/sheetfit/installer-artifact.log)19 项通过。[交付状态](../C-01-ExcelIterate/build/local-delivery/sheetfit/delivery-state.json)记录本机开发签名及摘要，未安装、关闭 WPS 或修改原件及信任根。
+
+目标清单新增按窗口视口分配列宽，勾选列紧凑，标题和工作表保留下限，完整路径使用提示。[布局记录](../C-01-ExcelIterate/build/local-delivery/responsivecolumns/layout-preview.log)核对 40 行清单在 900、1180、1600 再回 900 的窗口宽度，每种宽度重复刷新三次；列宽总和恰好填满扣除竖滚动条后的可用宽度，往返分配一致，无多余横向滚动条。[完整后台验证](../C-01-ExcelIterate/build/local-delivery/responsivecolumns/package-validation.log)通过，含 Feature099 10875 项、迁移 133 项、弹窗核心 107 项；[安装包实际载荷及卸载入口](../C-01-ExcelIterate/build/local-delivery/responsivecolumns/installer-artifact.log)19 项通过。[交付状态](../C-01-ExcelIterate/build/local-delivery/responsivecolumns/delivery-state.json)记录本机开发签名及摘要。本轮为托管窗口布局与后台回归，未安装、关闭 WPS、修改信任根或声称已完成 WPS 安装后的界面验收。
+
+添加目标统一支持文件和文件夹，清单首列勾选控制本轮请求；没有新增主窗文件夹选项。[迁移回归](../C-01-ExcelIterate/build/local-delivery/foldertargets/migration-folder-probe.log)133 项通过，覆盖四格式扫描、当前层边界、去重与过滤、全选/全不选、勾选变更失效、重复添加保留取消状态、未勾选目标无输出且原件摘要不变、坏目标独立失败。[交互桌面记录](../C-01-ExcelIterate/build/local-delivery/foldertargets/migration-folder-picker-interactive.log)确认同一个原生选择器接受自建文件夹，第二次取消不返回路径；未声称已完成安装后的 WPS 功能区全流程验收。[完整后台验证](../C-01-ExcelIterate/build/local-delivery/foldertargets/package-validation.log)通过，Feature099 10875 项、迁移 133 项、弹窗核心 107 项通过；[实际载荷及卸载入口](../C-01-ExcelIterate/build/local-delivery/foldertargets/installer-artifact.log)19 项通过。[交付状态](../C-01-ExcelIterate/build/local-delivery/foldertargets/delivery-state.json)记录本机开发签名及摘要；未自动安装、关闭 WPS、修改信任根或用户原文件。
+
+迁移窗口顶部紧凑布局：[布局记录](../C-01-ExcelIterate/build/local-delivery/compactlayout/layout-preview.log)确认默认宽度 1180 时三个源输入项、在表中选择、选择源文件、读取当前选区及允许全空白复选框同处一行，中心线偏差不超过一像素；带旧版保存宽度的开窗预览通过。仅在当前格式副本处理旧默认宽度，保留其他自定义尺寸及磁盘配置。最终包[完整后台验证](../C-01-ExcelIterate/build/local-delivery/compactlayout/package-validation.log)通过，包括自定义尺寸、121 项迁移检查与弹窗核心 107 项；[载荷和卸载入口](../C-01-ExcelIterate/build/local-delivery/compactlayout/installer-artifact.log)19 项通过，[交付状态](../C-01-ExcelIterate/build/local-delivery/compactlayout/delivery-state.json)记录摘要与本机开发签名。此轮只验证托管窗口布局和后台回归，未安装、关闭 WPS 或声称已完成安装后的宿主界面验收。
+
+源区域新增原生鼠标选择：[托管回归](../C-01-ExcelIterate/build/local-delivery/rangepicker/packaged-range-probe.log)121 项通过，覆盖区域归属、离散选区、格数上限、取消及自建副本清理。[WPS 鼠标实测](../C-01-ExcelIterate/build/local-delivery/rangepicker/native-mouse.log)在自建样本拖选 B1:C3、确认返回正确地址，第二次取消返回空值，原文件摘要不变且读取副本已清理；此项不代替安装后功能区全流程验收。[本机开发签名包状态](../C-01-ExcelIterate/build/local-delivery/rangepicker/delivery-state.json)、[完整后台验证](../C-01-ExcelIterate/build/local-delivery/rangepicker/package-validation.log)与[实际载荷及卸载入口检查](../C-01-ExcelIterate/build/local-delivery/rangepicker/installer-artifact.log)通过。保持正式证书配置、版本与产品身份，未自动安装、改信任根、关闭 WPS 或修改用户工作簿。
+
+用户成功文件的独立审计发现日期格式代码变化和 H21 隐藏常量丢失，现已另存两个迁移修正结果。[修复回归](../C-01-ExcelIterate/build/migration-fidelity-probe.log)107 项通过，[用户副本双目标修复](../C-01-ExcelIterate/build/migration-fidelity-repair.log)通过；[结果一审计](../C-01-ExcelIterate/build/audits/success-result-20261030/repaired-1.json)与[结果二审计](../C-01-ExcelIterate/build/audits/success-result-20261030/repaired-2.json)均为内容差异零、样式差异零，名称、合并、目标尺寸及区域外数据保持。四格式及原规则见[实机回归](../C-01-ExcelIterate/build/migration-fidelity-live.log)。原失败日志唯一证实来源监听保护触发；[原行为复跑](../C-01-ExcelIterate/build/migration-events-before.log)未自然复现旧失败，不能据此认定历史事件必为重算。旧入口丢失事件类别且只存布尔状态，无法回溯；托管测试复现计算误报并验证真实编辑和异线程关闭保护。本机开发证书签名后的保真与监听修复包完整后台验证通过，107 项迁移回归及实际五载荷/卸载入口 19 项通过；[交付状态](../C-01-ExcelIterate/build/local-delivery/fidelityfix/delivery-state.json)、[完整后台验证](../C-01-ExcelIterate/build/local-delivery/fidelityfix/package-validation.log)、[失败分析边界](../C-01-ExcelIterate/build/local-delivery/fidelityfix/failure-analysis.json)。已交付两个独立修正结果与新安装包，未覆盖原件、自动安装、关闭用户 WPS 或推送发布。
+
+日期、范围等价与诊断文件回归：[托管探针](../C-01-ExcelIterate/build/migration-compat-probe.log)99 项通过；[真实 WPS 探针](../C-01-ExcelIterate/build/migration-compat-live.log)通过四格式、两个结果中的日历日期与中文文件名、逆序范围保存重开及 A1 直接自引用预检阻止。用户本轮两个文件实际未通过 C17 核验，长标识文件为未交付副本；历史未占用自建副本已移入 build/user-diagnostics，原件未改。本机开发证书签名后的兼容修复包完整后台验证通过，实际五载荷及卸载入口 19 项通过；[交付状态](../C-01-ExcelIterate/build/local-delivery/compatfix/delivery-state.json)、[后台验证](../C-01-ExcelIterate/build/local-delivery/compatfix/package-validation.log)与[EXE 检查](../C-01-ExcelIterate/build/local-delivery/compatfix/artifact-validation.log)。原发布配置不变，未自动安装、关闭用户 WPS 或推送发布。
+
+用户反馈空白结果后检查原件与读取副本字节一致，实际批次复制空白 A1 且一目标在执行前 COM 失败。主动嵌套 Tick 的[旧实现回归](../C-01-ExcelIterate/build/migration-reentrancy-before.log)失败，修复后[托管回归](../C-01-ExcelIterate/build/migration-batch-probe.log)86 项通过。[两个已打开目标副本回归](../C-01-ExcelIterate/build/migration-batch-repro.log)通过，正式窗口消息泵的[完整区域与四格式回归](../C-01-ExcelIterate/build/migration-batch-live.log)单独记录；真实按钮焦点仍待用户验收。本机开发证书签名后的批次修复包完整后台验证通过，实际五载荷及卸载入口 19 项通过；[交付状态](../C-01-ExcelIterate/build/local-delivery/batchfix/delivery-state.json)、[后台验证](../C-01-ExcelIterate/build/local-delivery/batchfix/package-validation.log)与[EXE 检查](../C-01-ExcelIterate/build/local-delivery/batchfix/artifact-validation.log)。正式窗口消息泵实测源非空 112、公式 11，两个目标成功、各生成一个结果；逐一重开核内容、公式和显示位置。未自动安装、关闭 WPS 或推送发布。
+
+本轮源选择故障回归：DataMigrationProbe 80 项通过，覆盖不打开宿主的 OOXML 表名选择、空初始来源、重复定位后的只读副本脏标记及用户原件未保存仍阻止；[托管回归](../C-01-ExcelIterate/build/migration-picker-probe.log)。[真实 WPS 回归](../C-01-ExcelIterate/build/migration-picker-live.log)完成四种格式及用户测试源副本 B5:I22 到 B100 的 144 格迁移、保存重开，核内容、名称、样式、多行合并、目标尺寸及原件摘要不变。实际按钮焦点及用户安装后体验仍待验收。本机开发证书重签后的安装包完成完整后台验证，实际 EXE 载荷及卸载入口 19 项通过；见[迁移修复包状态](../C-01-ExcelIterate/build/local-delivery/migrationfix/delivery-state.json)、[打包验证](../C-01-ExcelIterate/build/local-delivery/migrationfix/package-validation.log)与[产物检查](../C-01-ExcelIterate/build/local-delivery/migrationfix/artifact-validation.log)。仅交付新文件名的修复包，未替换用户安装或关闭 WPS。
+
+用户尝试上轮本机包安装时，官方 VSTOInstaller 返回 -201：旧清单声明 Interop 2.8，实际文件是强签 office 15，安装拒绝。原后台门禁仅核摘要及签名，未核 CLR 依赖身份，不能据此认定可安装。现新增 PE/AssemblyRef 身份门禁和回归，按实际元数据重建清单；修正版仍为 WPS 加载项，微软授权窗口标题保持其原样。修正版实际清单已绑定 office 15 的真实身份，清单双签名及完整后台验证通过；PE 标识回归 12 项、实际 EXE 内嵌载荷验证 19 项通过，旧 EXE 在增强验证下明确失败。见[修正版状态](../C-01-ExcelIterate/build/local-delivery/fixed/delivery-state.json)、[后台验证](../C-01-ExcelIterate/build/local-delivery/fixed/package-validation.log)与[旧包拒绝回归](../C-01-ExcelIterate/build/local-delivery/fixed/old-package-regression.log)。已交付不同文件名的修正版，未自动安装或改动用户的 WPS 登记，实装结果待用户重试。
+
+按用户要求完成本机开发签名 EXE：正式配置器的原证书指纹未改，隔离源码副本固定专用本机开发证书；清单双签名、五载荷及完整后台验证通过，安装产物 13 项检查与安装/卸载流程 54 项检查通过，共享 Word 安装器源码编译通过。新增 Windows 应用列表卸载入口及保留维护工具；删除下载包后仍可卸载。包摘要、签名身份与路径见[本机交付状态](../C-01-ExcelIterate/build/local-delivery/initial/delivery-state.json)，原始日志见[签名打包](../C-01-ExcelIterate/build/local-delivery/initial/package-build.log)、[后台验证](../C-01-ExcelIterate/build/local-delivery/initial/package-validation.log)与[产物验证](../C-01-ExcelIterate/build/local-delivery/initial/artifact-validation.log)。仅生成交付文件，未实际安装、卸载或推送发布；签名为本机开发证书，不声称为原发布者签名。
+
+本轮批量迁移开发验证：两个加载项均已成功编译；新增 [DataMigrationProbe](../C-01-ExcelIterate/build/data-migration-probe.log) 72 项通过，[DataMigrationLiveProbe](../C-01-ExcelIterate/build/data-migration-live.log) 在 WPS 自建样本中完成 xlsx/xlsm/xls/et 的迁移、保存重开与原文件摘要不变核对。既有表头合并 104 项、公式核心 172 项、抵消 222 项、维护纪律 29 项均通过；弹窗核心 107 项、Feature099 10778 项、内嵌文档核心 113 项均通过。实际按钮焦点、含真实宏代码的样本和大区域耗时仍待验收。本轮未签名打包、安装或发布；以下保留的历史发布记录不代表新增功能已发布。
+
+后续本地完整重建后的包摘要已变化，当前安装包以[远端发布校验记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
 本产品 54 个末级入口通过 [B3 R-30](<B3-Gate Control.md#6-功能源码分类与代码索引>) 与 [B4 代码索引](<B4-Code Index.md>) 核验。完整与增量模式均只读检查；55 项正反例包含 16 次实际入口违规阻断，不自动修正目录或索引。
 
@@ -190,7 +235,15 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
+本轮随本地迁移源码合并重新编译 WordUpdater；共享登记、清单程序集身份与卸载流程改动一并覆盖。后台探针全部通过，含 Feature099 2450 项、弹窗核心 67 项、内嵌文档 113 项、程序集身份 12 项及卸载流程 54 项。见[本轮结果](../C-02-WordUpdater/build/local-delivery/upstream-integration/regressions.json)及[合并摘要](../C-02-WordUpdater/build/local-delivery/upstream-integration/integration-summary.json)。本轮未签名打包、安装、推送、发布或操作真实 WPS 文字文档。
+
 本轮分类门禁实现提交 [3cff8c5](https://github.com/Xymircai/Xycabin-Addins/commit/3cff8c5856b6d32c2fc20a10994dd2228cb80892)；构建源码与 README 提交 [bfccdec](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)，原有四个未推送提交完整保留并一并推送。详见 [本轮验证与发布记录](../C-03-Website·Xycabin/build/github-release-r30/delivery-review.md) 与 [完整证据摘要](../C-03-Website·Xycabin/build/github-release-r30/delivery-summary.json)。
+
+以下为本地迁移开发期间的历史验证记录，独立于上述远端发布记录；不代表本轮合并已重新发布。
+
+本轮随共享弹窗登记同步编译 WordUpdater；弹窗核心 67 项、Feature099 2450 项、内嵌文档核心 113 项及功能区探针均通过。Word 业务功能无修改，本轮未签名打包、安装或发布。
+
+后续本地完整重建后的包摘要已变化，当前安装包以[远端发布校验记录](../C-03-Website·Xycabin/build/github-release-publication/publication-state.json)为准；原优化交付摘要和性能汇总保留为历史实验，未冒充本次重新计时。
 
 本产品 31 个末级入口通过 [B3 R-30](<B3-Gate Control.md#6-功能源码分类与代码索引>) 与 [B4 代码索引](<B4-Code Index.md>) 核验。完整与增量模式均只读检查；55 项正反例包含 16 次实际入口违规阻断，不自动修正目录或索引。
 
@@ -240,7 +293,15 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
+本轮本地源码合并保留上游构建与发布流程，网站仅保留字体注册表非路径值的缓存兼容改动；CacheProbe 10 项与 WorkflowProbe 77 项通过。未重建发布网站或更新远端附件，既有远端发布记录如下。
+
 本轮分类门禁实现提交 [3cff8c5](https://github.com/Xymircai/Xycabin-Addins/commit/3cff8c5856b6d32c2fc20a10994dd2228cb80892)；构建源码与 README 提交 [bfccdec](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)，原有四个未推送提交完整保留并一并推送。详见 [本轮验证与发布记录](../C-03-Website·Xycabin/build/github-release-r30/delivery-review.md) 与 [完整证据摘要](../C-03-Website·Xycabin/build/github-release-r30/delivery-summary.json)。
+
+以下为本地迁移开发期间的历史验证记录，独立于上述远端发布记录；不代表本轮合并已重新发布。
+
+本轮补充字体注册表非路径值的缓存环境兼容处理，CacheProbe 10 项通过。网站配置及版本未变；构建用离线网页仅为本地预览，本轮未发布。
+
+按用户后续授权，已将实现提交[102d8ec](https://github.com/Xymircai/Xycabin-Addins/commit/102d8ececaa8519001957ea4459e49987aa9d15f)推送到main，仓库代码与README已更新；现有[Release v0.9.9.3](https://github.com/Xymircai/Xycabin-Addins/releases/tag/v0.9.9.3)的两个EXE及XyCabin.html已替换，发布标题与维护说明同步更新。用户确认只更新HTML附件与仓库说明，不启用GitHub Pages。
 
 三份产物同批联合完整重建，并通过收尾独立验证。B1 此审计区在构建完成、推送与远端附件回下载核对成功后回填，不改变内嵌文档正文。
 

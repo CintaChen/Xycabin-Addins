@@ -29,12 +29,13 @@ def main():
     dll = BUILD / (PROJECT['assembly'] + '.dll')
     tests = [(Path(sys.executable), [ROOT / 'src/tools/devlog_probe.py']), (Path(sys.executable), [ROOT / 'src/tools/configure_probe.py']),
              (Path(sys.executable), [source_path('@shared/src/tools/source_layout_probe.py'), '--project-root', ROOT]),
+             (Path(sys.executable), [source_path('@shared/src/tools/package_identity_probe.py'), '--project-root', ROOT]),
              (Path(sys.executable), [ROOT / 'src/tools/dialog_catalog_probe.py']),
              (Path(sys.executable), [ROOT / 'src/tools/window_thread_probe.py']),
              (Path(sys.executable), [SITE_ROOT / 'src/tools/document_assets_probe.py', '--root', ROOT]),
              (Path(sys.executable), [SITE_ROOT / 'src/tools/site_probe.py', '--html', args.site_html])]
     # --skip-ui alone does not suppress forms opened by business/Agent probes.
-    background_tools = {'RuntimeQualityProbe', 'HostDialogProbe', 'FormulaProbe', 'FormulaInteractionProbe', 'Feature099Probe', 'TrackerProbe', 'ErrorSourceProbe', 'WorkbookToolsProbe', 'FileOperationsProbe', 'MergeHeadersProbe', 'EliminationProbe', 'DisciplineProbe',
+    background_tools = {'RuntimeQualityProbe', 'HostDialogProbe', 'FormulaProbe', 'FormulaInteractionProbe', 'Feature099Probe', 'TrackerProbe', 'ErrorSourceProbe', 'WorkbookToolsProbe', 'FileOperationsProbe', 'MergeHeadersProbe', 'DataMigrationProbe', 'EliminationProbe', 'DisciplineProbe',
                         'LinkViewProbe', 'LinkMapProbe', 'UpdateProbe', 'LinkViewFormProbe', 'EtCleanupProbe', 'EtSelectionReaderProbe', 'ClipboardBoundaryFixture'}
     pending = []
     for tool in PROJECT['tools']:

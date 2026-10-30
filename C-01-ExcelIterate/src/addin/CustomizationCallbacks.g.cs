@@ -11,6 +11,7 @@ namespace Excel_Iterate
         public string GetLabel_btnQuickAdvancedFilter(object control) { return RibbonCustomization.Label("btnQuickAdvancedFilter"); }
         public string GetLabel_menuAuditToolbox(object control) { return RibbonCustomization.Label("menuAuditToolbox"); }
         public string GetContent_menuAuditToolbox(object control) { return RibbonCustomization.Content("menuAuditToolbox"); }
+        public string GetLabel_btnDataMigration(object control) { return RibbonCustomization.Label("btnDataMigration"); }
         public string GetLabel_btnMergeHeaders(object control) { return RibbonCustomization.Label("btnMergeHeaders"); }
         public string GetLabel_menuElimination(object control) { return RibbonCustomization.Label("menuElimination"); }
         public string GetLabel_btnEliminationReceivable(object control) { return RibbonCustomization.Label("btnEliminationReceivable"); }
