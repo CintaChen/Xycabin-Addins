@@ -7,10 +7,43 @@ import sys
 from pathlib import Path
 sys.dont_write_bytecode = True
 import xml.etree.ElementTree as ET
-from project_support import PROJECT, BUILD, PAYLOAD, load_configure
+from project_support import PROJECT, BUILD, PAYLOAD, load_configure, assembly_metadata
 
 DS = '{http://www.w3.org/2000/09/xmldsig#}'
 SHA256 = 'http://www.w3.org/2000/09/xmldsig#sha256'
+
+
+def same_assembly_identity(actual, expected, architecture=True):
+    keys = ('name', 'version', 'language', 'publicKeyToken') + (('processorArchitecture',) if architecture else ())
+    return all((actual.get(key) or '').casefold() == (expected.get(key) or '').casefold() for key in keys)
+
+
+def check_payload_identities(root, metadata):
+    """A valid hash/signature cannot make an incorrect CLR identity installable."""
+    declarations = {node.get('codebase'): node for node in root.iter() if node.get('codebase')}
+    by_name = {}
+    for filename, record in metadata.items():
+        identity = record['identity']
+        key = identity['name'].casefold()
+        if key in by_name:
+            raise ValueError('随包程序集标识重复：' + identity['name'])
+        by_name[key] = identity
+        dep = declarations.get(filename)
+        declared = None if dep is None else next((n for n in dep if n.tag.endswith('}assemblyIdentity')), None)
+        if declared is None or not same_assembly_identity(declared.attrib, identity):
+            raise ValueError(filename + ': 清单引用标识与实际 DLL 不匹配；实际=' + repr(identity))
+    for filename, record in metadata.items():
+        for reference in record['references']:
+            bundled = by_name.get(reference['name'].casefold())
+            if bundled is not None and not same_assembly_identity(reference, bundled, architecture=False):
+                raise ValueError(filename + ': 实际 AssemblyRef 与随包程序集不匹配：' + reference['name'])
+    main = metadata[PAYLOAD[0]]['identity']
+    entries = [n for n in root.iter() if n.tag.endswith('}entryPoint') and n.get('class')]
+    if len(entries) != 1:
+        raise ValueError('VSTO 入口点数量不正确')
+    declared = next((n for n in entries[0] if n.tag.endswith('}assemblyIdentity')), None)
+    if declared is None or not same_assembly_identity(declared.attrib, main):
+        raise ValueError('VSTO 入口点与主 DLL 实际标识不一致')
 
 
 def verify(build=None, verifier=None):
@@ -31,6 +64,8 @@ def verify(build=None, verifier=None):
         if not (build / name).is_file():
             raise ValueError('Missing payload: ' + name)
     roots = [ET.parse(build / name).getroot() for name in PAYLOAD[-2:]]
+    records = assembly_metadata([build / name for name in PAYLOAD[:3]])
+    check_payload_identities(roots[0], dict(zip(PAYLOAD[:3], records)))
     identities = []
     for root, name in zip(roots, PAYLOAD[-2:]):
         identity = next(n for n in root if n.tag.endswith('}assemblyIdentity'))
@@ -79,7 +114,7 @@ def verify(build=None, verifier=None):
                  if line.startswith('PASS SHA256_DOUBLE_SIGNATURE ')]
     if sorted(confirmed) != sorted(str(build / name) for name in PAYLOAD[-2:]):
         raise ValueError('Verifier did not confirm both signatures; recompile it with build.py')
-    print('PASS:', PROJECT['assembly'], 'version, host, identity, payload hashes, pinned publisher and SHA-256 double signatures')
+    print('PASS:', PROJECT['assembly'], 'version, host, actual CLR identities/AssemblyRef, payload hashes, pinned publisher and SHA-256 double signatures')
 
 
 if __name__ == '__main__':

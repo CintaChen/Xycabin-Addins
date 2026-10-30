@@ -81,7 +81,7 @@ partial class Feature099Probe
 #if WPS_WORD
             "word.links",
 #else
-            "trace.precedents","trace.dependents","trace.errorsources","columns.filter","file.names","file.ocrprefixes","file.ocrfields","merge.headers","elimination.receivable","elimination.revenuecost",
+            "trace.precedents","trace.dependents","trace.errorsources","columns.filter","file.names","file.ocrprefixes","file.ocrfields","merge.headers","migration.data","elimination.receivable","elimination.revenuecost",
 #endif
             "agent.dialogsizes"};
         foreach(string id in ids)

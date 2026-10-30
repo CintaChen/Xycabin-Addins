@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -25,11 +25,13 @@ namespace Excel_Iterate
         internal object App;
         // Reuse the existing public COM event contract; scanning adds no public types.
         internal Action<object,bool> SourceChanged;
-        public void SheetChange(object sheet,object target){if(SourceChanged!=null)SourceChanged(sheet,false);}
-        public void SheetCalculate(object sheet){if(SourceChanged!=null)SourceChanged(sheet,false);}
-        public void WorkbookBeforeClose(object book,ref bool cancel){if(SourceChanged!=null)SourceChanged(book,true);}
-        public void WorkbookNewSheet(object book,object sheet){if(SourceChanged!=null)SourceChanged(book,true);}
-        public void SheetBeforeDelete(object sheet){if(SourceChanged!=null)SourceChanged(sheet,false);}
+        internal Action<object,bool,string> SourceEvent;
+        private void Changed(object value,bool workbook,string kind){if(SourceEvent!=null)SourceEvent(value,workbook,kind);if(SourceChanged!=null)SourceChanged(value,workbook);}
+        public void SheetChange(object sheet,object target){Changed(sheet,false,"SheetChange");}
+        public void SheetCalculate(object sheet){Changed(sheet,false,"SheetCalculate");}
+        public void WorkbookBeforeClose(object book,ref bool cancel){Changed(book,true,"WorkbookBeforeClose");}
+        public void WorkbookNewSheet(object book,object sheet){Changed(book,true,"WorkbookNewSheet");}
+        public void SheetBeforeDelete(object sheet){Changed(sheet,false,"SheetBeforeDelete");}
         private bool handling;
         public void SheetFollowHyperlink(object sheet, object hyperlink)
         {

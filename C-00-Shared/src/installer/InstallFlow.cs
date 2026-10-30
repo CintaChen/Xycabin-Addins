@@ -5,6 +5,35 @@ using Microsoft.Win32;
 
 namespace WpsShared
 {
+    // A per-user Apps/Programs entry points to a retained copy of the installer,
+    // never to the downloaded EXE (which the user may move or delete).
+    internal sealed class MaintenanceEntry
+    {
+        internal readonly string Product, DisplayName, Version, InstallDirectory, Launcher;
+        internal MaintenanceEntry(string product, string displayName, string version, string directory, string launcher)
+        {
+            if (string.IsNullOrWhiteSpace(product) || product.IndexOfAny(new[] { '\\', '/', '"' }) >= 0) throw new ArgumentException("Invalid maintenance product.");
+            if (!Path.IsPathRooted(directory) || !Path.IsPathRooted(launcher) || launcher.IndexOf('"') >= 0) throw new ArgumentException("Maintenance paths must be absolute.");
+            Product = product; DisplayName = displayName; Version = version;
+            InstallDirectory = Path.GetFullPath(directory); Launcher = Path.GetFullPath(launcher);
+        }
+        internal string KeyPath { get { return @"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + Product + ".WpsAddin"; } }
+        internal string Command { get { return "\"" + Launcher + "\" --uninstall"; } }
+        internal Dictionary<string, object> Values()
+        {
+            return new Dictionary<string, object> {
+                { "DisplayName", DisplayName }, { "DisplayVersion", Version },
+                { "InstallLocation", InstallDirectory }, { "UninstallString", Command },
+                { "DisplayIcon", "\"" + Launcher + "\",0" }, { "NoModify", 1 }, { "NoRepair", 1 },
+                { "XyCabinProduct", Product }
+            };
+        }
+        internal bool Owns(string productMarker, string command)
+        { return string.Equals(productMarker, Product, StringComparison.Ordinal) && string.Equals(command, Command, StringComparison.OrdinalIgnoreCase); }
+        internal static bool IsUninstall(string[] arguments)
+        { return arguments != null && Array.Exists(arguments, a => string.Equals(a, "--uninstall", StringComparison.OrdinalIgnoreCase)); }
+    }
+
     internal enum InstallStatus { Success, Cancelled, MissingRuntime, Failed }
 
     internal sealed class InstallResult

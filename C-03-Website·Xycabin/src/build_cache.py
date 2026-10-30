@@ -44,6 +44,9 @@ def environment():
             with registry:
                 for i in range(winreg.QueryInfoKey(registry)[1]):
                     name, filename, _ = winreg.EnumValue(registry, i)
+                    if not isinstance(filename, str):
+                        fonts.append((label, name, filename, None))
+                        continue
                     file = Path(filename)
                     if not file.is_absolute():
                         font_root = Path(os.environ['SystemRoot']) / 'Fonts' if label == 'machine' else Path(os.environ['LOCALAPPDATA']) / 'Microsoft/Windows/Fonts'

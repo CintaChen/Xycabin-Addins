@@ -177,7 +177,14 @@
     "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs",
     "AC-Original Code/ExcelIterate/Operations/OneClickFormula/_Shared/Connect.FormulaExecution.cs",
     "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
-    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeColumnMapper.cs"
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeColumnMapper.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/Connect.DataMigration.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationForm.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationHost.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPackageCompatibility.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPackagePreservation.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationTargetPicker.cs"
   ],
   "tools": [
     {
@@ -396,6 +403,30 @@
         "System.Windows.Forms.dll",
         "System.Drawing.dll",
         "lib/Interop.Microsoft.Office.Core.dll"
+      ],
+      "offline": false
+    },
+    {
+      "name": "DataMigrationProbe",
+      "source": "src/testharness/DataMigrationProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll",
+        "Microsoft.CSharp.dll"
+      ],
+      "offline": true
+    },
+    {
+      "name": "DataMigrationLiveProbe",
+      "source": "src/tools/DataMigrationLiveProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "Microsoft.CSharp.dll"
+      ],
+      "additional_sources": [
+        "@shared/src/tools/LiveProbeSafety.cs"
       ],
       "offline": false
     }
@@ -1231,6 +1262,30 @@
         "@shared/src/testharness/Feature099Probe.cs",
         "@shared/src/testharness/HostDialogProbe.cs"
       ]
+    },
+    "btnDataMigration": {
+      "directory": "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration",
+      "entry": "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/Connect.DataMigration.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationForm.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPackageCompatibility.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPackagePreservation.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationTargetPicker.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/MergeWorkbookGateway.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorkbookSaving.cs",
+        "AC-Original Code/ExcelIterate/_Shared/WorksheetIdentity.cs",
+        "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs",
+        "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
+        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs"
+      ],
+      "tests": [
+        "src/testharness/DataMigrationProbe.cs",
+        "src/tools/DataMigrationLiveProbe.cs"
+      ]
     }
   },
   "source_aliases": {
@@ -1434,6 +1489,9 @@
     ],
     "RecycleFiles.cs": [
       "AC-Original Code/ExcelIterate/Operations/FileOperations/BatchProcessing/_Shared/RecycleFiles.cs"
+    ],
+    "Connect.DataMigration.cs": [
+      "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/Connect.DataMigration.Entry.cs"
     ]
   },
   "code_layout": {
@@ -1521,6 +1579,7 @@
     "btnAgentDialogSizes": "AgentDialogSizes",
     "menuAgentExperiments": "AgentExperiments",
     "btnAgentOcrPlaceholder": "AgentOcrPlaceholder",
-    "btnAgentRequirements": "AgentRequirements"
+    "btnAgentRequirements": "AgentRequirements",
+    "btnDataMigration": "DataMigration"
   }
 }

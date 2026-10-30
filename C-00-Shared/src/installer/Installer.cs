@@ -13,6 +13,7 @@ using WpsShared;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -78,11 +79,11 @@ namespace Excel_IterateSetup
         internal static readonly string[] LegacyPayload = Id.LegacyPayload;
 
         [STAThread]
-        private static void Main()
+        private static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            Application.Run(new MainForm(MaintenanceEntry.IsUninstall(args)));
         }
     }
 
@@ -100,10 +101,14 @@ namespace Excel_IterateSetup
             Id.AssemblyName, "SetupLogs", "setup-" + DateTime.Now.ToString("yyyyMMdd-HHmmss")
             + "-" + Process.GetCurrentProcess().Id + ".log");
         private bool _busy;
+        private readonly bool _uninstallMode;
 
-        internal MainForm()
+        internal MainForm() : this(false) { }
+        internal MainForm(bool uninstallMode)
         {
+            _uninstallMode = uninstallMode;
             Text = InstallerText.WindowTitle;
+            if (uninstallMode) Text = "卸载 " + InstallerText.Title;
             Ui.PrepareForm(this, new Size(700, 620), new Size(560, 500));
             FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = false; MinimizeBox = false;
             TableLayoutPanel root = new TableLayoutPanel();
@@ -141,6 +146,7 @@ namespace Excel_IterateSetup
             FlowLayoutPanel bar = Ui.ActionBar();
             RoundedButton install = Ui.Button("安装", 120); Ui.StylePrimary(install); install.Click += delegate { Install(); }; _btnInstall = install;
             RoundedButton uninstall = Ui.Button("卸载", 100); uninstall.Click += delegate { Uninstall(); }; _btnUninstall = uninstall;
+            install.Visible = !uninstallMode;
             RoundedButton close = Ui.Button("关闭", 100); _btnClose = close; close.Click += delegate { Close(); };
             RoundedButton runtime = Ui.Button("获取运行库", 128);
             runtime.Click += delegate {
@@ -162,8 +168,11 @@ namespace Excel_IterateSetup
                 }
             };
             Log("日志文件：" + _logPath);
-            Log(initNote); Log("就绪。请选择安装位置后点击「安装」。");
+            Log(initNote); Log(uninstallMode ? "就绪。点击「卸载」移除此加载项。" : "就绪。请选择安装位置后点击「安装」。");
             Log("提示：安装无需管理员权限；建议先保存文档并退出 WPS。");
+            Log("目标宿主是 " + Id.HostDisplayName + "。授权窗口由微软 VSTO 运行库提供，标题中的 Microsoft Office 不表示更换宿主。");
+            Log("安装后可从 Windows「已安装的应用」卸载，也可重新运行本安装包点击「卸载」。");
+            if (uninstallMode) { _txtPath.ReadOnly = true; _btnBrowse.Enabled = false; Shown += delegate { _btnUninstall.Select(); }; }
         }
 
         /// <summary>主按钮：实心蓝底白字，悬停/按下逐级加深。</summary>
@@ -210,9 +219,9 @@ namespace Excel_IterateSetup
                     return InstallFlow.Install(new InstallActions {
                         FindRuntime = FindAndLogRuntime,
                         CleanupSubscriptions = PrepareSubscriptions,
-                        ReleasePayload = delegate { ReleasePayload(dir); },
+                        ReleasePayload = delegate { PrepareMaintenance(dir); ReleasePayload(dir); },
                         InvokeInstall = delegate(string tool) { return RunStandardInstall(tool, dir); },
-                        Register = delegate { WriteRegistry(dir); AddToAddinsWl(); },
+                        Register = delegate { WriteRegistry(dir); AddToAddinsWl(); RegisterMaintenance(dir); },
                         Complete = delegate {
                             SaveLastInstallDir(dir, "已记住安装目录：" + dir);
                             Log("官方安装已完成。重新打开 " + Id.HostDisplayName + " 后即可使用。");
@@ -245,6 +254,11 @@ namespace Excel_IterateSetup
         private async void Uninstall()
         {
             if (_busy) return;
+            if (RunningWps() != null)
+            {
+                UiDialog.Show(this, "请先保存文档并完全退出 WPS（包括后台进程），再点击卸载。安装器不会替你关闭 WPS。", "卸载", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             DialogResult ask = UiDialog.Show(this,
                 "确定卸载「" + Id.DisplayName + "」吗？\r\n官方订阅注销成功后，才会移除加载项登记和程序文件。",
                 "卸载", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
@@ -272,6 +286,7 @@ namespace Excel_IterateSetup
                             Registry.CurrentUser.DeleteSubKeyTree(Program.AddinKeyPath, false);
                             RemoveOwnedInclusion(Program.PayloadVstoName);
                             RemoveFromAddinsWl();
+                            RemoveMaintenanceRegistration(dir);
                         }
                     });
                 });
@@ -494,6 +509,52 @@ namespace Excel_IterateSetup
             }
         }
 
+        private static string MaintenanceLauncher()
+        { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Id.AssemblyName, "Maintenance", Id.AssemblyName + "_Setup.exe"); }
+
+        private static MaintenanceEntry Maintenance(string dir)
+        {
+            return new MaintenanceEntry(Id.AssemblyName, InstallerText.Title + "（WPS 加载项）", typeof(MainForm).Assembly.GetName().Version.ToString(), dir, MaintenanceLauncher());
+        }
+
+        private void PrepareMaintenance(string dir)
+        {
+            var entry = Maintenance(dir);
+            using (var existing = Registry.CurrentUser.OpenSubKey(entry.KeyPath))
+                if (existing != null && !entry.Owns(existing.GetValue("XyCabinProduct") as string, existing.GetValue("UninstallString") as string))
+                    throw new IOException("卸载登记被其他程序占用，未覆盖：" + entry.KeyPath);
+            string source = Assembly.GetExecutingAssembly().Location;
+            if (string.Equals(Path.GetFullPath(source), entry.Launcher, StringComparison.OrdinalIgnoreCase)) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(entry.Launcher));
+            string temporary = entry.Launcher + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            File.Copy(source, temporary, false);
+            using (var first = SHA256.Create()) using (var second = SHA256.Create())
+                if (Convert.ToBase64String(first.ComputeHash(File.ReadAllBytes(source))) != Convert.ToBase64String(second.ComputeHash(File.ReadAllBytes(temporary))))
+                    throw new IOException("卸载工具复制核对失败，未继续安装。");
+            if (File.Exists(entry.Launcher)) File.Replace(temporary, entry.Launcher, null); else File.Move(temporary, entry.Launcher);
+            Log("已保留卸载工具，删除下载的安装包也不影响卸载：" + entry.Launcher);
+        }
+
+        private void RegisterMaintenance(string dir)
+        {
+            var entry = Maintenance(dir);
+            using (var key = Registry.CurrentUser.CreateSubKey(entry.KeyPath))
+            {
+                if (key == null) throw new IOException("加载项已安装，但无法创建 Windows 卸载入口；可重新运行安装包卸载。");
+                foreach (var pair in entry.Values()) key.SetValue(pair.Key, pair.Value, pair.Value is int ? RegistryValueKind.DWord : RegistryValueKind.String);
+            }
+            Log("已添加 Windows「已安装的应用」卸载入口：" + entry.DisplayName);
+        }
+
+        private void RemoveMaintenanceRegistration(string dir)
+        {
+            var entry = Maintenance(dir); bool owned;
+            using (var key = Registry.CurrentUser.OpenSubKey(entry.KeyPath))
+                owned = key != null && entry.Owns(key.GetValue("XyCabinProduct") as string, key.GetValue("UninstallString") as string);
+            if (owned) { Registry.CurrentUser.DeleteSubKeyTree(entry.KeyPath, false); Log("已移除本加载项的 Windows 卸载入口。"); }
+            Log("用户配置、安装日志和维护工具缓存保留；不卸载 VSTO 运行库，不改动工作簿或其他加载项。");
+        }
+
         /// <summary>安装目录对应的 VSTO Url（与包含列表里其他插件的写法一致）。</summary>
         private static string VstoUrlOf(string dir)
         {
@@ -544,7 +605,7 @@ namespace Excel_IterateSetup
         {
             // The UI stays responsive while this worker waits for the official dialog.
             // A timeout is never interpreted as successful installation.
-            Log("等待「Microsoft Office 自定义项安装程序」结束；请在该窗口点「安装」或「取消」。");
+            Log("即将打开微软 VSTO 授权窗口（标题含 Microsoft Office），目标仍为 " + Id.HostDisplayName + "；请在该窗口点「安装」或「取消」。");
             int code = LaunchVsto(tool, "/Install \"" + VstoUrlOf(dir) + "\"", true);
             if (code == -400)
             {
@@ -644,8 +705,8 @@ namespace Excel_IterateSetup
         private void SetBusy(bool busy)
         {
             _busy = busy;
-            _btnInstall.Enabled = !busy; _btnUninstall.Enabled = !busy;
-            _btnBrowse.Enabled = !busy; _btnClose.Enabled = !busy; _txtPath.Enabled = !busy;
+            _btnInstall.Enabled = !busy && !_uninstallMode; _btnUninstall.Enabled = !busy;
+            _btnBrowse.Enabled = !busy && !_uninstallMode; _btnClose.Enabled = !busy; _txtPath.Enabled = !busy;
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
         }
 

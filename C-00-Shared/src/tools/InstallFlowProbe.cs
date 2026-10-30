@@ -126,6 +126,16 @@ internal static class InstallFlowProbe
                 ReleasePayload = delegate { throw new IOException("fake locked file"); }
             });
             Check(exception.Status == InstallStatus.Failed && exception.Message.Contains("fake locked file"), "payload failure does not report success");
+            var maintenance = new MaintenanceEntry("Excel_Iterate", "Excel-Iterate", "0.9.9.3", @"D:\审计 插件", @"C:\User Data\Excel_Iterate\Maintenance\Setup.exe");
+            Check(maintenance.Command == "\"C:\\User Data\\Excel_Iterate\\Maintenance\\Setup.exe\" --uninstall", "uninstaller command quotes a path with spaces");
+            Check(maintenance.KeyPath.EndsWith(@"\Excel_Iterate.WpsAddin"), "dedicated per-user uninstall key");
+            var values = maintenance.Values();
+            Check((string)values["DisplayName"] == "Excel-Iterate" && (string)values["DisplayVersion"] == "0.9.9.3", "Apps entry records display name and version");
+            Check((string)values["UninstallString"] == maintenance.Command && (int)values["NoModify"] == 1 && (int)values["NoRepair"] == 1, "Apps entry offers supported uninstall only");
+            Check(maintenance.Owns("Excel_Iterate", maintenance.Command), "own uninstall registration recognized");
+            Check(!maintenance.Owns("OtherAddin", maintenance.Command) && !maintenance.Owns("Excel_Iterate", "other.exe"), "unrelated uninstall registration never removed");
+            Check(MaintenanceEntry.IsUninstall(new[] { "--uninstall" }) && MaintenanceEntry.IsUninstall(new[] { "--UNINSTALL" }), "uninstall launch mode recognized");
+            Check(!MaintenanceEntry.IsUninstall(new[] { "--uninstall-all" }) && !MaintenanceEntry.IsUninstall(null), "other arguments never trigger uninstall mode");
             Console.WriteLine("InstallFlowProbe PASS: " + checks + " checks (fake runtime, no installation or registry changes)");
             return 0;
         }

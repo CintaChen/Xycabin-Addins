@@ -65,6 +65,7 @@ namespace Excel_Iterate
                 if (!ReferenceEquals(_app, value))
                 {
                     FormulaInteraction.Shutdown();
+                    CloseDataMigrationForm();
                     RestoreFormulaStatus();
                     if (_directoryNavigation != null) { try { _directoryNavigation.Dispose(); } catch (Exception ex) { Log("目录事件解绑：" + ex.Message); } _directoryNavigation = null; }
                     if (_linkForm != null && !_linkForm.IsDisposed) _linkForm.Close();
