@@ -169,6 +169,7 @@ namespace Excel_Iterate.TestHarness
                 form.Targets.Rows[1].Cells["include"].Value=false;
                 var request=form.Request(); Check(request.Targets.Count==1 && request.Targets[0].Path==first, "unchecked rows are absent from the executable migration request");
                 form.AddTarget(second,new[]{"目标表"},"目标表","B100"); Check(form.Targets.Rows.Count==2 && !DataMigrationForm.IsIncluded(form.Targets.Rows[1]), "readding a duplicate preserves the user's unchecked choice");
+                app.Workbooks.Find(first).Close(false);
                 using(var host=new DataMigrationHost(app)){Drain(host.Preview(request));Drain(host.Execute());}
                 Check(request.Targets[0].Status=="成功" && DataMigrationHost.Digest(second)==secondHash && !File.Exists(Path.Combine(root,"check-second_迁移结果.xls")), "only the checked target produces an output and excluded original bytes remain unchanged");
                 int invalidated=0; form.InputsChanged+=delegate{invalidated++;}; form.SelectTargets(false);
@@ -177,8 +178,53 @@ namespace Excel_Iterate.TestHarness
                 form.AddTarget(Path.Combine(root,"unreadable.xlsx"),new string[0],"","B100","fixture read failure");
                 Check(!DataMigrationForm.IsIncluded(form.Targets.Rows[2]) && Convert.ToString(form.Targets.Rows[2].Cells[5].Value).Contains("fixture read failure"), "unreadable files stay listed with their reason and start unchecked");
                 form.SelectTargets(true); request=form.Request();
+                app.Workbooks.Find(second).Close(false);
                 using(var host=new DataMigrationHost(app))Drain(host.Preview(request));
                 Check(request.Targets[0].Ready && request.Targets[1].Ready && request.Targets[2].Status=="失败", "a checked target with no selected sheet fails independently while other targets remain ready");
+            }
+        }
+        private static void SelectionPopupChecks(string root)
+        {
+            using (var form = new DataMigrationForm())
+            {
+                form.SetSource(Path.Combine(root, "选择界面源.xlsx"), "源表", "B1:C2", new[] { "源表" });
+                form.AddTarget(Path.Combine(root, "目标甲.xlsx"), new[] { "目标表" }, "目标表", "B100");
+                form.AddTarget(Path.Combine(root, "目标乙.xlsx"), new[] { "目标表" }, "目标表", "B100");
+                form.AddTarget(Path.Combine(root, "子目录", "目标乙.xlsx"), new[] { "辅助明细" }, "辅助明细", "B100");
+                var pick = form.Controls.Find("migrationPickSource", true).Single();
+                var sourceRow = form.SourcePath.Parent.Parent;
+                Check(sourceRow.Controls.GetChildIndex(pick) == sourceRow.Controls.GetChildIndex(form.SourcePath.Parent) + 1 && sourceRow.Controls.GetChildIndex(form.SourceSheet.Parent) == sourceRow.Controls.GetChildIndex(pick) + 1, "source-file button sits between the workbook field and worksheet field");
+                Check(!DialogFormatting.Walk(form).OfType<System.Windows.Forms.Button>().Any(b => b.Text == "全选" || b.Text == "全不选"), "standalone all/none buttons are removed from the main window");
+                form.Targets.Rows[1].Cells["include"].Value = false;
+                int changed = 0; form.InputsChanged += delegate { changed++; };
+                using (var menu = form.CreateSelectionPopup())
+                {
+                    menu.Search.Text = "甲"; Check(menu.MatchCount == 1, "selection search matches Chinese workbook names");
+                    menu.SelectMatching(false);
+                    Check(DataMigrationForm.IsIncluded(form.Targets.Rows[0]) && changed == 0, "draft selections do not change the migration request before confirmation");
+                }
+                Check(DataMigrationForm.IsIncluded(form.Targets.Rows[0]) && !DataMigrationForm.IsIncluded(form.Targets.Rows[1]) && changed == 0, "cancel or dismiss discards the entire selection draft");
+                using (var menu = form.CreateSelectionPopup())
+                {
+                    menu.Search.Text = "乙"; Check(menu.MatchCount == 2, "equal filenames from different directories remain separate choices");
+                    menu.SelectMatching(false); menu.Search.Text = "甲";
+                    Check(menu.List.GetItemChecked(0), "batch changes to search matches preserve unmatched selections");
+                    menu.Search.Text = "子目录"; Check(menu.MatchCount == 1 && !menu.List.GetItemChecked(0), "full-path search finds a specific duplicate and retains draft changes");
+                    menu.InvertMatching(); menu.Search.Text = "辅助明细";
+                    Check(menu.MatchCount == 1 && menu.List.GetItemChecked(0), "invert changes only matching rows and worksheet names are searchable");
+                    menu.Search.Text = "乙"; menu.SelectMatching(false); menu.ApplySelection();
+                }
+                Check(changed == 1 && form.Request().Targets.Count == 1 && form.Request().Targets[0].Path.EndsWith("目标甲.xlsx"), "confirm applies the full draft once and only checked files enter migration");
+                Check(form.Targets.Rows.Cast<System.Windows.Forms.DataGridViewRow>().All(r => r.Visible), "selection search does not hide or reorder the main target rows");
+                using (var menu = form.CreateSelectionPopup()) { menu.ApplySelection(); }
+                Check(changed == 1, "confirming unchanged choices preserves the existing preview identity");
+                using (var menu = form.CreateSelectionPopup())
+                {
+                    menu.SelectMatching(false); form.Run(Enumerable.Repeat(new MigrationProgress("fixture"), 2), delegate { }, delegate(Exception error) { throw error; });
+                    Reject(delegate { form.CreateSelectionPopup(); }, "running migration prevents opening the selection dropdown");
+                    menu.ApplySelection();
+                    Check(DataMigrationForm.IsIncluded(form.Targets.Rows[0]) && changed == 1, "a stale dropdown cannot mutate target selection during execution");
+                }
             }
         }
         private static void PumpChecks()
@@ -232,6 +278,96 @@ namespace Excel_Iterate.TestHarness
             var snapshot=MigrationPackagePreservation.Capture(source,"源表",MigrationArea.Parse("A1:B2"));var destination=new MigrationTarget{Sheet="源表",Area=MigrationArea.Parse("A1:B2")};
             bool rejected=false;try{snapshot.Verify(target,destination);}catch(IOException){rejected=true;}Check(rejected,"package-level audit rejects the date-format and merged-hidden-data differences");
             snapshot.Apply(target,destination);snapshot.Verify(target,destination);Check(snapshot.HasHiddenValues,"raw hidden merged values and original number-format code are restored and verified");Check(hash==DataMigrationHost.Digest(source),"fidelity restoration never edits the source file");
+        }
+        private static void TransactionChecks(string root)
+        {
+            string folder = Path.Combine(root, "原文件更新"); Directory.CreateDirectory(folder);
+            string target = Path.Combine(folder, "审计底稿.xlsm"), stage = Path.Combine(folder, ".xy-migration-stage.xlsm");
+            File.WriteAllText(target, "original"); File.WriteAllText(stage, "verified");
+            string hash = DataMigrationHost.Digest(target);
+            string backup = MigrationOutputTransaction.Commit(stage, target, hash, "batch1");
+            Check(File.ReadAllText(target) == "verified" && File.ReadAllText(backup) == "original" && !File.Exists(stage), "atomic replacement retains exact original backup and original Unicode filename");
+            Check(Path.GetDirectoryName(backup) == Path.Combine(folder, "迁移备份", "batch1") && !Directory.GetFiles(folder, "*_迁移结果*").Any(), "replacement produces no result-suffix workbook in the target directory");
+            File.WriteAllText(stage, "next"); bool failed = false;
+            try { MigrationOutputTransaction.Commit(stage, target, hash, "stale"); } catch (IOException) { failed = true; }
+            Check(failed && File.ReadAllText(target) == "verified" && File.Exists(stage), "changed original is rejected without consuming the verified staging file");
+            hash = DataMigrationHost.Digest(target); failed = false;
+            using (File.Open(target, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                try { MigrationOutputTransaction.Commit(stage, target, hash, "locked"); } catch (IOException) { failed = true; }
+            Check(failed && File.ReadAllText(target) == "verified", "locked target fails before replacement");
+            failed = false; try { MigrationOutputTransaction.Commit(stage, target, hash, "batch1"); } catch (IOException) { failed = true; }
+            Check(failed && File.ReadAllText(backup) == "original" && File.ReadAllText(target) == "verified", "existing recovery file is never overwritten");
+            string nextBackup = MigrationOutputTransaction.Commit(stage, target, hash, "batch2");
+            Check(File.ReadAllText(target) == "next" && File.ReadAllText(nextBackup) == "verified" && File.ReadAllText(backup) == "original", "repeated migration preserves each preceding version independently");
+        }
+        private static void QuietReplaceChecks(string root)
+        {
+            string folder = Path.Combine(root, "逐项静默"); Directory.CreateDirectory(folder);
+            var app = new FakeApp(); var source = app.Workbooks.Create(Path.Combine(folder, "源.xls"), "源表");
+            source.Sheets[0].Cell("B1").Formula = "=A1"; source.Sheets[0].Cell("C1").Value2 = "=text"; source.Persist();
+            app.ActiveWorkbook = source; app.ActiveSheet = source.Sheets[0]; string sourceHash = DataMigrationHost.Digest(source.FullName);
+            var targets = new List<MigrationTarget>(); var hashes = new Dictionary<string, string>();
+            for (int i = 0; i < 12; i++)
+            {
+                var book = app.Workbooks.Create(Path.Combine(folder, "目标" + i + ".xls"), "目标表");
+                book.Sheets[0].Cell("B100").Value2 = "old"; book.FailSave = i == 1; book.Persist(); book.Close(false);
+                targets.Add(new MigrationTarget { Path = book.FullName, Sheet = "目标表", Start = "B100" }); hashes[book.FullName] = DataMigrationHost.Digest(book.FullName);
+            }
+            var request = Request(source.FullName, targets.ToArray()); request.ReplaceTargets = true;
+            bool bounded = true, hidden = true; int peak = 0;
+            Action inspect = delegate
+            {
+                peak = Math.Max(peak, app.Workbooks.Count); bounded &= app.Workbooks.Count <= 2;
+                hidden &= app.Workbooks.Items.Where(b => Path.GetFileName(b.FullName).StartsWith(".xy-migration-")).All(b => !b.Windows.Item(1).Visible);
+            };
+            using (var host = new DataMigrationHost(app))
+            {
+                foreach (var step in host.Preview(request)) inspect();
+                Check(targets.All(t => t.Ready && t.Handle == null && t.Gateway == null) && app.Workbooks.Count == 1, "preflight closes each target reader before retaining preview data");
+                foreach (var step in host.Execute()) inspect();
+                Check(targets.Count(t => t.Status == "成功") == 11 && targets[1].Status == "失败", "replacement save failure is independent across a twelve-target batch");
+            }
+            Check(bounded && hidden && peak == 2 && app.Workbooks.Count == 1, "temporary workbooks remain hidden at every yield and do not accumulate with batch size");
+            Check(source.Windows.Item(1).Visible && DataMigrationHost.Digest(source.FullName) == sourceHash, "user source visibility and bytes are unchanged");
+            Check(targets[1].Output.Length == 0 && targets[1].Backup.Length == 0 && DataMigrationHost.Digest(targets[1].Path) == hashes[targets[1].Path], "failed save leaves the target original unchanged");
+            Check(targets.Where(t => t.Status == "成功").All(t => t.Output == t.Path && File.Exists(t.Backup) && DataMigrationHost.Digest(t.Backup) == hashes[t.Path]), "every successful original update reports its exact recovery path");
+            var updated = app.Workbooks.Open(targets[0].Path, 0, true);
+            Check(updated.Sheets[0].Cell("B100").Formula == "=A100" && updated.Windows.Item(1).Visible, "updated original reopens at a visible workbook view with migrated formula");
+            updated.Close(false);
+            Check(!Directory.GetFiles(folder, "*_迁移结果*").Any() && !Directory.GetFiles(folder, ".xy-migration-*").Any(), "successful and failed processing leave no result-suffix or reader files in the working directory");
+            var open = app.Workbooks.Open(targets[0].Path, 0, false); var blocked = new MigrationTarget { Path = targets[0].Path, Sheet = "目标表", Start = "B100" };
+            request = Request(source.FullName, blocked); request.ReplaceTargets = true;
+            using (var host = new DataMigrationHost(app)) { Drain(host.Preview(request)); Check(!blocked.Ready && blocked.Error.Contains("关闭"), "opened target is rejected with save-and-close guidance instead of changing the user document"); }
+            open.Close(false);
+            var cancelled = new MigrationTarget { Path = targets[2].Path, Sheet = "目标表", Start = "B100" };
+            request = Request(source.FullName, cancelled); request.ReplaceTargets = true; string before = DataMigrationHost.Digest(cancelled.Path);
+            using (var host = new DataMigrationHost(app))
+            {
+                Drain(host.Preview(request)); using (var steps = host.Execute().GetEnumerator())
+                { Check(steps.MoveNext(), "replacement execution yields before committing"); host.Cancelled = true; while (steps.MoveNext()) { } }
+                Check(cancelled.Status == "已取消" && cancelled.Output.Length == 0 && DataMigrationHost.Digest(cancelled.Path) == before, "cancellation before commit preserves the original file");
+            }
+            using (var form = new DataMigrationForm())
+            {
+                var option = (System.Windows.Forms.CheckBox)form.Controls.Find("migrationReplaceTargets", true).Single();
+                form.SetSource(source.FullName, "源表", "B1:C2", new[] { "源表" }); form.AddTarget(targets[0].Path, new[] { "目标表" }, "目标表", "B100");
+                Check(option.Checked && form.Request().ReplaceTargets, "production window defaults to updating originals with backup");
+                option.Checked = false; Check(!form.Request().ReplaceTargets, "user can explicitly retain the earlier save-copy behavior");
+            }
+        }
+        private static void SnapshotRaceChecks(string root)
+        {
+            string folder = Path.Combine(root, "读取快照竞争"); Directory.CreateDirectory(folder);
+            var app = new FakeApp(); var source = app.Workbooks.Create(Path.Combine(folder, "源.xls"), "源表"); source.Sheets[0].Cell("B1").Value2 = 9.0; source.Persist();
+            app.ActiveWorkbook = source; app.ActiveSheet = source.Sheets[0];
+            var book = app.Workbooks.Create(Path.Combine(folder, "目标.xls"), "目标表"); book.Close(false);
+            app.Workbooks.Opened = delegate(string path) { if (Path.GetFileName(path).StartsWith(".xy-migration-read-")) File.WriteAllText(book.FullName, "concurrent target edit"); };
+            var target = new MigrationTarget { Path = book.FullName, Sheet = "目标表", Start = "B100" }; var request = Request(source.FullName, target); request.ReplaceTargets = true;
+            using (var host = new DataMigrationHost(app)) { Drain(host.Preview(request)); Check(!target.Ready && target.Error.Contains("变化") && File.ReadAllText(book.FullName) == "concurrent target edit", "target edits during read-copy opening are rejected instead of adopting a new fingerprint"); }
+            app.Workbooks.Opened = null; source.Close(false);
+            app.Workbooks.Opened = delegate(string path) { if (Path.GetFileName(path).StartsWith(".xy-migration-read-")) File.WriteAllText(source.FullName, "concurrent source edit"); };
+            using (var host = new DataMigrationHost(app)) Reject(delegate { Drain(host.Preview(Request(source.FullName, new MigrationTarget { Path = book.FullName, Sheet = "目标表", Start = "B100" }))); }, "source edits during read-copy opening cannot be accepted as the source snapshot");
+            app.Workbooks.Opened = null;
         }
         private static void HostChecks(string root)
         {
@@ -327,7 +463,7 @@ namespace Excel_Iterate.TestHarness
             try
             {
                 if(args.Length==1 && args[0]=="--target-picker-ui") { Console.WriteLine("PICKER_BEGIN"); HostDialogService.Register(); var picked=MigrationTargetPicker.Show(null); foreach(string path in picked)Console.WriteLine("PICKED: "+path); Console.WriteLine("PICKER_END count="+picked.Length+"\n"+UiDiagnostics.Text); Directory.Delete(root,true); return 0; }
-                FormulaChecks(); PackageChecks(root); FidelityChecks(root); WatchChecks(); PickerChecks(root); TargetSelectionChecks(root); PumpChecks(); HostChecks(root);
+                FormulaChecks(); PackageChecks(root); FidelityChecks(root); WatchChecks(); PickerChecks(root); TargetSelectionChecks(root); SelectionPopupChecks(root); PumpChecks(); HostChecks(root); TransactionChecks(root); QuietReplaceChecks(root); SnapshotRaceChecks(root);
                 using (var form = new DataMigrationForm()) Check(!form.Visible && form.Targets.Columns.Count == 8, "production form constructs without host access");
                 if (args.Length == 2 && args[0] == "--render") Render(Path.GetFullPath(args[1]));
                 Console.WriteLine("PASS: DataMigrationProbe " + count + " assertions; managed fixtures only, no WPS connection");
@@ -364,6 +500,7 @@ namespace Excel_Iterate.TestHarness
     public sealed class FakeBooks
     {
         public bool DirtyReadCopies;
+        public Action<string> Opened;
         public int OpenCalls;
         public List<FakeBook> Items = new List<FakeBook>();
         public Dictionary<string, FakeBook> Storage = new Dictionary<string, FakeBook>();
@@ -373,7 +510,7 @@ namespace Excel_Iterate.TestHarness
         public FakeBook Create(string path, string sheet)
         { var b = new FakeBook(this, path); b.Sheets.Add(new FakeSheet(b, sheet)); Items.Add(b); b.Persist(); return b; }
         public FakeBook Open(string path, int update, bool readOnly)
-        { OpenCalls++; var original = Storage[File.ReadAllText(path)]; var copy = original.Clone(path); if (DirtyReadCopies && Path.GetFileName(path).StartsWith(".xy-migration-read-")) copy.Saved = false; Items.Add(copy); return copy; }
+        { OpenCalls++; var original = Storage[File.ReadAllText(path)]; var copy = original.Clone(path); if (DirtyReadCopies && Path.GetFileName(path).StartsWith(".xy-migration-read-")) copy.Saved = false; Items.Add(copy); if (Opened != null) Opened(path); return copy; }
     }
     public sealed class FakeBook
     {
@@ -381,7 +518,8 @@ namespace Excel_Iterate.TestHarness
         public bool FailSave { get; set; }
         public List<FakeSheet> Sheets = new List<FakeSheet>(); public List<string> Links = new List<string>(); public FakeNames Names = new FakeNames();
         public FakeSheets Worksheets { get { return new FakeSheets(Sheets); } }
-        public FakeWindows Windows { get { return new FakeWindows(); } }
+        private readonly FakeWindows windows = new FakeWindows();
+        public FakeWindows Windows { get { return windows; } }
         public FakeBook(FakeBooks owner, string path) { Owner = owner; FullName = path; Saved = true; }
         public object LinkSources(int type) { return Links.Count == 0 ? null : Links.ToArray(); }
         public void Activate() { }
@@ -390,7 +528,7 @@ namespace Excel_Iterate.TestHarness
         public void Persist() { string id = Guid.NewGuid().ToString("N"); Owner.Storage[id] = Clone(FullName); File.WriteAllText(FullName, id); Saved = true; }
         public FakeBook Clone(string path)
         {
-            var b = new FakeBook(Owner, path) { FailSave = FailSave }; b.Links.AddRange(Links);
+            var b = new FakeBook(Owner, path) { FailSave = FailSave }; b.Links.AddRange(Links); b.Windows.Item(1).Visible = Windows.Item(1).Visible;
             foreach (var name in Names.Items) b.Names.Add(name.Name, name.RefersTo, name.Visible);
             foreach (var s in Sheets)
             { var copy = new FakeSheet(b, s.Name); foreach (var p in s.Cells) copy.Cells[p.Key] = p.Value.Clone(copy); b.Sheets.Add(copy); } return b;
@@ -402,8 +540,8 @@ namespace Excel_Iterate.TestHarness
         public int Count { get { return sheets.Count; } }
         public FakeSheet Item(object key) { return key is int ? sheets[(int)key - 1] : sheets.First(s => s.Name == (string)key); }
     }
-    public sealed class FakeWindow { public bool Visible { get; set; } public int ScrollRow { get; set; } public int ScrollColumn { get; set; } }
-    public sealed class FakeWindows { public int Count { get { return 1; } } public FakeWindow Item(int i) { return new FakeWindow(); } }
+    public sealed class FakeWindow { public FakeWindow() { Visible = true; } public bool Visible { get; set; } public int ScrollRow { get; set; } public int ScrollColumn { get; set; } }
+    public sealed class FakeWindows { private readonly FakeWindow window = new FakeWindow(); public int Count { get { return 1; } } public FakeWindow Item(int i) { return window; } }
     public sealed class FakeName { public string Name { get; set; } public string RefersTo { get; set; } public bool Visible { get; set; } }
     public sealed class FakeNames
     {

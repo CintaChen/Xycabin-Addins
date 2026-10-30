@@ -14,12 +14,14 @@ namespace Excel_Iterate
         internal readonly ComboBox SourceSheet = new ComboBox { Width = 80, DropDownWidth = 180, Name = "migrationSheet", DropDownStyle = ComboBoxStyle.DropDown };
         internal readonly TextBox SourceRange = new TextBox { Width = 80, Name = "migrationRange" };
         private readonly CheckBox allowEmpty = new CheckBox { Text = "允许全空白源区域（清空目标）", AutoSize = true };
+        private readonly CheckBox replaceTargets = new CheckBox { Name = "migrationReplaceTargets", Text = "更新目标原文件（自动备份）", AutoSize = true, Checked = true };
         private MigrationRequest lastRequest;
         internal readonly ResultGrid Targets = new ResultGrid { Name = "migrationTargets", Dock = DockStyle.Fill };
         private readonly RichTextBox details = new RichTextBox { Name = "migrationDetails", ReadOnly = true, Dock = DockStyle.Fill, BackColor = Color.White, WordWrap = true };
         private readonly Label status = Ui.Label("请选择源文件，或点击“读取当前选区”；选择目标后先预检。", 9, false);
         private readonly RoundedButton preview = Ui.Button("预检与预览", 120), execute = Ui.Button("执行迁移", 110), cancel = Ui.Button("取消操作", 110), open = Ui.Button("打开结果文件夹", 150);
         private readonly List<Control> inputs = new List<Control>();
+        private MigrationTargetSelectionPopup selectionPopup;
         private readonly Timer pump = new Timer { Interval = 15 };
         private IEnumerator<MigrationProgress> steps;
         private Action finished;
@@ -37,20 +39,19 @@ namespace Excel_Iterate
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Padding = new Padding(16) };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 58)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 42)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var source = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top, WrapContents = true, Margin = Padding.Empty };
-            source.Controls.Add(SourceField(SourcePath, "源工作簿")); source.Controls.Add(SourceField(SourceSheet, "源工作表")); source.Controls.Add(SourceField(SourceRange, "源区域"));
+            source.Controls.Add(SourceField(SourcePath, "源工作簿"));
+            var pick = Ui.Button("选择源文件…", 104); pick.Name = "migrationPickSource"; pick.Click += delegate { PickSource(); };
+            source.Controls.Add(pick); source.Controls.Add(SourceField(SourceSheet, "源工作表")); source.Controls.Add(SourceField(SourceRange, "源区域"));
             var pickRange = Ui.Button("在表中选择…", 104); pickRange.Name = "migrationPickRange";
             pickRange.Click += delegate { if (SourceRangeRequested != null) SourceRangeRequested(); };
             source.Controls.Add(pickRange);
-            var pick = Ui.Button("选择源文件…", 104); pick.Click += delegate { PickSource(); };
             var selection = Ui.Button("读取当前选区", 116); selection.Click += delegate { if (SelectionRequested != null) SelectionRequested(); };
-            source.Controls.Add(pick); source.Controls.Add(selection); source.Controls.Add(allowEmpty); CenterSourceRow(source); root.Controls.Add(source, 0, 0);
+            source.Controls.Add(selection); source.Controls.Add(allowEmpty); CenterSourceRow(source); root.Controls.Add(source, 0, 0);
             var targetActions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top, WrapContents = true };
             var add = Ui.Button("添加目标…", 110); add.Click += delegate { PickTargets(); };
             var remove = Ui.Button("移除目标", 110); remove.Click += delegate { foreach (DataGridViewRow row in Targets.SelectedRows) if (!row.IsNewRow) Targets.Rows.Remove(row); Changed(); };
             var targetSelection = Ui.Button("当前选区设为目标", 165); targetSelection.Click += delegate { if (TargetSelectionRequested != null) TargetSelectionRequested(); };
-            var all = Ui.Button("全选", 72); var none = Ui.Button("全不选", 84);
-            all.Click += delegate { SelectTargets(true); }; none.Click += delegate { SelectTargets(false); };
-            targetActions.Controls.Add(add); targetActions.Controls.Add(remove); targetActions.Controls.Add(targetSelection); targetActions.Controls.Add(all); targetActions.Controls.Add(none); root.Controls.Add(targetActions, 0, 1);
+            targetActions.Controls.Add(add); targetActions.Controls.Add(remove); targetActions.Controls.Add(targetSelection); targetActions.Controls.Add(replaceTargets); CenterSourceRow(targetActions); root.Controls.Add(targetActions, 0, 1);
             Targets.AllowUserToAddRows = false; Targets.AllowUserToDeleteRows = false; Targets.RowHeadersVisible = false; Targets.SelectionMode = DataGridViewSelectionMode.FullRowSelect; Targets.MultiSelect = false;
             AddColumn("path", "目标工作簿", 240, true);
             Targets.Columns.Add(new DataGridViewComboBoxColumn {
@@ -62,6 +63,9 @@ namespace Excel_Iterate
             // Keep existing data column indices stable; show the new checkbox first.
             Targets.Columns.Add(new DataGridViewCheckBoxColumn { Name = "include", HeaderText = "选择", Width = 56, SortMode = DataGridViewColumnSortMode.NotSortable, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter } });
             Targets.Columns["include"].DisplayIndex = 0;
+            Targets.Columns["include"].HeaderCell = new MigrationSelectionHeader { Value = "选择", ToolTipText = "点击下拉箭头，搜索目标并批量勾选；确定后生效。" };
+            Targets.ColumnHeaderMouseClick += delegate(object sender, DataGridViewCellMouseEventArgs e)
+            { if (e.Button == MouseButtons.Left && e.ColumnIndex == Targets.Columns["include"].Index) ShowTargetSelection(); };
             // Allocate the viewport, rather than sizing to every path or every
             // choice in a worksheet dropdown.
             Targets.ColumnFitOverride = FitTargetColumns;
@@ -123,12 +127,13 @@ namespace Excel_Iterate
             cancel.Click += delegate { if (CancelRequested != null) CancelRequested(); status.Text = "正在取消，等待当前步骤收尾…"; cancel.Enabled = false; };
             open.Click += delegate { OpenResult(); }; close.Click += delegate { Close(); };
             actions.Controls.Add(preview); actions.Controls.Add(execute); actions.Controls.Add(cancel); actions.Controls.Add(open); actions.Controls.Add(close); root.Controls.Add(actions, 0, 5); Controls.Add(root);
-            inputs.AddRange(new Control[] { SourcePath, SourceSheet, SourceRange, allowEmpty, pick, pickRange, selection, add, remove, targetSelection, all, none });
+            inputs.AddRange(new Control[] { SourcePath, SourceSheet, SourceRange, allowEmpty, replaceTargets, pick, pickRange, selection, add, remove, targetSelection });
             allowEmpty.CheckedChanged += delegate { Changed(); };
+            replaceTargets.CheckedChanged += delegate { Changed(); Message(replaceTargets.Checked ? "校验通过后更新目标原文件；原版本保存在目标目录的“迁移备份”子文件夹。请先保存并关闭目标。" : "另存“迁移结果”副本，目标原文件不修改；请重新预检。"); };
             SourcePath.TextChanged += delegate { Changed(); }; SourceSheet.TextChanged += delegate { Changed(); }; SourceRange.TextChanged += delegate { Changed(); };
             pump.Tick += delegate { Tick(); }; execute.Enabled = false; cancel.Enabled = false; open.Enabled = false;
             FormClosing += delegate(object sender, FormClosingEventArgs e) { if (Running && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; closeWhenDone = true; if (CancelRequested != null) CancelRequested(); } };
-            Disposed += delegate { pump.Stop(); if (steps != null) { steps.Dispose(); steps = null; } pump.Dispose(); };
+            Disposed += delegate { CloseTargetSelection(); pump.Stop(); if (steps != null) { steps.Dispose(); steps = null; } pump.Dispose(); };
             if (!DialogPreviewFactory.IsConstructing) Load += delegate { CompactLegacySourceWidths(); };
         }
         private void CompactLegacySourceWidths()
@@ -148,7 +153,9 @@ namespace Excel_Iterate
         private static Panel SourceField(Control input, string caption)
         {
             var field = new Panel { Margin = new Padding(0, 0, 8, 0) };
-            var label = new Label { Text = caption, AutoSize = true };
+            // The caption takes the input's full height and centers its text,
+            // so it shares a text line with the input instead of riding high.
+            var label = new Label { Text = caption, AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, Padding = Padding.Empty, Margin = Padding.Empty };
             field.Controls.Add(label); field.Controls.Add(input);
             var grip = new WidthGrip(input);
             bool arranging = false;
@@ -158,19 +165,24 @@ namespace Excel_Iterate
                 arranging = true;
                 try
                 {
-                    int height = Math.Max(label.Height, input.Height);
-                    label.Location = new Point(3, (height - label.Height) / 2);
-                    input.Location = new Point(label.Right + 9, (height - input.Height) / 2);
+                    int height = input.Height;
+                    int width = label.GetPreferredSize(Size.Empty).Width + 2;
+                    label.SetBounds(0, 0, width, height);
+                    input.Location = new Point(label.Right + 4, 0);
                     field.Size = new Size(input.Right + grip.Width + 3, height);
                 }
                 finally { arranging = false; }
             };
             input.SizeChanged += delegate { field.PerformLayout(); };
-            label.SizeChanged += delegate { field.PerformLayout(); };
+            label.FontChanged += delegate { field.PerformLayout(); };
             field.PerformLayout(); return field;
         }
         private static void CenterSourceRow(FlowLayoutPanel row)
         {
+            // Every item is centered on one line: fields and buttons by margin,
+            // checkboxes by taking the full line height with centered text.
+            foreach (var box in row.Controls.OfType<CheckBox>())
+            { box.AutoSize = false; box.TextAlign = ContentAlignment.MiddleLeft; box.CheckAlign = ContentAlignment.MiddleLeft; box.Padding = Padding.Empty; }
             bool aligning = false;
             row.Layout += delegate
             {
@@ -178,9 +190,16 @@ namespace Excel_Iterate
                 aligning = true;
                 try
                 {
-                    int height = row.Controls.Cast<Control>().Max(c => c.Height);
+                    var solid = row.Controls.Cast<Control>().Where(c => !(c is CheckBox)).ToList();
+                    int height = solid.Count > 0 ? solid.Max(c => c.Height) : row.Controls.Cast<Control>().Max(c => c.GetPreferredSize(Size.Empty).Height);
                     foreach (Control control in row.Controls)
                     {
+                        var box = control as CheckBox;
+                        if (box != null)
+                        {
+                            var size = new Size(box.GetPreferredSize(Size.Empty).Width, height);
+                            if (box.Size != size) box.Size = size;
+                        }
                         int gap = height - control.Height;
                         var margin = new Padding(control.Margin.Left, gap / 2, control.Margin.Right, gap - gap / 2);
                         if (control.Margin != margin) control.Margin = margin;
@@ -204,6 +223,7 @@ namespace Excel_Iterate
             fittingTargets = true;
             try
             {
+                Targets.Columns["include"].HeaderCell.Style.Padding = new Padding(Ui.Px(Targets, 6), 0, Ui.Px(Targets, 28), 0);
                 Ui.EnsureGridHeaders(Targets);
                 Targets.Columns["sheet"].MinimumWidth = Math.Max(Targets.Columns["sheet"].MinimumWidth, Ui.Px(Targets, 104));
                 // Header minima are pinned first; distribute remaining pixels
@@ -253,21 +273,57 @@ namespace Excel_Iterate
                 string[] selections = MigrationTargetPicker.Show(this); if (selections.Length == 0) return;
                 var scan = MigrationTargetScan.Expand(selections, SourcePath.Text.Trim());
                 if (scan.Files.Count > 0 && TargetsPicked != null) TargetsPicked(scan.Files.ToArray());
-                Message("识别到 " + scan.Files.Count + " 个工作簿，已勾选 " + Targets.Rows.Cast<DataGridViewRow>().Count(IsIncluded) + "/" + Targets.Rows.Count + " 个目标。文件夹只扫描当前层；已跳过 " + scan.Skipped + " 个源文件、临时或迁移结果文件。" + string.Join("；", scan.Errors.ToArray()));
+                Message("识别到 " + scan.Files.Count + " 个工作簿，已勾选 " + Targets.Rows.Cast<DataGridViewRow>().Count(IsIncluded) + "/" + Targets.Rows.Count + " 个目标。点击“选择”表头的下拉箭头可批量勾选。文件夹只扫描当前层；已跳过 " + scan.Skipped + " 个源文件、临时或迁移结果文件。" + string.Join("；", scan.Errors.ToArray()));
             }
             catch (Exception error) { Message("添加目标失败：" + error.Message); }
         }
         internal static bool IsIncluded(DataGridViewRow row) { return object.Equals(row.Cells["include"].Value, true); }
         internal void SelectTargets(bool selected)
+        { ApplyTargetChoices(Targets.Rows.Cast<DataGridViewRow>().ToDictionary(r => r, r => selected)); }
+        internal MigrationTargetSelectionPopup CreateSelectionPopup()
+        {
+            if (Running) throw new InvalidOperationException("迁移运行期间不能更改目标选择。");
+            Targets.EndEdit(); return new MigrationTargetSelectionPopup(Targets, ApplyTargetChoices);
+        }
+        private void ShowTargetSelection()
+        {
+            if (Running || Targets.ReadOnly || Targets.Rows.Count == 0) return;
+            if (selectionPopup != null)
+            {
+                bool wasOpen = selectionPopup.Visible; CloseTargetSelection();
+                if (wasOpen) return;
+            }
+            selectionPopup = CreateSelectionPopup(); var popup = selectionPopup;
+            // Keep a closed popup until the next normal UI action. Disposing in
+            // Closed reenters WinForms' activation filter while it still uses it.
+            var cell = Targets.GetCellDisplayRectangle(Targets.Columns["include"].Index, -1, true);
+            popup.Show(Targets, new Point(cell.Left, cell.Bottom));
+        }
+        private void CloseTargetSelection()
+        {
+            var popup = selectionPopup; selectionPopup = null;
+            if (popup != null) { popup.Close(); popup.Dispose(); }
+        }
+        private void ApplyTargetChoices(IDictionary<DataGridViewRow, bool> choices)
         {
             if (Running) return;
-            Targets.EndEdit(); syncing = true;
-            try { foreach (DataGridViewRow row in Targets.Rows) row.Cells["include"].Value = selected; }
+            Targets.EndEdit(); syncing = true; bool changed = false;
+            try
+            {
+                foreach (var choice in choices)
+                    if (choice.Key.DataGridView == Targets && !choice.Key.IsNewRow && IsIncluded(choice.Key) != choice.Value)
+                    { choice.Key.Cells["include"].Value = choice.Value; changed = true; }
+            }
             finally { syncing = false; }
-            Changed(); RefreshResults();
+            if (changed) { Changed(); RefreshResults(); }
         }
         private void Changed()
-        { if (syncing || Running) return; lastRequest = null; execute.Enabled = false; status.Text = "已勾选 " + Targets.Rows.Cast<DataGridViewRow>().Count(IsIncluded) + "/" + Targets.Rows.Count + " 个目标，请明确源区域和目标位置，再重新预检。"; if (InputsChanged != null) InputsChanged(); }
+        { if (syncing || Running) return; lastRequest = null; execute.Enabled = false; UpdateSelectionHeader(); status.Text = "已勾选 " + Targets.Rows.Cast<DataGridViewRow>().Count(IsIncluded) + "/" + Targets.Rows.Count + " 个目标，请明确源区域和目标位置，再重新预检。"; if (InputsChanged != null) InputsChanged(); }
+        private void UpdateSelectionHeader()
+        {
+            var header = Targets.Columns["include"].HeaderCell as MigrationSelectionHeader;
+            if (header != null) { header.HasExcludedTargets = Targets.Rows.Cast<DataGridViewRow>().Any(r => !IsIncluded(r)); Targets.InvalidateCell(header); }
+        }
         internal void SetSource(string path, string sheet, string address, IEnumerable<string> sheets)
         {
             syncing = true;
@@ -297,7 +353,7 @@ namespace Excel_Iterate
             Targets.EndEdit();
             if (SourceRange.Text.Trim().Length == 0) throw new InvalidOperationException("请填写源区域（如 B5:I22），或点击“读取当前选区”；不会默认迁移 A1。");
             MigrationArea.Parse(SourceRange.Text.Trim());
-            var request = new MigrationRequest { SourcePath = Path.GetFullPath(SourcePath.Text.Trim()), SourceSheet = SourceSheet.Text.Trim(), SourceRange = SourceRange.Text.Trim(), AllowEmptySource = allowEmpty.Checked };
+            var request = new MigrationRequest { SourcePath = Path.GetFullPath(SourcePath.Text.Trim()), SourceSheet = SourceSheet.Text.Trim(), SourceRange = SourceRange.Text.Trim(), AllowEmptySource = allowEmpty.Checked, ReplaceTargets = replaceTargets.Checked };
             if (request.SourceSheet.Length == 0 || Targets.Rows.Count == 0) throw new InvalidOperationException("请选择源工作表并添加至少一个目标。");
             foreach (DataGridViewRow row in Targets.Rows)
             {
@@ -323,25 +379,28 @@ namespace Excel_Iterate
                 }
                 execute.Enabled = !Running && ready; open.Enabled = !Running && hasOutput;
             }
-            finally { syncing = false; } Ui.AutoFitColumns(Targets); ShowDetails();
+            finally { syncing = false; }
+            UpdateSelectionHeader();
+            Ui.AutoFitColumns(Targets); ShowDetails();
             if (!Running && lastRequest != null) status.Text = Summary(lastRequest);
         }
         internal static string Summary(MigrationRequest request)
         {
             int succeeded = request.Targets.Count(t => t.Status == "成功"), failed = request.Targets.Count(t => t.Status == "失败"), ready = request.Targets.Count(t => t.Ready && t.Status == "可执行");
             return "源 " + request.SourceSheet + "!" + request.SourceRange + "：非空 " + request.NonEmptyCells + "，公式 " + request.FormulaCells
-                + "；目标 " + request.Targets.Count + "：成功 " + succeeded + "，失败 " + failed + "，可执行 " + ready + "。每个成功目标对应一个结果副本。";
+                + "；目标 " + request.Targets.Count + "：成功 " + succeeded + "，失败 " + failed + "，可执行 " + ready + "。" + (request.ReplaceTargets ? "保存方式：校验后更新原文件并备份。" : "保存方式：另存结果副本。");
         }
         private void ShowDetails()
         {
             if (Targets.CurrentRow == null) return; var target = Targets.CurrentRow.Tag as MigrationTarget; if (target == null) return;
             details.Text = target.Path + Environment.NewLine + (IsIncluded(Targets.CurrentRow) ? "已勾选，参与本轮预检与迁移" : "未勾选，不参与本轮预检与迁移") + Environment.NewLine + "状态：" + target.Status + Environment.NewLine + target.Error + Environment.NewLine
-                + "输出：" + target.Output + Environment.NewLine + "必要名称：" + (target.Names == null ? 0 : target.Names.Count) + Environment.NewLine
+                + "输出：" + target.Output + Environment.NewLine + "原版本备份：" + target.Backup + Environment.NewLine + "必要名称：" + (target.Names == null ? 0 : target.Names.Count) + Environment.NewLine
                 + string.Join(Environment.NewLine, target.Samples.ToArray());
         }
         internal void Run(IEnumerable<MigrationProgress> sequence, Action complete, Action<Exception> error)
         {
             if (Running) throw new InvalidOperationException("当前任务尚未结束。");
+            CloseTargetSelection();
             finished = complete; failed = error; steps = sequence.GetEnumerator();
             foreach (Control input in inputs) input.Enabled = false; Targets.ReadOnly = true; preview.Enabled = execute.Enabled = open.Enabled = false; cancel.Enabled = true;
             pump.Start();

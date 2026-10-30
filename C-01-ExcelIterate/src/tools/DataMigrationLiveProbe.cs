@@ -11,6 +11,48 @@ using Excel_Iterate;
 // directory. Never install the add-in, call Quit, or write an existing document.
 internal static class DataMigrationLiveProbe
 {
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+    private sealed class ProbeWindow : IWin32Window { internal IntPtr Value; public IntPtr Handle { get { return Value; } } }
+    private static void InteractiveRun(object application, DataMigrationHost host, MigrationRequest request, Action<MigrationProgress> inspect)
+    {
+        Exception failure = null; int observations = 0, missed = 0; bool completed = false;
+        using (var form = new DataMigrationForm()) using (var timeout = new Timer { Interval = 300000 })
+        {
+            form.Text += " · 焦点验证";
+            form.SetSource(request.SourcePath, request.SourceSheet, request.SourceRange, new[] { request.SourceSheet });
+            foreach (var target in request.Targets) { form.AddTarget(target.Path, new[] { target.Sheet }, target.Sheet, target.Start); form.Targets.Rows[form.Targets.Rows.Count - 1].Tag = target; }
+            Action<MigrationProgress> observe = delegate(MigrationProgress step)
+            {
+                inspect(step); observations++;
+                if (observations <= 3)
+                {
+                    uint process; GetWindowThreadProcessId(GetForegroundWindow(), out process);
+                    using (var info = new MigrationWindowScope(application)) Console.WriteLine("FOCUS_SAMPLE: foreground=" + GetForegroundWindow() + " foregroundProcess=" + process + " dialog=" + form.Handle + " minimized=" + IsIconic(form.Handle) + " hostProcesses=" + info.HostIdentity);
+                }
+                if (GetForegroundWindow() != form.Handle || IsIconic(form.Handle)) missed++;
+            };
+            Action<Exception> failed = delegate(Exception error) { failure = error; form.Close(); };
+            form.PreviewRequested += delegate
+            {
+                var actual = form.Request(); request.Targets.Clear(); request.Targets.AddRange(actual.Targets);
+                form.Run(Observed(host.Preview(actual), observe), delegate
+                {
+                    form.RefreshResults(); Console.WriteLine("UI_PREVIEW_READY");
+                }, failed);
+            };
+            form.ExecuteRequested += delegate { form.Run(Observed(host.Execute(), observe), delegate { completed = true; form.RefreshResults(); form.Close(); }, failed); };
+            form.CancelRequested += delegate { host.Cancelled = true; };
+            timeout.Tick += delegate { failure = new TimeoutException("焦点验证未在限时内完成。"); host.Cancelled = true; form.Close(); };
+            IntPtr owner = new IntPtr(Convert.ToInt64(((dynamic)application).Hwnd));
+            form.Activated += delegate { Console.WriteLine("UI_ACTIVATED: foreground=" + GetForegroundWindow() + " dialog=" + form.Handle); };
+            uint ownerProcess; GetWindowThreadProcessId(owner, out ownerProcess);
+            form.Show(new ProbeWindow { Value = owner }); timeout.Start(); Console.WriteLine("UI_FOCUS_TEST_READY: foreground=" + GetForegroundWindow() + " dialog=" + form.Handle + " host=" + owner + " hostProcess=" + ownerProcess); Application.Run(form);
+        }
+        if (failure != null) throw failure;
+        Check(completed && observations > 0 && missed == 0, "迁移窗口在真实宿主读写全过程保持前台且未最小化；观测=" + observations + "，失焦=" + missed);
+    }
     private static void Check(bool passed, string message)
     { if (!passed) throw new InvalidOperationException(message); Console.WriteLine("PASS: " + message); }
     private static void Drain(IEnumerable<MigrationProgress> steps)
@@ -135,6 +177,22 @@ internal static class DataMigrationLiveProbe
                 session.Override(() => (object)app.DisplayAlerts, value => app.DisplayAlerts = (dynamic)value, false, "DisplayAlerts");
                 session.Override(() => (object)app.ScreenUpdating, value => app.ScreenUpdating = (dynamic)value, false, "ScreenUpdating");
                 session.Override(() => (object)app.EnableEvents, value => app.EnableEvents = (dynamic)value, false, "EnableEvents");
+                if (args.Length == 0 || (args.Length == 1 && (args[0] == "--quiet-replace" || args[0] == "--quiet-replace-ui")))
+                {
+                    // Represent the visible user workbook which owns the add-in
+                    // dialog. No real user document is used as the test host.
+                    string parking = session.Output("静默迁移_宿主测试.xlsx");
+                    using (var focus = new MigrationWindowScope(application))
+                    {
+                        Make(session, application, parking, 51, "宿主", delegate(object b, object s) { Cell(session, s, "A1", "WPS 静默迁移测试宿主", false); });
+                        using (var references = session.References())
+                        {
+                            dynamic books = references.Take(app.Workbooks); object opened = books.Open(parking, 0, true);
+                            session.Own(opened, delegate { ((dynamic)opened).Close(false); });
+                            MigrationWindowScope.SetOwnedVisible(opened, true);
+                        }
+                    }
+                }
                 if ((args.Length==4&&(args[0]=="--repro"||args[0]=="--diagnose"))||(args.Length==5&&args[0]=="--repair")) { Reproduce(session, application, args); return session.Finish(0); }
                 string third = session.Output("第三方.xlsx"), source = session.Output("源.xlsx");
                 Make(session, application, third, 51, "明细", delegate(object book, object sheet) { Cell(session, sheet, "A1", 37.0, false); });
@@ -194,6 +252,57 @@ internal static class DataMigrationLiveProbe
                     }
                 }
                 foreach (var pair in hashes) Check(DataMigrationHost.Digest(pair.Key) == pair.Value, "原文件摘要不变：" + Path.GetFileName(pair.Key));
+                if (args.Length == 1 && (args[0] == "--quiet-replace" || args[0] == "--quiet-replace-ui"))
+                {
+                    int baseline; using (var references = session.References()) { dynamic books = references.Take(app.Workbooks); baseline = Convert.ToInt32(books.Count); }
+                    int peak = baseline; bool hidden = true;
+                    Action<MigrationProgress> inspect = delegate(MigrationProgress step)
+                    {
+                        using (var references = session.References())
+                        {
+                            dynamic books = references.Take(app.Workbooks); int total = Convert.ToInt32(books.Count); peak = Math.Max(peak, total);
+                            for (int i = 1; i <= total; i++)
+                            {
+                                dynamic book = references.Take(books.Item(i)); string path = Convert.ToString(book.FullName);
+                                if (!path.StartsWith(session.DirectoryPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !Path.GetFileName(path).StartsWith(".xy-migration-")) continue;
+                                dynamic windows = references.Take(book.Windows);
+                                for (int j = 1; j <= Convert.ToInt32(windows.Count); j++) { dynamic window = references.Take(windows.Item(j)); hidden &= !(bool)window.Visible; }
+                            }
+                        }
+                    };
+                    var replacement = new MigrationRequest { SourcePath = source, SourceSheet = "源表", SourceRange = "B1:C3", Targets = targets, ReplaceTargets = true };
+                    using (var host = new DataMigrationHost(application))
+                    {
+                        if (args[0] == "--quiet-replace-ui") InteractiveRun(application, host, replacement, inspect);
+                        else
+                        {
+                        DrainPumped(Observed(host.Preview(replacement), inspect));
+                        foreach (var target in targets) Check(target.Ready, "覆盖模式预检 " + Path.GetExtension(target.Path) + ": " + target.Error);
+                        DrainPumped(Observed(host.Execute(), inspect));
+                        }
+                    }
+                    Check(hidden && peak <= baseline + 2, "临时工作簿在每个消息泵让步点隐藏，数量不随目标数增长；峰值=" + peak);
+                    foreach (var target in targets)
+                    {
+                        Check(target.Status == "成功" && target.Output == target.Path && File.Exists(target.Backup), "原文件已更新并保留恢复版本 " + Path.GetExtension(target.Path) + ": " + target.Error);
+                        Check(DataMigrationHost.Digest(target.Backup) == hashes[target.Path], "恢复版本字节匹配迁移前目标 " + Path.GetExtension(target.Path));
+                        session.TrackFile(target.Backup);
+                        using (var references = session.References())
+                        {
+                            dynamic books = references.Take(app.Workbooks), book = references.Take(books.Open(target.Path, 0, true));
+                            try
+                            {
+                                dynamic sheets = references.Take(book.Worksheets), sheet = references.Take(sheets.Item("目标表")), cell = references.Take(sheet.Range["B100"]);
+                                dynamic windows = references.Take(book.Windows), window = references.Take(windows.Item(1));
+                                Check((bool)window.Visible && Convert.ToString(cell.Formula).Contains("A100"), "目标原文件重开可见，公式已迁移 " + Path.GetExtension(target.Path));
+                            }
+                            finally { book.Close(false); }
+                        }
+                    }
+                    Check(DataMigrationHost.Digest(source) == hashes[source] && DataMigrationHost.Digest(third) == hashes[third], "覆盖模式仍不修改源文件与第三方来源");
+                    foreach (string file in Directory.GetFiles(session.DirectoryPath, "*", SearchOption.AllDirectories)) session.TrackFile(file);
+                    return session.Finish(0);
+                }
                 if (args.Length == 1)
                 {
                     string imported = session.Output("生成器测试源.xlsx"), targetPath = session.Output("生成器目标.xlsx");
