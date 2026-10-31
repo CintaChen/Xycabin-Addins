@@ -34,8 +34,12 @@ namespace Excel_Iterate
                         if (_migrationHost == null || _migrationRequest == null) throw new InvalidOperationException("请先重新预检。");
                         var ready = _migrationRequest.Targets.Where(t => t.Ready).ToList(); int overwrite = ready.Sum(t => t.Overwritten);
                         if (ready.Count == 0) throw new InvalidOperationException("没有通过预检的目标。");
-                        if (_migrationRequest.NonEmptyCells == 0 && UiDialog.Show("源区域 " + _migrationRequest.SourceSheet + "!" + _migrationRequest.SourceRange + " 全部为空。继续会清空 " + ready.Count + " 个目标副本的对应区域。确定继续？", "全空白源区域", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
-                        if (overwrite > 0 && UiDialog.Show("将在 " + ready.Count + " 个目标副本中覆盖 " + overwrite + " 个已有内容的单元格。源空白也会覆盖目标；原文件不修改。是否继续？", "批量迁移数据", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                        if (_migrationRequest.NonEmptyCells == 0 && UiDialog.Show("源区域 " + _migrationRequest.SourceSheet + "!" + _migrationRequest.SourceRange + " 全部为空。继续会清空 " + ready.Count + " 个目标的对应区域。确定继续？", "全空白源区域", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                        if (_migrationRequest.ReplaceTargets)
+                        {
+                            if (UiDialog.Show("将更新 " + ready.Count + " 个目标原文件，覆盖 " + overwrite + " 个已有内容的单元格（源空白也会清空目标）。每个文件校验通过后才替换，原版本保存在同目录的“迁移备份”子文件夹。源文件不修改。是否执行？", "确认更新目标原文件", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                        }
+                        else if (overwrite > 0 && UiDialog.Show("将在 " + ready.Count + " 个结果副本中覆盖 " + overwrite + " 个已有内容的单元格。源空白也会覆盖目标；原文件不修改。是否继续？", "批量迁移数据", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                         form.Run(_migrationHost.Execute(), delegate { form.RefreshResults(); ResetMigration(); }, delegate(Exception error) { form.Message(error.Message); ResetMigration(); });
                     });
                 };

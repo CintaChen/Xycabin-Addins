@@ -184,7 +184,10 @@
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationHost.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPackageCompatibility.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPackagePreservation.cs",
-    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationTargetPicker.cs"
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationTargetPicker.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationWindowScope.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationOutputTransaction.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationTargetSelectionPopup.cs"
   ],
   "tools": [
     {
@@ -1280,7 +1283,10 @@
         "AC-Original Code/ExcelIterate/_Shared/FormulaRefParser.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/FormulaRefRewriter.cs",
         "AC-Original Code/ExcelIterate/Operations/LinkAssistant/XlsxLinkPackage.cs",
-        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs"
+        "AC-Original Code/ExcelIterate/Data/_Shared/SourceChangeWatch.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationWindowScope.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationOutputTransaction.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationTargetSelectionPopup.cs"
       ],
       "tests": [
         "src/testharness/DataMigrationProbe.cs",

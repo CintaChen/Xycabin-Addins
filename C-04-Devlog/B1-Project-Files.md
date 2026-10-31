@@ -93,6 +93,10 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (1). 当前实现与待验收
 
+批量迁移源文件按钮位于源工作簿文本框右侧、源工作表左侧，标签与复选框按行高垂直居中。主窗批量勾选入口整合到“选择”表头的带框箭头，存在未勾选目标时显示蓝色漏斗；弹窗提供搜索及清空、全选搜索结果、反选、选择计数、空态、确定/取消和尺寸拖动，草稿确认后才回写，不隐藏主表目标。
+
+批量迁移默认改为校验后更新目标原文件并保留原版本备份，也可取消勾选另存副本。新增 MigrationOutputTransaction 与 MigrationWindowScope，目标读取器逐项释放、临时窗口按所有权隐藏，修复预检累积工作簿及读写激活压低迁移窗口的问题；更新模式要求目标先保存并关闭。后续段落中的“仅输出副本”描述属于前版实现或当前另存模式。实际 WPS 标签页、焦点及二进制保存行为另列实机证据。
+
 新增审计工具箱“批量迁移数据”：Connect.DataMigration → DataMigrationForm/Host/Engine，单源矩形区域到多个目标位置，内部引用平移、第三方地址冻结、必要名称按作用域迁移，仅输出原格式副本；预检覆盖与冲突，保存重开核对，目标独立失败。源区域旁新增“在表中选择…”按钮，通过宿主鼠标框选回填地址，取消保留原值。顶部缩短三个输入框，选择源文件、读取当前选区与允许全空白复选框同排，控件按中心线对齐。添加目标在同一原生窗口接受文件或文件夹，识别后逐项勾选，只有勾选目标进入本轮请求。目标清单列宽按当前窗口分配，保留标题与工作表可读下限，长路径通过悬停查看。工作表下拉框贴合单元格，编辑与非编辑态保持宽度、字号和行高一致，单击展开长表名列表。首版边界及十万单元格上限见 A-UserGuide；离线托管夹具不等于真实 WPS 或四种格式验收，本轮不安装或发布。
 
 源选择修复：窗口不再自动绑定活动工作簿；xlsx/xlsm 的表名直接从文件读取，选文件不引起临时工作簿开关。预检区分用户未保存原件与 WPS 重算后的自建只读副本，所有权按会话路径映射判定，重复解析仍有效；字体和换行写入后恢复目标行高列宽。实际按钮与宿主焦点体验单列验收。
@@ -120,6 +124,15 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 本轮沿用版本与发布身份，公共源码迁至C-00-Shared，项目清单直接引用，生成文件与产品入口保留原位置。抵消窗口在首次可见前应用最大化，来源事件先订阅再回填；局部缓冲覆盖布局、网格和拖柄，尺寸预览保持普通窗口。默认布局按窗口及DPI延迟测量；从属扫描和抵消预检通过原宿主线程分块读取、后台纯数据运算，来源变化时中止。宿主不支持变化监听时回退同步读取并记录兼容路径。EliminationSession统一持有目标、快照和任务，大结果预览按需取值，仍完整测宽、支持复制；取消与失败重试保留尚未还原的目标。实际WPS黑影、键入、菜单、跨屏DPI与写入还原由用户验收，离线检查不能代替。
 
 ### (2). 本轮交付证据
+
+
+本轮筛选菜单与首行对齐代码已在独立 staging 编译，以已有本机开发证书 60E01297DE2278451E865FF88B7124C984A9901C 重签清单并生成测试安装包；原项目固定发布者及版本保持不变。包级载荷、CLR 身份、签名结构和卸载入口探针 25 项通过；自签名根未受系统信任，未修改信任根。后台验证在文档资源探针访问自建临时目录时因 WinError 5 中止，不代表完整回归通过；随后用户要求无需检查，因此未重跑、未进行本轮界面或 WPS 验收。未安装、未关闭 WPS、未提交或推送。证据见 [打包记录](../C-01-ExcelIterate/build/local-delivery/filter-alignment/delivery-state.json)、[未完成验证日志](../C-01-ExcelIterate/build/local-delivery/filter-alignment/package-validation.log)。
+
+本轮源文件按钮移位与“选择”表头下拉已完成，主窗不再显示全选/全不选。迁移探针 168 项通过，覆盖同名不同路径搜索、勾选草稿取消、一次失效、无变化保留预检及运行中拒绝回写。交互样本验证 Esc 保留四项，取消后重开，再仅对两个搜索结果反选并确认，主表更新为两项且四行均可见，样本正常退出。初次交互发现 Closed 内同步 Dispose 触发 WinForms 激活筛选器的 ObjectDisposedException，现保留已关闭对象到后续正常事件释放，源码记录此寿命约束。独立测试包完整后台验证通过，Feature099 10873 项（较前版少两个已移除按钮的控件断言）、弹窗核心 107 项、安装包载荷及卸载入口 25 项通过；沿用本机开发证书，根证书仍不受信任，正式签名配置未改。见[交付状态](../C-01-ExcelIterate/build/local-delivery/selection-menu/delivery-state.json)、[交互核对](../C-01-ExcelIterate/build/local-delivery/selection-menu/interactive-check.json)和[完整后台验证](../C-01-ExcelIterate/build/local-delivery/selection-menu/package-validation.log)。本轮未安装、关闭 WPS、提交、推送或发布；独立交互样本不代替用户 WPS 版本安装后验收。
+
+按用户要求生成迁移覆盖与静默修复的独立本机测试安装包，使用既有开发证书 60E01297DE2278451E865FF88B7124C984A9901C，正式源码的发布证书及版本不变。独立副本包含当前九份迁移实现源码，构建期间 637 份规范输入未变；两份清单 SHA-256 双签名、实际 CLR 标识和五载荷摘要通过，完整后台验证通过，迁移 154 项、Feature099 10875 项及卸载流程 54 项通过，安装包实际载荷和维护卸载入口 23 项通过。EXE 的签名者与开发证书一致，证书链根仍不受系统信任，未改信任根。见[安装包交付状态](../C-01-ExcelIterate/build/local-delivery/quietmigration-installer/delivery-state.json)、[完整后台验证](../C-01-ExcelIterate/build/local-delivery/quietmigration-installer/package-validation.log)和[包内载荷核对](../C-01-ExcelIterate/build/local-delivery/quietmigration-installer/installer-artifact.log)。本轮仅生成供用户测试的安装包，未安装、关闭 WPS、提交、推送或发布。
+
+本轮批量迁移覆盖与静默修正已完成本地验证：默认更新目标原文件，临时副本经保存重开及包级校验后以 File.Replace 提交，并保留替换前版本备份；可显式选择原另存模式。迁移 154 项断言通过，包含十二目标独立失败、取消、共享占用、旧摘要、备份冲突及逐项释放。真实 WPS 的 xlsx/xlsm/xls/et 均通过另存与更新原件、备份字节和交付文件重开可见核验；实际点击生产窗体预检与执行，86 个进度观测点失焦为 0，均未最小化，新增临时工作簿最多 2 个。初次无可见宿主的实验出现调用拒绝，现预检提前说明可见宿主要求；单认后端 PID 的恢复失焦实验未通过，补齐根窗口及 Owner 的前台框架 PID 后才通过。两个产品重新编译，Excel 25 项、Word 22 项后台安全探针全部通过。见[修正与验证状态](../C-01-ExcelIterate/build/local-delivery/quiet-replace/delivery-state.json)、[真实窗口焦点及四格式记录](../C-01-ExcelIterate/build/local-delivery/quiet-replace/quiet-replace-ui.log)、[迁移断言](../C-01-ExcelIterate/build/local-delivery/quiet-replace/DataMigrationProbe.log)。本轮未生产签名打包、安装、提交、推送或更新 PR；用户截图所用版本、大区域和真实宏代码另行验收。
 
 本轮本地源码合并：接入上游 `09fc962` 的七个提交，将批量迁移七份源码归入审计工具箱 DataMigration 功能目录；保留上游表头匹配更名、分类门禁与代码索引。迁移七份源码的规范化文本与合并前备份一致，迁移事件接收契约随上游拆分迁至 DirectoryNavigation。两个产品均重新编译，Excel 本轮后台探针全部通过，含迁移 133 项、表头匹配 104 项、Feature099 10875 项、弹窗核心 107 项及卸载流程 54 项；分类门禁正反测试 55 项通过。见[合并与验证摘要](../C-01-ExcelIterate/build/local-delivery/upstream-integration/integration-summary.json)、[逐探针结果](../C-01-ExcelIterate/build/local-delivery/upstream-integration/regressions.json)。本轮仅本地未签名编译及离线回归，未运行正式签名打包、完整包验收或真实 WPS 四格式复验；未安装、提交、推送或发布，版本与正式签名配置沿用。
 
@@ -234,6 +247,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 本轮沿用版本、原证书及稳定命令，公共实现改为C-00-Shared单源引用。更新链接与链接查看统一使用WordHostStateScope：完整取得提示、刷新状态后才修改，设置失败时恢复已触碰状态，恢复失败明确报告；移除诊断前固定等待，不关闭非自有进程。共享窗口尺寸和网格测宽采用统一生命周期与缓存。原逐格链接、Ctrl来源定位、表格结构、数值变化标黄及配置继续回归；本轮不连接实际宿主、不自动安装或关闭WPS。
 
 ### (2). 本轮交付证据
+
+本轮随迁移文档及内嵌资源重新编译 WordUpdater，22 项后台安全探针全部通过，含 Feature099 2450 项、内嵌文档核心 113 项和弹窗核心 67 项。业务代码及正式身份未改，本轮未签名打包、安装或发布。见[两产品验证状态](../C-01-ExcelIterate/build/local-delivery/quiet-replace/delivery-state.json)。
 
 本轮随本地迁移源码合并重新编译 WordUpdater；共享登记、清单程序集身份与卸载流程改动一并覆盖。后台探针全部通过，含 Feature099 2450 项、弹窗核心 67 项、内嵌文档 113 项、程序集身份 12 项及卸载流程 54 项。见[本轮结果](../C-02-WordUpdater/build/local-delivery/upstream-integration/regressions.json)及[合并摘要](../C-02-WordUpdater/build/local-delivery/upstream-integration/integration-summary.json)。本轮未签名打包、安装、推送、发布或操作真实 WPS 文字文档。
 
