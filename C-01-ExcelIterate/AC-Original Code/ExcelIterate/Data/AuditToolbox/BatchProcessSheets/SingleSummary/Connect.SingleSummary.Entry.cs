@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -16,9 +16,10 @@ namespace Excel_Iterate
             if (_summaryForm != null && !_summaryForm.IsDisposed) { _summaryForm.Activate(); return; }
             try
             {
-                if (!EnsureApplication()) throw new InvalidOperationException("请先打开 WPS 表格。");
+                if (!EnsureApplicationWithWorkbook()) throw new InvalidOperationException("请先打开 WPS 表格并打开要处理的工作簿。");
                 SingleSummaryForm form = new SingleSummaryForm();
                 ApplyActiveSummaryContext(form);
+                form.SheetsRequested += delegate { RunSummaryRefresh(form); };
                 form.PreviewRequested += delegate { RunSummaryPreview(form); };
                 form.ExecuteRequested += delegate { RunSummaryExecute(form); };
                 form.UndoRequested += delegate { RunSummaryUndo(form); };

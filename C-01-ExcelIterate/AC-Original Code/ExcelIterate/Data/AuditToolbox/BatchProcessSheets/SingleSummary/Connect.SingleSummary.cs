@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Text;
 
@@ -58,9 +59,14 @@ namespace Excel_Iterate
                 {
                     object book = null;
                     try { book = bag.Own(((dynamic)_app).ActiveWorkbook); } catch { }
+                    if (book == null) book = bag.Own(FirstOpenWorkbook(bag));
                     if (book == null)
                     {
-                        form.AppendLog("没有活动工作簿，请先打开包含 Lead 表的汇总工作簿。");
+                        form.SetContext("", new List<string>(), "", "", "");
+                        form.AppendLog("当前连到的宿主没有打开任何工作簿。请先在 WPS 表格（或 Excel）里打开要处理的工作簿，"
+                            + "让它的窗口在前台，再点上面的「刷新工作表」。");
+                        try { form.SetHint("宿主：" + Convert.ToString(((dynamic)_app).Name) + " " + Convert.ToString(((dynamic)_app).Version)); }
+                        catch { }
                         return;
                     }
                     string path = Convert.ToString(((dynamic)book).FullName);
@@ -74,11 +80,13 @@ namespace Excel_Iterate
                     string active = "";
                     try { active = Convert.ToString(((dynamic)bag.Own(((dynamic)_app).ActiveSheet)).Name); } catch { }
                     string lead = "";
+                    bool leadFound = false;
                     foreach (string name in names)
-                        if (string.Equals(name, "lead", StringComparison.OrdinalIgnoreCase)) { lead = name; break; }
+                        if (string.Equals(name, "lead", StringComparison.OrdinalIgnoreCase)) { lead = name; leadFound = true; break; }
                     if (lead.Length == 0)
                         foreach (string name in names)
                             if (!string.Equals(name, active, StringComparison.OrdinalIgnoreCase)) { lead = name; break; }
+                    if (lead.Length == 0 && names.Count > 0) lead = names[0];
                     string target = active;
                     if (string.Equals(lead, target, StringComparison.OrdinalIgnoreCase))
                         foreach (string name in names)
@@ -91,7 +99,12 @@ namespace Excel_Iterate
 
                     form.TargetSheetName = target;
                     form.SetContext(path, names, lead, target, letter);
-                    form.AppendLog("已载入工作簿工作表清单；Lead 默认「" + lead + "」，汇总表「" + target
+                    if (!leadFound)
+                        form.AppendLog("工作簿里没有名为 lead 的工作表，已默认选「" + lead
+                            + "」。请在下拉框里改成真正放「" + SummaryHeaders.CodeHeader + "」「"
+                            + SummaryHeaders.NameHeader + "」那张表；表名不必叫 lead。");
+                    form.AppendLog("已载入工作簿工作表清单：" + names.Count.ToString(CultureInfo.InvariantCulture)
+                        + " 张；Lead 默认「" + lead + "」，汇总表「" + target
                         + "」，模板列默认 " + letter + "。点「读取 Lead 并预检」继续。");
                 }
             }
@@ -99,6 +112,82 @@ namespace Excel_Iterate
             {
                 Log("单体汇总表生成：读取活动工作簿失败 " + ex);
                 form.AppendLog("读取当前工作簿失败：" + ex.Message);
+            }
+        }
+
+
+        /// <summary>
+        /// 取一个真正打开了工作簿的宿主：用户可能先开宿主再开文件，
+        /// 也可能文件在 Excel 里而我们默认连的是 WPS。都没有簿时退回原逻辑，
+        /// 让窗口照常打开并给出明确提示（配合「刷新工作表」）。
+        /// </summary>
+        private static bool EnsureApplicationWithWorkbook()
+        {
+            if (IsAlive(_app) && HasWorkbook(_app)) return true;
+            string[] progIds = { "KET.Application", "et.Application", "Excel.Application" };
+            object fallback = null;
+            for (int i = 0; i < progIds.Length; i++)
+            {
+                object candidate = null;
+                try { candidate = Marshal.GetActiveObject(progIds[i]); } catch { }
+                if (candidate == null) continue;
+                if (HasWorkbook(candidate))
+                {
+                    if (!ReferenceEquals(candidate, _app))
+                    {
+                        Log("单体汇总表生成：改连 " + progIds[i] + "（该宿主里有打开的工作簿）");
+                        HostApplication = candidate;
+                    }
+                    return true;
+                }
+                if (fallback == null) fallback = candidate;
+            }
+            if (fallback != null && !ReferenceEquals(fallback, _app))
+            {
+                Log("单体汇总表生成：所有宿主都没有工作簿，改连 " + Convert.ToString(fallback.GetType().Name));
+                HostApplication = fallback;
+            }
+            return EnsureApplication();
+        }
+
+        private static bool HasWorkbook(object application)
+        {
+            if (application == null) return false;
+            object books = null;
+            try
+            {
+                books = ((dynamic)application).Workbooks;
+                if (books == null) return false;
+                return Convert.ToInt32(((dynamic)books).Count, CultureInfo.InvariantCulture) > 0;
+            }
+            catch { return false; }
+        }
+
+
+        private static object FirstOpenWorkbook(ComBag bag)
+        {
+            try
+            {
+                dynamic books = bag.Own(((dynamic)_app).Workbooks);
+                if (books == null || Convert.ToInt32(books.Count, CultureInfo.InvariantCulture) <= 0) return null;
+                return bag.Own(books.Item(1));
+            }
+            catch { return null; }
+        }
+
+        /// <summary>「刷新工作表」：重新读一次当前工作簿与工作表清单。</summary>
+        private static void RunSummaryRefresh(SingleSummaryForm form)
+        {
+            if (_busy) return;
+            try
+            {
+                form.AppendLog("正在重新读取当前工作簿…");
+                ApplyActiveSummaryContext(form);
+            }
+            catch (Exception ex)
+            {
+                Log("单体汇总表生成：刷新工作表失败 " + ex);
+                form.AppendLog("刷新失败：" + ex.Message);
             }
         }
 

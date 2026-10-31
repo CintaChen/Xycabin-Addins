@@ -27,19 +27,22 @@ namespace Excel_Iterate
         private readonly TextBox templateColumn = new TextBox { Width = 56, Text = "D", Name = "templateColumnBox" };
         private readonly TextBox sourceFile = new TextBox { Width = 280, Name = "sourceFileBox" };
         private readonly Label targetLabel = Ui.Label("", 9, false);
+        private readonly Label hostLabel = Ui.Label("", 9, false);
         private readonly Label hint = Ui.Label("", 9, true);
         private readonly RichTextBox logView = new RichTextBox
         { ReadOnly = true, WordWrap = true, ScrollBars = RichTextBoxScrollBars.Vertical, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, BackColor = Color.White };
         private readonly FlowLayoutPanel actions = Ui.ActionBar();
         private readonly TableLayoutPanel root;
         internal readonly ResultGrid Companies = new ResultGrid();
-        internal readonly RoundedButton Preview, Execute, Undo, Confirm, CopyLog, CloseButton;
+        internal readonly RoundedButton Refresh, Preview, Execute, Undo, Confirm, CopyLog, CloseButton;
 
         private bool busy;
         private bool canUndo;
         private bool previewOk;
         private bool suspendInvalidate;
+        private readonly List<string> pendingLog = new List<string>();
 
+        internal event Action SheetsRequested;
         internal event Action PreviewRequested;
         internal event Action ExecuteRequested;
         internal event Action UndoRequested;
@@ -76,6 +79,7 @@ namespace Excel_Iterate
             row2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             row2.Controls.Add(workbookLabel, 0, 0);
             row2.Controls.Add(targetLabel, 0, 1);
+            row2.Controls.Add(hostLabel, 0, 2);
 
             FlowLayoutPanel paramsPanel = new FlowLayoutPanel
             { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Name = "paramPanel" };
@@ -99,19 +103,22 @@ namespace Excel_Iterate
             logCard.Controls.Add(logView);
 
             // ---- 按钮 ----
+            Refresh = Ui.Button("刷新工作表", 112);
             Preview = Ui.Button("读取 Lead 并预检", 150); Ui.StylePrimary(Preview);
             Execute = Ui.Button("执行生成", 108);
             Undo = Ui.Button("取消操作", 104);
             Confirm = Ui.Button("确认操作", 104);
             CopyLog = Ui.Button("复制日志", 100);
             CloseButton = Ui.Button("关闭", 88);
-            actions.Controls.AddRange(new Control[] { Preview, Execute, Undo, Confirm, CopyLog, CloseButton });
+            actions.Controls.AddRange(new Control[] { Refresh, Preview, Execute, Undo, Confirm, CopyLog, CloseButton });
             ToolTip tip = new ToolTip();
+            tip.SetToolTip(Refresh, "重新读取当前工作簿的工作表清单（换了工作簿或刚打开文件时用）");
             tip.SetToolTip(Preview, "读 Lead 名单与模板列体检，不写入任何单元格（Ctrl+Shift+P）");
             tip.SetToolTip(Execute, "按勾选铺列并逐列换链；执行前自动备份工作表（Ctrl+Shift+W）");
             tip.SetToolTip(Undo, "按备份表还原本次写入的目标区间");
             tip.SetToolTip(Confirm, "确认本次结果，结束可还原状态（备份表保留）");
 
+            Refresh.Click += delegate { if (!busy && SheetsRequested != null) SheetsRequested(); };
             Preview.Click += delegate { if (!busy && PreviewRequested != null) PreviewRequested(); };
             Execute.Click += delegate { if (!busy && ExecuteRequested != null) ExecuteRequested(); };
             Undo.Click += delegate { if (!busy && UndoRequested != null) UndoRequested(); };
@@ -199,6 +206,11 @@ namespace Excel_Iterate
             targetLabel.Text = "汇总工作表：" + (string.IsNullOrEmpty(targetSheet) ? "（未取到）" : targetSheet);
             leadSheet.Items.Clear();
             if (sheets != null) foreach (string name in sheets) leadSheet.Items.Add(name);
+            if (sheets == null || sheets.Count == 0)
+            {
+                hint.Text = "⚠ 没取到活动工作簿的工作表清单：先在 WPS 表格里打开要处理的工作簿，让它成为当前窗口，再点「刷新工作表」。";
+                return;
+            }
             if (!string.IsNullOrEmpty(lead))
             {
                 int index = leadSheet.Items.IndexOf(lead);
@@ -273,13 +285,30 @@ namespace Excel_Iterate
             AppendLog("参数已改动，请重新点「读取 Lead 并预检」。");
         }
 
+        /// <summary>宿主信息（版本等），空工作簿时用来告诉用户到底连到了谁。</summary>
+        internal void SetHint(string text) { if (!IsDisposed) hostLabel.Text = text ?? ""; }
+
         internal void SetLog(string text) { logView.Clear(); logView.AppendText(text ?? ""); }
 
         internal void AppendLog(string text)
         {
-            if (IsDisposed || !IsHandleCreated) return;
+            if (IsDisposed) return;
+            // 句柄没建时 BeginInvoke 排不上队，日志会被静默丢掉——先缓存，OnHandleCreated 再刷出
+            if (!IsHandleCreated) { pendingLog.Add(text); return; }
             BeginInvoke((MethodInvoker)delegate
             { logView.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + "\r\n"); });
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            if (pendingLog.Count == 0) return;
+            System.Text.StringBuilder text = new System.Text.StringBuilder(logView.Text);
+            foreach (string line in pendingLog) text.AppendLine(DateTime.Now.ToString("HH:mm:ss") + "  " + line);
+            pendingLog.Clear();
+            logView.Text = text.ToString();
+            logView.SelectionStart = logView.TextLength;
+            logView.ScrollToCaret();
         }
 
         internal void SetBusy(bool value) { busy = value; RefreshActions(); }
@@ -292,6 +321,7 @@ namespace Excel_Iterate
             bool idle = !busy && !canUndo;
             leadSheet.Enabled = headerRow.Enabled = templateColumn.Enabled = sourceFile.Enabled = idle;
             Companies.ReadOnly = !idle;
+            Refresh.Enabled = idle;
             Preview.Enabled = idle;
             Execute.Enabled = idle && previewOk && Companies.Rows.Count > 0;
             Undo.Enabled = canUndo;
