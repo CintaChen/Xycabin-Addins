@@ -73,6 +73,7 @@ namespace Excel_Iterate
                     if (_organizeForm != null && !_organizeForm.IsDisposed) _organizeForm.Close();
                     if (_renameForm != null && !_renameForm.IsDisposed) _renameForm.Close();
                     if (_mergeForm != null && !_mergeForm.IsDisposed) _mergeForm.Close();
+                    if (_summaryForm != null && !_summaryForm.IsDisposed) _summaryForm.Close();
                     if (_eliminationForm != null && !_eliminationForm.IsDisposed) _eliminationForm.Close();
                 }
                 _app = value;

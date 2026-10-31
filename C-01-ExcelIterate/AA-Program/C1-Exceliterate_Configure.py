@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 C1-Exceliterate_Configure.py —— 「Excel-iterate」按钮集中配置生成器
 
@@ -254,6 +254,25 @@ BUTTONS = [
                         "supertip": "按（核算主体,客商,年度）三维聚合生成矩阵式抵消底稿：借 营业收入、贷 营业成本、贷 成本还原、贷 存货；年度列按数据动态生成，金额写活公式，写入前备份、可一键还原。",
                         "action": "feature",
                         "callback": "OnEliminationRevenueCost",
+                    },
+                ],
+            },
+            {
+                "type": "menu",
+                "id": "menuBatchProcessSheets",
+                "label": "批量生成过程表",
+                "builtin_icon": "table",
+                "screentip": "按 Lead 表批量铺列生成过程表（每家公司一列）",
+                "supertip": "单体汇总表：Lead 表里勾选公司，从模板列起每家公司铺一列，表头写「编码&简称」，公式只把 [模板公司全称.xlsx] 换成 [当前列公司全称.xlsx]。执行前静默备份工作表，生成日志表；本功能不自动保存工作簿。",
+                "children": [
+                    {
+                        "id": "btnSingleSummary",
+                        "label": "单体汇总表生成",
+                        "builtin_icon": "table",
+                        "screentip": "Lead 勾选公司 → 按模板列铺开 → 逐列换链",
+                        "supertip": "读 Lead 表的「编码&简称」「全称」列（按表头名动态定位），候选行默认全勾，勾选状态回写「选用」列（不存在则在最右列新建）。模板列自身就是第 1 家公司，向右按 Lead 行序各占一列；目标区间固定覆盖重生成。换链只改方括号里的文件名，路径、]BS、'!$xx$xx 与其他公司文件名一律不动；不含 [xxx.xlsx] 的本簿引用不碰。",
+                        "action": "feature",
+                        "callback": "OnSingleSummary",
                     },
                 ],
             },

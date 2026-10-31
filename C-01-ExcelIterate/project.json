@@ -1,4 +1,4 @@
-{
+﻿{
   "assembly": "Excel_Iterate",
   "namespace": "Excel_Iterate",
   "host": "Excel",
@@ -51,6 +51,8 @@
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Connect.Elimination.Entry.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/Receivable/Connect.EliminationReceivable.Entry.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/RevenueCost/Connect.EliminationRevenueCost.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/Connect.BatchProcessSheets.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/Connect.SingleSummary.Entry.cs",
     "AC-Original Code/ExcelIterate/Operations/OneClickFormula/Connect.OneClickFormula.Entry.cs",
     "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/Connect.WrapFormula.Entry.cs",
     "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/Connect.IFErrorWrap.Entry.cs",
@@ -130,6 +132,10 @@
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersForm.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/MergeHeadersHost.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/MergeHeaders/MergeHeadersEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/Connect.SingleSummary.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SingleSummaryForm.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SingleSummaryEngine.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SingleSummaryHost.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/Connect.Elimination.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationForm.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/Elimination/_Shared/EliminationHost.cs",
@@ -296,6 +302,12 @@
         "System.Drawing.dll",
         "lib/Interop.Microsoft.Office.Core.dll"
       ],
+      "offline": true
+    },
+    {
+      "name": "SingleSummaryProbe",
+      "source": "src/testharness/SingleSummaryProbe.cs",
+      "references": ["@addin", "System.Windows.Forms.dll"],
       "offline": true
     },
     {
@@ -582,6 +594,17 @@
         "src/testharness/DisciplineProbe.cs",
         "@shared/src/testharness/RuntimeQualityProbe.cs"
       ]
+    },
+    "btnSingleSummary": {
+      "directory": "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary",
+      "entry": "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/Connect.SingleSummary.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/Connect.SingleSummary.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SingleSummaryForm.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SingleSummaryEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SingleSummaryHost.cs"
+      ],
+      "tests": ["src/testharness/SingleSummaryProbe.cs"]
     },
     "btnWrapIFError": {
       "directory": "AC-Original Code/ExcelIterate/Operations/OneClickFormula/WrapFormula/IFErrorWrap/WrapIFError",
@@ -1513,6 +1536,8 @@
     "menuElimination": "Elimination",
     "btnEliminationReceivable": "Receivable",
     "btnEliminationRevenueCost": "RevenueCost",
+    "menuBatchProcessSheets": "BatchProcessSheets",
+    "btnSingleSummary": "SingleSummary",
     "grpAction": "Operations",
     "menuOneClickFormula": "OneClickFormula",
     "menuWrapFormula": "WrapFormula",

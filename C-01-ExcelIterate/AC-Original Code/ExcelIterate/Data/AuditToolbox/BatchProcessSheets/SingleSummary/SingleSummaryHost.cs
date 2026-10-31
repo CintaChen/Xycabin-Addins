@@ -1,0 +1,692 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
+
+namespace Excel_Iterate
+{
+    // =====================================================================
+    // 单体汇总表生成 —— COM 宿主层
+    //
+    // 纪律（与项目既有实现一致）：
+    //   · 全程 dynamic 晚期绑定，不引用 Microsoft.Office.Interop.Excel
+    //   · 自建的 Range/集合一律 ComBag.Own，借用的 Application 永不 Release
+    //   · 写入包在 HostQuiet（关事件 + 关刷新）与手动重算里，结束读回校验再恢复
+    //   · WPS 对单列 Range 可能返回一维 object[]，多列才是 object[,]，两种都要兼容
+    // =====================================================================
+
+    /// <summary>Lead 表读取结果（表头列位置、候选公司、选用列位置）。</summary>
+    internal sealed class SummaryLeadSnapshot
+    {
+        internal int HeaderRow;
+        internal int CodeColumn;      // 0 = 没有这一列
+        internal int NameColumn;
+        internal int PickColumn;      // 0 = 没有这一列
+        internal int LastColumn;      // 表头行最后一个非空列
+        internal int PickWriteColumn; // 回写「选用」的列（可能是新建的列）
+        internal bool PickCreated;
+        internal int LastRow;
+        internal readonly List<SummaryCompany> Companies = new List<SummaryCompany>();
+        internal readonly List<string> Blocking = new List<string>();
+    }
+
+    /// <summary>模板列体检结果。</summary>
+    internal sealed class SummaryTemplateProbe
+    {
+        internal int HeaderRow;
+        internal int LastRow;                 // 模板列最后一个非空行
+        internal int LastColumn;              // 目标区间最后一列
+        internal int FormulaCells;
+        internal bool Placeholder;            // 表头行是该列「大合并」占位
+        internal string PlaceholderText = "";
+        internal readonly List<string> Tokens = new List<string>();
+        internal readonly List<string> CrossColumnMerges = new List<string>();
+        internal readonly List<string> Blocking = new List<string>();
+        internal readonly List<string> Warnings = new List<string>();
+    }
+
+    internal sealed class SummaryRunReport
+    {
+        internal int Columns;
+        internal int CopiedColumns;
+        internal int FormulaCells;
+        internal int RewrittenCells;
+        internal int RewrittenLinks;
+        internal int SkippedColumns;
+        internal string BackupSheet = "";
+        internal string LogSheet = "";
+        internal readonly List<string> Warnings = new List<string>();
+        internal readonly List<SummaryLinkSample> Samples = new List<SummaryLinkSample>();
+    }
+
+    /// <summary>数组取值兼容：WPS 单列返回一维、多列返回二维。</summary>
+    internal static class SummaryArrays
+    {
+        internal static object Pick(object values, int row, int rows, int column, int columns)
+        {
+            Array array = values as Array;
+            if (array == null) return rows == 1 && columns == 1 ? values : null;
+            if (array.Rank == 1)
+            {
+                int low = array.GetLowerBound(0);
+                if (row < 0 || row >= array.GetLength(0)) return null;
+                return array.GetValue(low + row);
+            }
+            if (array.Rank != 2) return null;
+            if (row < 0 || row >= array.GetLength(0) || column < 0 || column >= array.GetLength(1)) return null;
+            return array.GetValue(row + array.GetLowerBound(0), column + array.GetLowerBound(1));
+        }
+
+        internal static string Text(object value)
+        {
+            if (value == null || value is DBNull) return "";
+            string text = value as string;
+            if (text != null) return text.Trim();
+            if (value is double || value is int || value is long || value is decimal || value is float)
+                return Convert.ToString(value, CultureInfo.InvariantCulture);
+            if (value is DateTime) return ((DateTime)value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            return Convert.ToString(value, CultureInfo.InvariantCulture).Trim();
+        }
+
+        internal static bool HasContent(object value)
+        {
+            if (value == null || value is DBNull) return false;
+            string text = value as string;
+            return text == null || text.Trim().Length > 0;
+        }
+    }
+
+    /// <summary>Lead 表读取：动态定位「编码&amp;简称」「全称」「选用」三列，不做列号硬编码。</summary>
+    internal static class SummaryLeadReader
+    {
+        internal static SummaryLeadSnapshot Read(object sheet, int headerRow)
+        {
+            SummaryLeadSnapshot snapshot = new SummaryLeadSnapshot();
+            snapshot.HeaderRow = headerRow;
+            dynamic s = sheet;
+            if (ComFormulaHost.Boolean(s.ProtectContents, "ProtectContents"))
+            {
+                snapshot.Blocking.Add("Lead 工作表受保护，无法读取或回写「选用」列。");
+                return snapshot;
+            }
+
+            using (ComBag bag = new ComBag())
+            {
+                dynamic used = bag.Own(s.UsedRange);
+                int top = Convert.ToInt32(used.Row, CultureInfo.InvariantCulture);
+                int left = Convert.ToInt32(used.Column, CultureInfo.InvariantCulture);
+                int height = Convert.ToInt32(bag.Own(used.Rows).Count, CultureInfo.InvariantCulture);
+                int width = Convert.ToInt32(bag.Own(used.Columns).Count, CultureInfo.InvariantCulture);
+                int bottom = top + height - 1;
+                int lastColumn = left + width - 1;
+                if (bottom < headerRow)
+                {
+                    snapshot.Blocking.Add("Lead 表在第 " + headerRow.ToString(CultureInfo.InvariantCulture) + " 行没有表头。");
+                    return snapshot;
+                }
+
+                // 表头行：整行读一次，按归一化后的名字定位列
+                dynamic headerRange = bag.Own(s.Range[
+                    ComFormulaHost.Address(headerRow, left) + ":"
+                    + ComFormulaHost.Address(headerRow, lastColumn)]);
+                object headerValues = ReadValues(headerRange);
+                int columns = lastColumn - left + 1;
+                int headerLast = 0;
+                for (int c = 0; c < columns; c++)
+                {
+                    string text = SummaryArrays.Text(SummaryArrays.Pick(headerValues, 0, 1, c, columns));
+                    if (text.Length > 0) headerLast = left + c;
+                    if (snapshot.CodeColumn == 0 && SummaryHeaders.IsCode(text)) snapshot.CodeColumn = left + c;
+                    else if (snapshot.NameColumn == 0 && SummaryHeaders.IsName(text)) snapshot.NameColumn = left + c;
+                    else if (snapshot.PickColumn == 0 && SummaryHeaders.IsPick(text)) snapshot.PickColumn = left + c;
+                }
+                snapshot.LastColumn = headerLast;
+                snapshot.LastRow = bottom;
+
+                if (snapshot.CodeColumn == 0) snapshot.Blocking.Add("Lead 表第 " + headerRow.ToString(CultureInfo.InvariantCulture) + " 行找不到表头「" + SummaryHeaders.CodeHeader + "」。");
+                if (snapshot.NameColumn == 0) snapshot.Blocking.Add("Lead 表第 " + headerRow.ToString(CultureInfo.InvariantCulture) + " 行找不到表头「" + SummaryHeaders.NameHeader + "」。");
+                if (snapshot.Blocking.Count > 0) return snapshot;
+
+                // 「选用」列不存在时，在表头行最右一列的右边补一列（不硬编码列号）
+                snapshot.PickWriteColumn = snapshot.PickColumn > 0 ? snapshot.PickColumn : snapshot.LastColumn + 1;
+                snapshot.PickCreated = snapshot.PickColumn == 0;
+                if (snapshot.PickWriteColumn > 16384)
+                {
+                    snapshot.Blocking.Add("Lead 表已到列上限，无法新建「选用」列。");
+                    return snapshot;
+                }
+
+                int rows = bottom - headerRow;
+                if (rows <= 0) return snapshot;
+                object codeValues = ReadColumn(s, headerRow + 1, bottom, snapshot.CodeColumn, bag);
+                object nameValues = ReadColumn(s, headerRow + 1, bottom, snapshot.NameColumn, bag);
+                object pickValues = snapshot.PickColumn > 0
+                    ? ReadColumn(s, headerRow + 1, bottom, snapshot.PickColumn, bag)
+                    : null;
+
+                for (int r = 0; r < rows; r++)
+                {
+                    string code = SummaryArrays.Text(SummaryArrays.Pick(codeValues, r, rows, 0, 1));
+                    string name = SummaryArrays.Text(SummaryArrays.Pick(nameValues, r, rows, 0, 1));
+                    string prior = pickValues == null ? "" : SummaryArrays.Text(SummaryArrays.Pick(pickValues, r, rows, 0, 1));
+                    if (code.Length == 0 || name.Length == 0) continue;   // 候选行 = 两列均非空
+                    SummaryCompany company = new SummaryCompany();
+                    company.Row = headerRow + 1 + r;
+                    company.Code = code;
+                    company.Name = name;
+                    company.PriorSelection = prior;
+                    company.Selected = true;                              // 候选行预填勾
+                    snapshot.Companies.Add(company);
+                }
+                if (snapshot.Companies.Count == 0)
+                    snapshot.Blocking.Add("Lead 表没有候选行（「" + SummaryHeaders.CodeHeader + "」与「"
+                        + SummaryHeaders.NameHeader + "」同时非空的行）。");
+            }
+            return snapshot;
+        }
+
+        private static object ReadValues(object range)
+        {
+            try { return ((dynamic)range).Value2; }
+            catch (Exception ex) { if (!ComFormulaHost.Missing(ex)) throw; return null; }
+        }
+
+        private static object ReadColumn(object sheet, int firstRow, int lastRow, int column, ComBag bag)
+        {
+            if (lastRow < firstRow || column < 1) return null;
+            dynamic range = bag.Own(((dynamic)sheet).Range[
+                ComFormulaHost.Address(firstRow, column) + ":" + ComFormulaHost.Address(lastRow, column)]);
+            return ReadValues(range);
+        }
+
+        /// <summary>回写「选用」列：勾选 TRUE、取消 FALSE；符号名取自需求默认。</summary>
+        internal static void WriteSelection(object sheet, SummaryLeadSnapshot snapshot)
+        {
+            if (snapshot.Companies.Count == 0) return;
+            dynamic s = sheet;
+            using (ComBag bag = new ComBag())
+            {
+                if (snapshot.PickCreated)
+                {
+                    dynamic header = bag.Own(s.Cells[snapshot.HeaderRow, snapshot.PickWriteColumn]);
+                    header.Value2 = SummaryHeaders.PickHeader;
+                }
+                int first = snapshot.Companies[0].Row;
+                int last = snapshot.Companies[snapshot.Companies.Count - 1].Row;
+                dynamic range = bag.Own(s.Range[
+                    ComFormulaHost.Address(first, snapshot.PickWriteColumn) + ":"
+                    + ComFormulaHost.Address(last, snapshot.PickWriteColumn)]);
+                object[,] values = new object[last - first + 1, 1];
+                for (int i = 0; i < snapshot.Companies.Count; i++)
+                    values[i, 0] = snapshot.Companies[i].Selected;
+                range.Value2 = values;
+            }
+        }
+    }
+
+    /// <summary>模板列体检：占位表头、末行、外链文件名、跨列合并。</summary>
+    internal static class SummaryTemplateReader
+    {
+        internal static SummaryTemplateProbe Read(object sheet, int headerRow, int firstColumn, int lastColumn)
+        {
+            SummaryTemplateProbe probe = new SummaryTemplateProbe();
+            probe.HeaderRow = headerRow;
+            probe.LastColumn = lastColumn;
+            dynamic s = sheet;
+            if (ComFormulaHost.Boolean(s.ProtectContents, "ProtectContents"))
+            {
+                probe.Blocking.Add("汇总工作表受保护，无法写入。");
+                return probe;
+            }
+
+            using (ComBag bag = new ComBag())
+            {
+                dynamic used = bag.Own(s.UsedRange);
+                int top = Convert.ToInt32(used.Row, CultureInfo.InvariantCulture);
+                int height = Convert.ToInt32(bag.Own(used.Rows).Count, CultureInfo.InvariantCulture);
+                int bottom = top + height - 1;
+                if (bottom < headerRow) bottom = headerRow;
+
+                string letter = SummaryColumns.Letter(firstColumn);
+                dynamic columnRange = bag.Own(s.Range[
+                    letter + headerRow.ToString(CultureInfo.InvariantCulture)
+                    + ":" + letter + bottom.ToString(CultureInfo.InvariantCulture)]);
+                object values = ReadValues(columnRange);
+                object formulas = ReadFormulas(columnRange);
+                int rows = bottom - headerRow + 1;
+
+                int lastRow = headerRow - 1;
+                for (int r = rows - 1; r >= 0; r--)
+                {
+                    if (SummaryArrays.HasContent(SummaryArrays.Pick(values, r, rows, 0, 1)) ||
+                        SummaryArrays.HasContent(SummaryArrays.Pick(formulas, r, rows, 0, 1)))
+                    {
+                        lastRow = headerRow + r;
+                        break;
+                    }
+                }
+                probe.LastRow = lastRow;
+
+                for (int r = 0; r < rows; r++)
+                {
+                    object formula = SummaryArrays.Pick(formulas, r, rows, 0, 1);
+                    string text = formula as string;
+                    if (text == null || text.Length == 0 || text[0] != '=') continue;
+                    probe.FormulaCells++;
+                    SummaryLinkRewriter.Tokens(text, probe.Tokens);
+                }
+
+                dynamic headerCell = bag.Own(s.Cells[headerRow, firstColumn]);
+                probe.PlaceholderText = SummaryArrays.Text(headerCell.Value2);
+                probe.Placeholder = SummaryHeaders.IsPlaceholder(probe.PlaceholderText);
+
+                // 第一行必须是逐列独立单元格：任何跨列合并都终止
+                for (int c = firstColumn; c <= lastColumn; c++)
+                {
+                    dynamic cell = bag.Own(s.Cells[headerRow, c]);
+                    if (!ComFormulaHost.Boolean(cell.MergeCells, "MergeCells")) continue;
+                    dynamic area = bag.Own(cell.MergeArea);
+                    int span = Convert.ToInt32(bag.Own(area.Columns).Count, CultureInfo.InvariantCulture);
+                    if (span > 1)
+                        probe.CrossColumnMerges.Add(SummaryColumns.Letter(c) + headerRow.ToString(CultureInfo.InvariantCulture)
+                            + "（跨 " + span.ToString(CultureInfo.InvariantCulture) + " 列）");
+                }
+            }
+
+            if (!probe.Placeholder)
+            {
+                probe.Blocking.Add("模板列 " + SummaryColumns.Letter(firstColumn) + " 第 "
+                    + headerRow.ToString(CultureInfo.InvariantCulture) + " 行的值是「" + probe.PlaceholderText
+                    + "」，不是「" + SummaryHeaders.Placeholder + "」，无法确认表头占位。");
+            }
+            if (probe.CrossColumnMerges.Count > 0)
+            {
+                probe.Blocking.Add("表头行检测到跨列合并单元格：" + string.Join("、", probe.CrossColumnMerges.ToArray())
+                    + "。表头必须是逐列独立单元格，已终止。");
+            }
+            if (probe.LastRow <= headerRow)
+                probe.Blocking.Add("模板列 " + SummaryColumns.Letter(firstColumn) + " 在表头行以下没有内容，没有可复制的区块。");
+            return probe;
+        }
+
+        private static object ReadValues(object range)
+        {
+            try { return ((dynamic)range).Value2; }
+            catch (Exception ex) { if (!ComFormulaHost.Missing(ex)) throw; return null; }
+        }
+
+        private static object ReadFormulas(object range)
+        {
+            try { return ((dynamic)range).Formula; }
+            catch (Exception ex) { if (!ComFormulaHost.Missing(ex)) throw; return null; }
+        }
+    }
+
+    /// <summary>手动重算 + 恢复（需求：批量前 xlCalculationManual）。</summary>
+    internal sealed class HostCalculation : IDisposable
+    {
+        private readonly object app;
+        private readonly int previous;
+        private bool disposed;
+
+        internal HostCalculation(object application)
+        {
+            app = application;
+            previous = Convert.ToInt32(((dynamic)app).Calculation, CultureInfo.InvariantCulture);
+            try
+            {
+                ((dynamic)app).Calculation = -4135;   // xlCalculationManual
+                if (Convert.ToInt32(((dynamic)app).Calculation, CultureInfo.InvariantCulture) != -4135)
+                    throw new InvalidOperationException("宿主未接受手动重算设置。");
+            }
+            catch { try { ((dynamic)app).Calculation = previous; } catch { } throw; }
+        }
+
+        public void Dispose()
+        {
+            if (disposed) return;
+            disposed = true;
+            try { ((dynamic)app).Calculation = previous; }
+            catch (Exception ex) { Connect.Log("单体汇总表生成：恢复重算方式失败 " + ex.Message); }
+        }
+    }
+
+    /// <summary>汇总表写入：备份 → 铺列 → 换链 → 表头 → 日志。</summary>
+    internal static class SummaryWriter
+    {
+        private const string LogSheetName = "日志_单体汇总";
+        private const string BackupPrefix = "备份_单体汇总_";
+
+        internal static SummaryRunReport Run(object app, object book, object sheet, SummaryRequest request,
+            SummaryTemplateProbe probe, string backupSheet, Action<string> status)
+        {
+            List<SummaryCompany> chosen = request.Chosen();
+            SummaryRunReport report = new SummaryRunReport();
+            report.Columns = chosen.Count;
+            int firstColumn = request.TemplateColumn;
+            int lastColumn = firstColumn + chosen.Count - 1;
+
+            // 1) 备份由调用方在此之前完成（失败时也要能还原，所以备份名先落到会话里）
+            report.BackupSheet = backupSheet;
+            if (status != null) status("已备份工作表为「" + report.BackupSheet + "」，开始铺列…");
+
+            using (HostQuiet quiet = new HostQuiet(app))
+            using (HostCalculation calculation = new HostCalculation(app))
+            using (ComBag bag = new ComBag())
+            {
+                dynamic s = sheet;
+                int headerRow = request.HeaderRow;
+                int lastRow = probe.LastRow;
+                bool quoteWarned = false;
+
+                // 2) 源列公式快照（换链与「原样带出」都以此为准，先读后写）
+                List<string> sourceFormulas = new List<string>();
+                object formulaValues = ReadFormulas(bag, s, firstColumn, headerRow, lastRow);
+                int rows = lastRow - headerRow + 1;
+                for (int r = 0; r < rows; r++)
+                {
+                    object value = SummaryArrays.Pick(formulaValues, r, rows, 0, 1);
+                    string text = value as string;
+                    sourceFormulas.Add(text != null && text.Length > 0 && text[0] == '=' ? text : null);
+                }
+
+                double width = ReadColumnWidth(bag, s, firstColumn);
+
+                dynamic sourceRange = bag.Own(s.Range[
+                    ComFormulaHost.Address(headerRow, firstColumn) + ":"
+                    + ComFormulaHost.Address(lastRow, firstColumn)]);
+
+                // 3) 逐列铺开：List[0] 就是模板列本身，从第 2 家公司起复制到右侧
+                for (int i = 1; i < chosen.Count; i++)
+                {
+                    if (status != null) status("正在生成第 " + (i + 1).ToString(CultureInfo.InvariantCulture)
+                        + "/" + chosen.Count.ToString(CultureInfo.InvariantCulture) + " 列…");
+                    int column = firstColumn + i;
+                    dynamic targetRange = bag.Own(s.Range[
+                        ComFormulaHost.Address(headerRow, column) + ":"
+                        + ComFormulaHost.Address(lastRow, column)]);
+                    ClearBlock(targetRange);
+                    sourceRange.Copy(targetRange);
+                    report.CopiedColumns++;
+                    if (width > 0) WriteColumnWidth(bag, s, column, width);
+                }
+
+                // 4) 换链 + 公式原样带出
+                //    复制会把相对引用平移，所以复制出来的列必须把公式原文写回；
+                //    模板列本身没有复制，只在确实替换成功时才写。
+                for (int i = 0; i < chosen.Count; i++)
+                {
+                    int column = firstColumn + i;
+                    SummaryCompany company = chosen[i];
+                    string letter = SummaryColumns.Letter(column);
+                    int touched = 0;
+                    for (int r = 0; r < rows; r++)
+                    {
+                        string original = sourceFormulas[r];
+                        if (original == null) continue;
+                        SummaryRewrite rewrite = SummaryLinkRewriter.Replace(original, request.SourceFile, company.FileName);
+                        bool mustWriteBack = i > 0 || rewrite.Count > 0;
+                        if (!mustWriteBack) continue;
+                        // WPS 拒绝「文件名含括号且引用没加引号」的外链公式（实测 0x8FE3000B），
+                        // 这种公司名只补引号、不动引用里的任何内容。
+                        string text = rewrite.Text;
+                        if (rewrite.Count > 0)
+                        {
+                            string quotedText = SummaryLinkRewriter.QuoteLinks(text, company.FileName);
+                            if (!string.Equals(quotedText, text, StringComparison.Ordinal))
+                            {
+                                text = quotedText;
+                                if (!quoteWarned)
+                                {
+                                    quoteWarned = true;
+                                    report.Warnings.Add("公司名含括号等特殊字符：WPS 只接受带单引号的外链写法，已按「只加引号、不改文件名与地址」处理。");
+                                }
+                            }
+                        }
+                        dynamic cell = bag.Own(s.Cells[headerRow + r, column]);
+                        cell.Formula = text;
+                        touched++;
+                        if (rewrite.Count > 0) report.RewrittenLinks += rewrite.Count;
+                        report.FormulaCells++;
+                        if (report.Samples.Count < 20)
+                        {
+                            SummaryLinkSample sample = new SummaryLinkSample();
+                            sample.Column = letter;
+                            sample.Cell = letter + (headerRow + r).ToString(CultureInfo.InvariantCulture);
+                            sample.Before = original;
+                            sample.After = text;
+                            report.Samples.Add(sample);
+                        }
+                    }
+                    if (touched > 0) report.RewrittenCells += touched;
+                    else if (probe.FormulaCells == 0) report.SkippedColumns++;
+                }
+
+                // 5) 表头：只改该列表头行的「大合并」占位，逐列写各自「编码&简称」
+                for (int i = 0; i < chosen.Count; i++)
+                {
+                    dynamic cell = bag.Own(s.Cells[headerRow, firstColumn + i]);
+                    cell.Value2 = chosen[i].Code;
+                }
+
+                // 6) 读回校验：表头与首列公式必须与预期一致
+                string verify = Verify(s, chosen, request, headerRow, lastRow, sourceFormulas);
+                if (verify != null) report.Warnings.Add(verify);
+
+                if (probe.Tokens.Count == 0)
+                    report.Warnings.Add("模板列里没有 [xxx.xlsx] 形式的外链，换链已跳过（按需求记日志、不阻断）。");
+                else if (probe.Tokens.Count > 0 && report.RewrittenLinks == 0)
+                    report.Warnings.Add("模板列存在外链但没有一处匹配「" + request.SourceFile
+                        + "」，请核对模板公司全称是否与公式里的文件名一致。");
+            }
+
+            // 7) 日志表（不自动保存工作簿，日志与备份都留在未保存状态）
+            report.LogSheet = AppendLog(book, request, chosen, probe, report);
+            return report;
+        }
+
+        // ---------------------------- 备份 / 还原 ----------------------------
+
+        internal static string Backup(object app, object book, object sheet)
+        {
+            if (ComFormulaHost.Boolean(((dynamic)book).ProtectStructure, "ProtectStructure"))
+                throw new InvalidOperationException("工作簿结构受到保护，无法复制备份工作表。");
+            using (ComBag bag = new ComBag())
+            {
+                string name = BackupPrefix + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+                ((dynamic)sheet).Copy(Type.Missing, sheet);
+                dynamic created = bag.Own(((dynamic)app).ActiveSheet);
+                created.Name = WorkbookUi.UniqueName(name, SheetNames(book, bag));
+                created.Visible = 0;   // xlSheetHidden：静默备份，不打扰用户
+                return Convert.ToString(created.Name);
+            }
+        }
+
+        internal static void Restore(object app, object book, object sheet, string backupName,
+            int firstColumn, int columnCount, int lastRow, int headerRow)
+        {
+            using (ComBag bag = new ComBag())
+            {
+                dynamic backup = bag.Own(((dynamic)book).Worksheets[backupName]);
+                dynamic s = sheet;
+                dynamic b = backup;
+                for (int i = 0; i < columnCount; i++)
+                {
+                    int column = firstColumn + i;
+                    dynamic target = bag.Own(s.Range[
+                        ComFormulaHost.Address(headerRow, column) + ":"
+                        + ComFormulaHost.Address(lastRow, column)]);
+                    dynamic original = bag.Own(b.Range[
+                        ComFormulaHost.Address(headerRow, column) + ":"
+                        + ComFormulaHost.Address(lastRow, column)]);
+                    ClearBlock(target);
+                    original.Copy(target);
+                    double width = ReadColumnWidth(bag, b, column);
+                    if (width > 0) WriteColumnWidth(bag, s, column, width);
+                }
+            }
+        }
+
+        // ---------------------------- 日志表 ----------------------------
+
+        private static string AppendLog(object book, SummaryRequest request, List<SummaryCompany> chosen,
+            SummaryTemplateProbe probe, SummaryRunReport report)
+        {
+            using (ComBag bag = new ComBag())
+            {
+                dynamic sheets = bag.Own(((dynamic)book).Worksheets);
+                dynamic sheet = null;
+                int count = Convert.ToInt32(sheets.Count, CultureInfo.InvariantCulture);
+                for (int i = 1; i <= count; i++)
+                {
+                    dynamic candidate = bag.Own(sheets.Item(i));
+                    if (string.Equals(Convert.ToString(candidate.Name), LogSheetName, StringComparison.Ordinal))
+                    {
+                        sheet = candidate;
+                        break;
+                    }
+                }
+                bool created = false;
+                if (sheet == null)
+                {
+                    sheet = WorkbookUi.NewSheet(book, LogSheetName, bag, false);
+                    created = true;
+                }
+
+                dynamic s = sheet;
+                int startRow;
+                if (created)
+                {
+                    string[] headers = { "时间", "编码&简称", "全称", "目标列", "结果", "说明" };
+                    object[,] head = new object[1, headers.Length];
+                    for (int c = 0; c < headers.Length; c++) head[0, c] = headers[c];
+                    dynamic headRange = bag.Own(s.Range[
+                        "A1:" + SummaryColumns.Letter(headers.Length) + "1"]);
+                    headRange.Value2 = head;
+                    WorkbookUi.StyleHeader(s, 1, 1, headers.Length);
+                    startRow = 2;
+                }
+                else
+                {
+                    dynamic used = bag.Own(s.UsedRange);
+                    startRow = Convert.ToInt32(used.Row, CultureInfo.InvariantCulture)
+                        + Convert.ToInt32(bag.Own(used.Rows).Count, CultureInfo.InvariantCulture);
+                }
+
+                string stamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                object[,] rows = new object[chosen.Count, 6];
+                for (int i = 0; i < chosen.Count; i++)
+                {
+                    SummaryCompany company = chosen[i];
+                    string column = SummaryColumns.Letter(request.TemplateColumn + i);
+                    rows[i, 0] = stamp;
+                    rows[i, 1] = company.Code;
+                    rows[i, 2] = company.Name;
+                    rows[i, 3] = column;
+                    rows[i, 4] = "已生成";
+                    rows[i, 5] = "[" + request.SourceFile + "] → [" + company.FileName + "]"
+                        + "；第 " + request.HeaderRow.ToString(CultureInfo.InvariantCulture) + "～"
+                        + probe.LastRow.ToString(CultureInfo.InvariantCulture) + " 行";
+                }
+                dynamic body = bag.Own(s.Range[
+                    "A" + startRow.ToString(CultureInfo.InvariantCulture) + ":F"
+                    + (startRow + chosen.Count - 1).ToString(CultureInfo.InvariantCulture)]);
+                body.Value2 = rows;
+                try { ((dynamic)bag.Own(s.Columns)).AutoFit(); } catch (Exception ex) { Connect.Log("单体汇总表生成：日志列宽自适应失败 " + ex.Message); }
+                return Convert.ToString(sheet.Name);
+            }
+        }
+
+        // ---------------------------- 小工具 ----------------------------
+
+        private static void ClearBlock(object range)
+        {
+            dynamic r = range;
+            // 合并格必须先拆再清；否则 Clear 后仍然保留合并，粘贴会被拒
+            try { if (ComFormulaHost.Boolean(r.MergeCells, "MergeCells")) r.UnMerge(); } catch (Exception ex) { if (!ComFormulaHost.Missing(ex)) throw; }
+            r.Clear();
+        }
+
+        private static object ReadFormulas(ComBag bag, object sheet, int column, int firstRow, int lastRow)
+        {
+            dynamic range = bag.Own(((dynamic)sheet).Range[
+                ComFormulaHost.Address(firstRow, column) + ":" + ComFormulaHost.Address(lastRow, column)]);
+            try { return range.Formula; }
+            catch (Exception ex) { if (!ComFormulaHost.Missing(ex)) throw; return null; }
+        }
+
+        private static double ReadColumnWidth(ComBag bag, object sheet, int column)
+        {
+            try
+            {
+                string letter = SummaryColumns.Letter(column);
+                dynamic range = bag.Own(((dynamic)sheet).Range[letter + ":" + letter]);
+                return Convert.ToDouble(range.ColumnWidth, CultureInfo.InvariantCulture);
+            }
+            catch (Exception ex)
+            {
+                if (!ComFormulaHost.Missing(ex)) Connect.Log("单体汇总表生成：读取列宽失败 " + ex.Message);
+                return 0;
+            }
+        }
+
+        private static void WriteColumnWidth(ComBag bag, object sheet, int column, double width)
+        {
+            try
+            {
+                string letter = SummaryColumns.Letter(column);
+                dynamic range = bag.Own(((dynamic)sheet).Range[letter + ":" + letter]);
+                range.ColumnWidth = width;
+            }
+            catch (Exception ex) { Connect.Log("单体汇总表生成：设置列宽失败 " + ex.Message); }
+        }
+
+        private static List<string> SheetNames(object book, ComBag bag)
+        {
+            List<string> names = new List<string>();
+            dynamic sheets = bag.Own(((dynamic)book).Worksheets);
+            int count = Convert.ToInt32(sheets.Count, CultureInfo.InvariantCulture);
+            for (int i = 1; i <= count; i++)
+                using (ComBag one = new ComBag())
+                    names.Add(Convert.ToString(((dynamic)one.Own(sheets.Item(i))).Name));
+            return names;
+        }
+
+        /// <summary>读回校验：表头值、首列公式是否与预期一致；不一致只记警告，不假装成功。</summary>
+        private static string Verify(object sheet, List<SummaryCompany> chosen, SummaryRequest request,
+            int headerRow, int lastRow, List<string> sourceFormulas)
+        {
+            List<string> problems = new List<string>();
+            using (ComBag bag = new ComBag())
+            {
+                dynamic s = sheet;
+                for (int i = 0; i < chosen.Count; i++)
+                {
+                    dynamic cell = bag.Own(s.Cells[headerRow, request.TemplateColumn + i]);
+                    string actual = SummaryArrays.Text(cell.Value2);
+                    if (!string.Equals(actual, chosen[i].Code.Trim(), StringComparison.Ordinal))
+                        problems.Add(SummaryColumns.Letter(request.TemplateColumn + i) + headerRow.ToString(CultureInfo.InvariantCulture)
+                            + " 表头读回为「" + actual + "」，应为「" + chosen[i].Code + "」");
+                }
+                object first = ReadFormulas(bag, s, request.TemplateColumn, headerRow, lastRow);
+                int rows = lastRow - headerRow + 1;
+                for (int r = 0; r < rows; r++)
+                {
+                    if (sourceFormulas[r] == null) continue;
+                    string actual = SummaryArrays.Text(SummaryArrays.Pick(first, r, rows, 0, 1));
+                    SummaryCompany company = chosen[0];
+                    SummaryRewrite expectRewrite = SummaryLinkRewriter.Replace(sourceFormulas[r], request.SourceFile, company.FileName);
+                    string expected = expectRewrite.Text;
+                    if (expectRewrite.Count > 0) expected = SummaryLinkRewriter.QuoteLinks(expected, company.FileName);
+                    if (!string.Equals(actual, expected, StringComparison.Ordinal))
+                    {
+                        problems.Add(SummaryColumns.Letter(request.TemplateColumn)
+                            + (headerRow + r).ToString(CultureInfo.InvariantCulture) + " 公式读回与预期不一致");
+                        break;
+                    }
+                }
+            }
+            return problems.Count == 0 ? null : "读回校验：" + string.Join("；", problems.ToArray());
+        }
+    }
+}
