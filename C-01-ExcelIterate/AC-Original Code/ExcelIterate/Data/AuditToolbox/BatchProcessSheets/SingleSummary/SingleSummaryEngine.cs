@@ -5,13 +5,23 @@ using System.Text;
 
 namespace Excel_Iterate
 {
+    internal static class SummarySelectionRules
+    {
+        internal static void Validate(int row, int column, int rows, int columns, bool columnMode, object merged)
+        {
+            if (row < 1 || column < 1 || rows < 1 || columns < 1) throw new InvalidOperationException("选区坐标无效。");
+            if (merged == null || merged == DBNull.Value || Convert.ToBoolean(merged)) throw new InvalidOperationException("请选择不含合并单元格的区域，或手动填写行号、列字母。");
+            if (columnMode ? columns != 1 : rows != 1)
+                throw new InvalidOperationException(columnMode ? "模板列只接受一个单元格、单列区域或一个整列，不接受跨列选区。" : "表头行只接受一个单元格、单行区域或一个整行，不接受跨行选区。");
+        }
+    }
     internal sealed class SummaryWorkbookChoice
     {
         internal string Path, Name;
         public override string ToString() { return Name + "  [" + Path + "]"; }
     }
     // =====================================================================
-    // 单体汇总表生成 —— 纯逻辑层（不碰 COM，可离线核对）
+    // 单体汇总批量链接 —— 纯逻辑层（不碰 COM，可离线核对）
     //
     // 职责：
     //   · 列字母 ↔ 列号（模板列定位）
@@ -44,7 +54,7 @@ namespace Excel_Iterate
         internal int TemplateColumn;         // 模板列列号（1 起，D=4）
         internal string SourceFile = "";     // 模板公司文件名，如 "示例有限公司.xlsx"
         internal string Placeholder = SummaryHeaders.Placeholder;  // 模板列的表头占位名，默认「大合并」，可改；留空=不校验
-        internal bool Annual, DescendingYears = true, CheckYearFiles = true;
+        internal bool Annual, DescendingYears = true, CheckYearFiles = false;
         internal int FirstYear = DateTime.Now.Year, LastYear = DateTime.Now.Year, YearHeaderRow;
         internal string YearPathPattern = "";
         internal int TemplateYear;

@@ -168,19 +168,34 @@ namespace Excel_Iterate
                 return SourceRangeAddress(chosen, handle.Book, handle.Sheet);
             }
         }
+        // Shared coordinate reader; callers retain their own business size limits.
+        internal static MigrationArea ReadCoordinates(object selection, object expectedBook, object expectedSheet)
+        {
+            if (selection == null) throw new InvalidOperationException("请先在 Excel 工作表中选择单元格区域。");
+            using (var bag = new ComBag())
+            {
+                try
+                {
+                    dynamic range = selection, sheet = bag.Own(range.Parent), book = bag.Own(sheet.Parent), areas = bag.Own(range.Areas);
+                    if (!WorksheetIdentity.SameObject(sheet, expectedSheet) || !WorksheetIdentity.SameObject(book, expectedBook))
+                        throw new InvalidOperationException("请选择指定工作簿和工作表中的区域，不接受其他工作簿或工作表的选区。");
+                    if (Convert.ToInt32(areas.Count) != 1) throw new InvalidOperationException("只支持一个连续矩形区域，请不要按 Ctrl 选择多个区域。");
+                    dynamic rows = bag.Own(range.Rows), columns = bag.Own(range.Columns);
+                    var result = new MigrationArea { Row = Convert.ToInt32(range.Row), Column = Convert.ToInt32(range.Column), Rows = Convert.ToInt32(rows.Count), Columns = Convert.ToInt32(columns.Count) };
+                    dynamic sheetRows = bag.Own(sheet.Rows), sheetColumns = bag.Own(sheet.Columns);
+                    result.Check(Convert.ToInt32(sheetRows.Count), Convert.ToInt32(sheetColumns.Count));
+                    return result;
+                }
+                catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+                { throw new InvalidOperationException("当前选区不是单元格区域，请取消图形或图表选择后重试。"); }
+            }
+        }
         internal static string SourceRangeAddress(object chosen, object expectedBook, object expectedSheet)
         {
-            using (var refs = new ComBag())
-            {
-                dynamic range = chosen, sheet = refs.Own(range.Parent), book = refs.Own(sheet.Parent), areas = refs.Own(range.Areas);
-                if (!WorksheetIdentity.SameObject(sheet, expectedSheet) || !WorksheetIdentity.SameObject(book, expectedBook)) throw new InvalidOperationException("请选择指定源工作簿和源工作表中的区域，不接受其他工作簿或工作表的选区。");
-                if (Convert.ToInt32(areas.Count) != 1) throw new InvalidOperationException("只支持一个连续矩形区域，请不要按 Ctrl 选择多个区域。");
-                dynamic rows = refs.Own(range.Rows), columns = refs.Own(range.Columns);
-                var area = new MigrationArea { Row = Convert.ToInt32(range.Row), Column = Convert.ToInt32(range.Column), Rows = Convert.ToInt32(rows.Count), Columns = Convert.ToInt32(columns.Count) };
-                if ((long)area.Rows * area.Columns > 100000) throw new InvalidOperationException("单批最多选择 100000 个单元格，请缩小区域。");
-                if (area.Row < 1 || area.Column < 1 || area.Rows < 1 || area.Columns < 1) throw new InvalidOperationException("选区地址无效。");
-                return area.Address;
-            }
+            var coordinates = ReadCoordinates(chosen, expectedBook, expectedSheet);
+            var area = new MigrationArea { Row = coordinates.Row, Column = coordinates.Column, Rows = coordinates.Rows, Columns = coordinates.Columns };
+            if ((long)area.Rows * area.Columns > 100000) throw new InvalidOperationException("单批最多选择 100000 个单元格，请缩小区域。");
+            return area.Address;
         }
         private static void CheckFile(string path)
         {

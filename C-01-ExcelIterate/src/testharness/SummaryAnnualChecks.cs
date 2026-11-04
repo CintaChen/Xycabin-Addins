@@ -20,8 +20,57 @@ public sealed class SummaryAnnualFakeSheet
     public SummaryAnnualFakeSheet() { Cells = new SummaryAnnualFakeCells(); }
 }
 public sealed class SummaryAnnualFakeBook { public string FullName { get; set; } }
+public sealed class SelectionCount { public int Count { get; set; } }
+public sealed class SelectionSheet
+{
+    public object Parent { get; set; }
+    public SelectionCount Rows { get { return new SelectionCount { Count = 1048576 }; } }
+    public SelectionCount Columns { get { return new SelectionCount { Count = 16384 }; } }
+}
+public sealed class SelectionRange
+{
+    public object Parent { get; set; } public int Row { get; set; } public int Column { get; set; }
+    public SelectionCount Areas { get; private set; } public SelectionCount Rows { get; private set; } public SelectionCount Columns { get; private set; }
+    public SelectionRange() { Areas = new SelectionCount { Count = 1 }; Rows = new SelectionCount { Count = 1 }; Columns = new SelectionCount { Count = 1 }; }
+}
 internal static class SummaryAnnualChecks
 {
+    private static void SelectionChecks(Action<string, bool, string> check)
+    {
+        Action<Action, string> reject = delegate(Action action, string name) {
+            bool rejected = false; try { action(); } catch (InvalidOperationException) { rejected = true; }
+            check(name, rejected, "invalid selection accepted");
+        };
+        SummarySelectionRules.Validate(3, 4, 1, 16384, false, false);
+        SummarySelectionRules.Validate(1, 4, 1048576, 1, true, false);
+        check("整行及整列仅取坐标，不受迁移单元格数限制", true, "");
+        reject(delegate { SummarySelectionRules.Validate(1, 1, 2, 1, false, false); }, "表头跨行拒绝");
+        reject(delegate { SummarySelectionRules.Validate(1, 1, 1, 2, true, false); }, "模板跨列拒绝");
+        reject(delegate { SummarySelectionRules.Validate(1, 1, 1, 1, false, true); }, "合并区域拒绝");
+        reject(delegate { SummarySelectionRules.Validate(1, 1, 1, 1, false, DBNull.Value); }, "混合合并区域拒绝");
+        var book = new object(); var sheet = new SelectionSheet { Parent = book };
+        var selection = new SelectionRange { Parent = sheet, Row = 3, Column = 4 };
+        var coordinates = DataMigrationHost.ReadCoordinates(selection, book, sheet);
+        check("读取选区使用绑定工作簿和工作表", coordinates.Row == 3 && coordinates.Column == 4, "wrong coordinates");
+        reject(delegate { DataMigrationHost.ReadCoordinates(selection, book, new SelectionSheet { Parent = book }); }, "同名其他工作表身份拒绝");
+        reject(delegate { DataMigrationHost.ReadCoordinates(selection, new object(), sheet); }, "其他工作簿拒绝");
+        selection.Areas.Count = 2;
+        reject(delegate { DataMigrationHost.ReadCoordinates(selection, book, sheet); }, "不连续选区拒绝");
+        reject(delegate { DataMigrationHost.ReadCoordinates(new object(), book, sheet); }, "非单元格选区拒绝");
+        reject(delegate { DataMigrationHost.ReadCoordinates(null, book, sheet); }, "空选区拒绝");
+        using (var form = new SingleSummaryForm())
+        {
+            check("年度来源检查首次打开不勾选", !form.CheckYearFiles.Checked && !new SummaryRequest().CheckYearFiles, "default enabled");
+            form.SetContext("C:\\test.xlsx", new List<string> { "lead", "summary" }, "lead", "summary", "D");
+            form.SetPreview("source.xlsx", true, "ready");
+            form.ApplySelection("header", 5, 4, "selected", "title");
+            check("读取汇总表头使预检失效并保留手动参数", form.BuildRequest().SheetHeaderRow == 5 && !form.Execute.Enabled, "stale preview");
+            form.ApplySelection("column", 7, 6, "selected", "title");
+            check("模板选区回填实际列号", form.BuildRequest().TemplateColumn == 6, "wrong column");
+            form.SetUndoAvailable(true);
+            check("待还原批次禁止读取选区", !form.Controls.Find("summaryPick_column", true)[0].Enabled, "button unlocked");
+        }
+    }
     private static SummaryRequest Request()
     {
         var request = new SummaryRequest { Annual = true, FirstYear = 2023, LastYear = 2026, YearHeaderRow = 3, SheetHeaderRow = 2,
@@ -32,6 +81,7 @@ internal static class SummaryAnnualChecks
     }
     internal static void Run(Action<string, bool, string> check)
     {
+        SelectionChecks(check);
         Action<Action, string> reject = delegate(Action action, string title)
         { bool failed = false; try { action(); } catch (InvalidOperationException) { failed = true; } check(title, failed, "应阻断"); };
         try
