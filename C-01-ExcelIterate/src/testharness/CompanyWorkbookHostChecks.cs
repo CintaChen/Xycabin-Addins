@@ -5,6 +5,14 @@ using System.Linq;
 using Excel_Iterate;
 
 // Public managed objects exercise the same late-bound calls without starting a host.
+public sealed class CompanyPickRange
+{
+    public object Parent { get; set; } public int Row { get; set; } public int Column { get; set; }
+    public bool MergeCells { get; set; }
+    public CompanyFakeCount Areas { get { return new CompanyFakeCount { Count = 1 }; } }
+    public CompanyFakeCount Rows { get { return new CompanyFakeCount { Count = 1 }; } }
+    public CompanyFakeCount Columns { get { return new CompanyFakeCount { Count = 1 }; } }
+}
 public sealed class CompanyFakeCell
 {
     public object Value2 { get; set; }
@@ -31,9 +39,12 @@ public sealed class CompanyFakeUsed
 }
 public sealed class CompanyFakeSheet
 {
+    public object Parent { get; set; }
     public string Name { get; set; }
     public bool ProtectContents { get { return false; } }
     public CompanyFakeCount Rows { get { return new CompanyFakeCount { Count = 65536 }; } }
+    public CompanyFakeCount Columns { get { return new CompanyFakeCount { Count = 256 }; } }
+    public void Activate() { }
     public CompanyFakeUsed UsedRange { get { return new CompanyFakeUsed(); } }
     public CompanyFakeCells Cells { get; private set; }
     public CompanyFakeSheet() { Cells = new CompanyFakeCells(); }
@@ -50,18 +61,24 @@ public sealed class CompanyFakeBook
     public bool ReadOnly { get; set; }
     public bool Closed, FailSave;
     public int Saved;
-    public CompanyFakeBook() { Worksheets = new CompanyFakeSheets(); }
+    public CompanyFakeBook() { Worksheets = new CompanyFakeSheets(); Worksheets.Source.Parent = Worksheets.Lead.Parent = this; }
     public void Save() { if (FailSave) throw new IOException("injected save failure"); Saved++; }
     public void Close(bool save) { Closed = true; }
     public void Activate() { if (Closed) throw new InvalidOperationException("cannot activate closed book"); }
 }
 public sealed class CompanyFakeBooks
 {
+    public CompanyFakeBook LastSelection;
     public readonly CompanyFakeBook Template = new CompanyFakeBook();
     public readonly Dictionary<string, CompanyFakeBook> Outputs = new Dictionary<string, CompanyFakeBook>();
     public bool FailSave;
     public CompanyFakeBook Open(string path, int links, bool readOnly)
     {
+        if (Path.GetFileName(path).StartsWith(".company-select-", StringComparison.Ordinal))
+        {
+            LastSelection = new CompanyFakeBook { ReadOnly = readOnly };
+            return LastSelection;
+        }
         if (!Path.GetFileName(path).StartsWith(".company-", StringComparison.Ordinal)) return Template;
         if (!Outputs.ContainsKey(path)) Outputs[path] = new CompanyFakeBook();
         var book = Outputs[path]; book.ReadOnly = readOnly; book.Closed = false; book.FailSave = FailSave;
@@ -95,6 +112,14 @@ internal static class CompanyWorkbookHostChecks
         using (var host = new CompanyWorkbookHost(app, template))
         {
             snapshot = host.Snapshot;
+            var selected = host.Pick("sourceHeader", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 1 }; });
+            check(selected.Sheet == "source" && selected.Row == 1 && app.Workbooks.LastSelection.ReadOnly && app.Workbooks.LastSelection.Closed && app.Workbooks.LastSelection.Saved == 0, "snapshot picker returns header coordinates and closes only its readonly copy without saving");
+            selected = host.Pick("code", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 2 }; });
+            check(selected.Field == "code" && !app.Workbooks.Template.Closed, "field picker resolves column from immutable reader headers");
+            check(host.Pick("data", request, delegate { return false; }) == null && app.Workbooks.LastSelection.Closed, "native cancellation closes selection copy and preserves reader");
+            reject(delegate { host.Pick("code", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Lead, Row = 1, Column = 2 }; }); }, "field selection rejects wrong sheet");
+            reject(delegate { host.Pick("code", request, delegate { return new CompanyPickRange { Parent = app.Workbooks.Template.Worksheets.Source, Row = 1, Column = 2 }; }); }, "original or other workbook selection rejected");
+            check(Directory.GetFiles(Path.GetDirectoryName(snapshot), ".company-select-*").Length == 0 && app.DisplayAlerts && app.ScreenUpdating && app.EnableEvents, "picker cancellation and invalid selections clean temporary files and restore host settings");
             var rows = host.Preview(request, delegate { }); check(rows.Count == 3 && rows[0].Row == 3, "custom start row");
             check(Path.GetFileName(rows[0].OutputPath) == "Fixture3.xls" && rows[0].Name == "Fixture3.xlsx" && app.Workbooks.Outputs.Count == 0, "real preview pipeline normalizes names without generating workbooks");
             cells.Item(1, 3).Value2 = "code"; reject(delegate { host.Headers("source", 1); }, "duplicate header"); cells.Item(1, 3).Value2 = "full";

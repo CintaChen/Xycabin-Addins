@@ -57,6 +57,69 @@ namespace Excel_Iterate
         {
             using (var bag = new ComBag()) return HeadersOn(Sheet(name, bag), row);
         }
+        internal CompanyWorkbookSelection Pick(string kind, CompanyWorkbookRequest request, Func<object, object> picker = null)
+        {
+            bool target = kind == "targetHeader" || kind == "targetCode" || kind == "targetName" || kind == "leadRow";
+            bool sheetPicker = kind == "sourceHeader" || kind == "targetHeader";
+            string expected = target ? request.TargetSheet : request.SourceSheet;
+            int header = target ? request.TargetHeaderRow : request.HeaderRow;
+            if (!sheetPicker && !Sheets.Contains(expected)) throw new InvalidOperationException("请先选择来源或目标工作表及表头行。");
+            string path = Path.Combine(folder, ".company-select-" + Guid.NewGuid().ToString("N") + Path.GetExtension(Snapshot));
+            object selectionBook = null;
+            using (var refs = new ComBag())
+            using (var quiet = new CompanyWorkbookQuiet(app))
+            {
+                try
+                {
+                    File.Copy(Snapshot, path, false);
+                    dynamic books = refs.Own(((dynamic)app).Workbooks);
+                    selectionBook = refs.Own(books.Open(path, 0, true));
+                    if (selectionBook == null) throw new InvalidOperationException("无法打开模板选区副本。");
+                    if (picker == null)
+                    {
+                        dynamic windows = refs.Own(((dynamic)selectionBook).Windows);
+                        dynamic window = refs.Own(windows.Item(1)); window.Visible = true;
+                        ((dynamic)selectionBook).Activate();
+                        if (Sheets.Contains(expected))
+                        {
+                            dynamic sheets = refs.Own(((dynamic)selectionBook).Worksheets);
+                            dynamic initialSheet = refs.Own(sheets.Item(expected)); initialSheet.Activate();
+                        }
+                        ((dynamic)app).ScreenUpdating = true;
+                    }
+                    object chosen = picker != null ? picker(selectionBook) : DataMigrationHost.PickNativeRange(app,
+                        sheetPicker ? "请切换到所需工作表，选择一个表头单元格。此副本只用于取坐标，取消保留原设置。" : kind == "data" ? "请选择连续公司数据行，不含表头；所选列不限制实际读取字段。" : kind == "leadRow" ? "请选择目标表中待更新数据行的一个单元格。" : "请选择当前表头行中所需字段的一个单元格。",
+                        "单体模板生成 · 临时只读副本选区", Type.Missing);
+                    if (chosen == null || chosen is bool) return null;
+                    chosen = refs.Own(chosen);
+                    dynamic chosenSheet = refs.Own(((dynamic)chosen).Parent);
+                    string name = Convert.ToString(chosenSheet.Name);
+                    if (!Sheets.Contains(name)) throw new InvalidOperationException("请选择模板中的工作表。");
+                    object expectedSheet;
+                    if (sheetPicker) expectedSheet = chosenSheet;
+                    else
+                    {
+                        dynamic sheets = refs.Own(((dynamic)selectionBook).Worksheets);
+                        expectedSheet = refs.Own(sheets.Item(expected));
+                    }
+                    var area = DataMigrationHost.ReadCoordinates(chosen, selectionBook, expectedSheet);
+                    CompanyWorkbookSelectionRules.Validate(kind, area.Row, area.Column, area.Rows, area.Columns, ((dynamic)chosen).MergeCells, header);
+                    var result = new CompanyWorkbookSelection { Sheet = name, Row = area.Row, Column = area.Column, LastRow = area.Row + area.Rows - 1 };
+                    if (sheetPicker) Headers(name, area.Row);
+                    else if (kind != "data" && kind != "leadRow")
+                    {
+                        foreach (var field in Headers(name, header)) if (field.Value == area.Column) result.Field = field.Key;
+                        if (result.Field == null) throw new InvalidOperationException("所选表头为空或不是可用字段，请重新选择。");
+                    }
+                    return result;
+                }
+                finally
+                {
+                    try { if (selectionBook != null) { quiet.ExcludeClosingBook(selectionBook); ((dynamic)selectionBook).Close(false); } }
+                    finally { if (File.Exists(path)) File.Delete(path); }
+                }
+            }
+        }
         internal static Dictionary<string, int> HeadersOn(object sheet, int row)
         {
             using (var bag = new ComBag())

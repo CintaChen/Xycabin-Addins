@@ -124,6 +124,7 @@ namespace Excel_Iterate
         internal int HeaderRow;
         internal int CodeColumn;      // 0 = 没有这一列
         internal int NameColumn;
+        internal int SourceFileColumn;
         internal int PickColumn;      // 0 = 没有这一列
         internal int LastColumn;      // 表头行最后一个非空列
         internal int PickWriteColumn; // 回写「选用」的列（可能是新建的列）
@@ -240,6 +241,11 @@ namespace Excel_Iterate
                 for (int c = 0; c < columns; c++)
                 {
                     string text = SummaryArrays.Text(SummaryArrays.Pick(headerValues, 0, 1, c, columns));
+                    if (SummaryHeaders.Normalize(text) == SummaryHeaders.Normalize(SummaryFileMapping.Header))
+                    {
+                        if (snapshot.SourceFileColumn != 0) snapshot.Blocking.Add("Lead 表「来源文件名」表头重复，请仅保留一列。");
+                        snapshot.SourceFileColumn = left + c;
+                    }
                     if (text.Length > 0) headerLast = left + c;
                     if (snapshot.CodeColumn == 0 && SummaryHeaders.IsCode(text)) snapshot.CodeColumn = left + c;
                     else if (snapshot.NameColumn == 0 && SummaryHeaders.IsName(text)) snapshot.NameColumn = left + c;
@@ -265,6 +271,7 @@ namespace Excel_Iterate
                 if (rows <= 0) return snapshot;
                 object codeValues = ReadColumn(s, headerRow + 1, bottom, snapshot.CodeColumn, bag);
                 object nameValues = ReadColumn(s, headerRow + 1, bottom, snapshot.NameColumn, bag);
+                object fileValues = snapshot.SourceFileColumn > 0 ? ReadColumn(s, headerRow + 1, bottom, snapshot.SourceFileColumn, bag) : null;
                 object pickValues = snapshot.PickColumn > 0
                     ? ReadColumn(s, headerRow + 1, bottom, snapshot.PickColumn, bag)
                     : null;
@@ -279,6 +286,7 @@ namespace Excel_Iterate
                     company.Row = headerRow + 1 + r;
                     company.Code = code;
                     company.Name = name;
+                    company.SourceFileName = fileValues == null ? "" : Convert.ToString(SummaryArrays.Pick(fileValues, r, rows, 0, 1), CultureInfo.InvariantCulture);
                     company.PriorSelection = prior;
                     company.Selected = true;                              // 候选行预填勾
                     snapshot.Companies.Add(company);

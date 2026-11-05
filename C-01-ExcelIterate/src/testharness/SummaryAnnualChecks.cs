@@ -20,6 +20,39 @@ public sealed class SummaryAnnualFakeSheet
     public SummaryAnnualFakeSheet() { Cells = new SummaryAnnualFakeCells(); }
 }
 public sealed class SummaryAnnualFakeBook { public string FullName { get; set; } }
+public sealed class MappingLeadSheet
+{
+    public readonly object[,] Data = new object[4, 4];
+    public bool ProtectContents { get { return false; } }
+    public MappingLeadUsed UsedRange { get { return new MappingLeadUsed(); } }
+    public MappingLeadRanges Range { get { return new MappingLeadRanges(this); } }
+}
+public sealed class MappingLeadUsed
+{
+    public int Row { get { return 1; } } public int Column { get { return 1; } }
+    public SelectionCount Rows { get { return new SelectionCount { Count = 4 }; } }
+    public SelectionCount Columns { get { return new SelectionCount { Count = 4 }; } }
+}
+public sealed class MappingLeadRanges
+{
+    private readonly MappingLeadSheet sheet;
+    public MappingLeadRanges(MappingLeadSheet value) { sheet = value; }
+    public MappingLeadValues this[string address] { get { return new MappingLeadValues(sheet, address); } }
+}
+public sealed class MappingLeadValues
+{
+    private readonly MappingLeadSheet sheet; private readonly string address;
+    public MappingLeadValues(MappingLeadSheet value, string range) { sheet = value; address = range; }
+    public object Value2
+    {
+        get
+        {
+            var area = MigrationArea.Parse(address); var values = new object[area.Rows, area.Columns];
+            for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++) values[r, c] = sheet.Data[area.Row + r - 1, area.Column + c - 1];
+            return area.Rows == 1 && area.Columns == 1 ? values[0, 0] : (object)values;
+        }
+    }
+}
 public sealed class SelectionCount { public int Count { get; set; } }
 public sealed class SelectionSheet
 {
@@ -81,6 +114,35 @@ internal static class SummaryAnnualChecks
     }
     internal static void Run(Action<string, bool, string> check)
     {
+        var mappedLead = new MappingLeadSheet();
+        mappedLead.Data[0, 0] = "编码&简称"; mappedLead.Data[0, 1] = "全称"; mappedLead.Data[0, 2] = "来源文件名"; mappedLead.Data[0, 3] = "选用";
+        for (int r = 1; r < 4; r++) { mappedLead.Data[r, 0] = "code" + r; mappedLead.Data[r, 1] = "company" + r; }
+        mappedLead.Data[1, 2] = mappedLead.Data[2, 2] = "！01-shared.xlsx";
+        var mappedSnapshot = SummaryLeadReader.Read(mappedLead, 1);
+        check("Lead来源文件列按表头动态定位", mappedSnapshot.SourceFileColumn == 3 && mappedSnapshot.Companies.Count == 3 && mappedSnapshot.Companies[0].FileName == "！01-shared.xlsx", "mapping not read");
+        check("空映射兼容全称加xlsx", mappedSnapshot.Companies[2].FileName == "company3.xlsx", "fallback failed");
+        SummaryFileMapping.Validate(mappedSnapshot.Companies);
+        check("允许不同公司共用来源并提示", SummaryFileMapping.Describe(mappedSnapshot.Companies).Exists(line => line.Contains("共享来源提示") && line.Contains("company1") && line.Contains("company2")), "shared mapping missing");
+        var before = mappedSnapshot.Companies;
+        mappedLead.Data[1, 2] = "changed.xlsx";
+        var after = SummaryLeadReader.Read(mappedLead, 1);
+        var compare = typeof(SummaryRequest).Assembly.GetType("Excel_Iterate.Connect").GetMethod("CompareSelection", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        check("预检后来源映射修改阻断执行", compare.Invoke(null, new object[] { after, before }) != null, "mapping drift accepted");
+        mappedLead.Data[0, 2] = "其他字段";
+        check("旧Lead无映射列仍可读取", SummaryLeadReader.Read(mappedLead, 1).Companies[0].FileName == "company1.xlsx", "legacy lead broken");
+        mappedLead.Data[0, 2] = mappedLead.Data[0, 3] = "来源文件名";
+        check("重复映射表头阻断", SummaryLeadReader.Read(mappedLead, 1).Blocking.Count > 0, "duplicate accepted");
+        foreach (string invalidFile in new[] { "N:\\data\\source.xlsx", "[source.xlsx]", "source.xls", " source.xlsx", "CON.xlsx" })
+        {
+            bool rejected = false;
+            try { SummaryFileMapping.Validate(new[] { new SummaryCompany { Row = 7, SourceFileName = invalidFile } }); } catch (InvalidOperationException) { rejected = true; }
+            check("无效映射拒绝 " + invalidFile, rejected, "invalid mapping accepted");
+        }
+        var mappedRequest = Request(); mappedRequest.TemplateColumn = 4; mappedRequest.Annual = true; mappedRequest.YearPathPattern = "GROUP_DEMO_{yyyy}1231";
+        var mappedColumn = new SummaryYearColumn { Company = new SummaryCompany { Name = "different full name", SourceFileName = "！01-shared.xlsx" }, Column = 5, Year = 2024 };
+        check("年度换链采用实际映射文件名", mappedRequest.Rewrite("='N:\\GROUP_DEMO_20251231\\[！模板公司.xlsx]BS'!$AA$6", mappedColumn).Text == "='N:\\GROUP_DEMO_20241231\\[！01-shared.xlsx]BS'!$AA$6", "mapping ignored");
+        mappedRequest.Annual = false;
+        check("普通换链采用实际映射文件名", mappedRequest.Rewrite("=[！模板公司.xlsx]BS!$AA$6", mappedColumn).Text.Contains("[！01-shared.xlsx]"), "mapping ignored");
         SelectionChecks(check);
         check("F列校验公式复制到G列随列平移", SummaryFormulaShift.Shift("=ROUND(F76-F121,2)", 1) == "=ROUND(G76-G121,2)", "formula stayed on F");
         check("复制多列使用真实列偏移", SummaryFormulaShift.Shift("=ROUND(F76-F121,2)", 4) == "=ROUND(J76-J121,2)", "wrong offset");

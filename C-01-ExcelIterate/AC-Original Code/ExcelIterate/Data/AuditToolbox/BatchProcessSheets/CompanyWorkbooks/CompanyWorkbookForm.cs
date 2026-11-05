@@ -29,6 +29,8 @@ namespace Excel_Iterate
         private readonly FlowLayoutPanel inputs = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         private readonly RoundedButton start = Ui.Button("开始生成", 115), cancel = Ui.Button("取消任务", 100);
         internal readonly RoundedButton PreviewNames = Ui.Button("预览文件名", 120);
+        private readonly Dictionary<string, Control> selectionButtons = new Dictionary<string, Control>();
+        private readonly Label selectionInfo = Label("在表中选择会打开临时只读模板副本；取消保留原参数，原模板修改后须重新选择模板。");
         private readonly Timer timer = new Timer { Interval = 30 };
         private CompanyWorkbookHost host;
         private CompanyWorkbookRequest request;
@@ -48,20 +50,24 @@ namespace Excel_Iterate
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 38)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var browse = Ui.Button("选择模板…", 115); browse.Click += delegate { PickTemplate(); };
             AddRow("模板文件", template, browse);
-            AddRow("来源工作表", source, Label("表头行"), header);
-            AddRow("来源数据行", Label("起始（必填）"), first, Label("结束（必填，含此行）"), last);
-            AddRow("文件命名字段", naming);
+            AddRow("来源工作表", source, Label("表头行"), header, PickButton("sourceHeader"));
+            AddRow("来源数据行", Label("起始（必填）"), first, Label("结束（必填，含此行）"), last, PickButton("data"));
+            AddRow("文件命名字段", naming, PickButton("naming"));
             AddRow("名称处理", Label("从原文末尾去除"), RemoveTailCharacters, Label("个字符，再"), StripExcelSuffix);
             AddRow("命名顺序", Label("先去除指定字符，再去掉 Excel 后缀，最后统一添加模板后缀；默认去除 0 个字符。"));
             AddRow("生成方式", update);
-            AddRow("公司来源字段", Label("编码"), code, Label("全称"), full);
-            AddRow("目标工作表", target, Label("表头行"), leadHeader);
-            AddRow("目标字段", targetCode, targetName);
-            AddRow("Lead 写入行", leadRow, Label("必填：仅替换该行两个字段，其他行保留"));
+            AddRow("公司来源字段", Label("编码"), code, PickButton("code"), Label("全称"), full, PickButton("full"));
+            AddRow("目标工作表", target, Label("表头行"), leadHeader, PickButton("targetHeader"));
+            AddRow("目标字段", Label("编码"), targetCode, PickButton("targetCode"), Label("全称"), targetName, PickButton("targetName"));
+            AddRow("Lead 写入行", leadRow, PickButton("leadRow"), Label("必填：仅替换该行两个字段，其他行保留"));
             var chooseOutput = Ui.Button("选择文件夹…", 115); chooseOutput.Click += delegate
             { string selected = HostDialogService.Folder(this, "选择过程表输出文件夹", true); if (!string.IsNullOrEmpty(selected)) output.Text = selected; };
             AddRow("输出文件夹", output, chooseOutput);
+            AddRow("选区结果", selectionInfo);
             AddRow("核对", confirmed);
+            AddRow("来源说明", Label("每个公司数据行生成一个工作簿。数据范围不含表头；选中哪些列不限制实际读取字段。"));
+            AddRow("字段说明", Label("字段请选择表头单元格；程序按字段读取编码、全称及文件名。下拉与手填行号仍可使用。"));
+            AddRow("目标说明", Label("仅更新生成副本的指定数据行中编码、全称两个字段。原始模板不会写入或覆盖。"));
             AddRow("说明", Label("读取磁盘模板快照；空行提示跳过，其他异常阻断；已有文件绝不覆盖。\n只复制模式保留原文件字节；更新 Lead 模式会经宿主保存，请先用小样本核验。"));
             progressArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             for (int i = 0; i < 4; i++) progressArea.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -83,6 +89,8 @@ namespace Excel_Iterate
             naming.SelectedIndexChanged += delegate { InvalidateNames(); };
             first.ValueChanged += delegate { InvalidateNames(); }; last.ValueChanged += delegate { InvalidateNames(); };
             output.TextChanged += delegate { InvalidateNames(); };
+            foreach (var field in new[] { code, full, targetCode, targetName }) field.SelectedIndexChanged += delegate { InvalidateNames(); };
+            leadRow.ValueChanged += delegate { InvalidateNames(); };
             timer.Tick += delegate { Tick(); };
             FormClosing += delegate(object sender, FormClosingEventArgs e)
             { if (Running || ticking || preparing) { e.Cancel = true; closePending = true; RequestCancel(); } };
@@ -146,6 +154,60 @@ namespace Excel_Iterate
             }
             catch (Exception error) { NamePreview.Text = "预览失败，请查看运行日志。"; details.SelectedTab = logTab; Append("预览文件名失败：" + error.Message); }
             finally { preparing = false; SetBusy(false); if (closePending) Close(); }
+        }
+        private Control PickButton(string kind)
+        {
+            var button = Ui.Button("在表中选择…", 116); button.Name = "companyPick_" + kind;
+            button.Click += delegate { PickParameter(kind); };
+            selectionButtons.Add(kind, button); return button;
+        }
+        private void PickParameter(string kind)
+        {
+            if (Running || ticking || preparing || (CanRun != null && !CanRun())) return;
+            bool hidden = false;
+            try
+            {
+                if (host == null) throw new InvalidOperationException("请先选择磁盘模板。");
+                preparing = true; SetBusy(true); cancel.Enabled = false;
+                Hide(); hidden = true;
+                var selected = host.Pick(kind, BuildRequest(false));
+                if (selected != null) ApplyPicked(kind, selected);
+            }
+            catch (Exception error) { Append("选区未应用：" + error.Message + "；可重新选择或手动配置。"); }
+            finally
+            {
+                preparing = false;
+                if (!IsDisposed)
+                {
+                    SetBusy(false);
+                    if (hidden) { Show(); Activate(); }
+                    if (closePending) Close();
+                }
+            }
+        }
+        internal void ApplyPicked(string kind, CompanyWorkbookSelection selected)
+        {
+            if (kind == "sourceHeader" || kind == "targetHeader")
+            {
+                bool isTarget = kind == "targetHeader";
+                bool changed = (isTarget ? target : source).Text != selected.Sheet || (isTarget ? leadHeader : header).Value != selected.Row;
+                loading = true;
+                try { Select(isTarget ? target : source, selected.Sheet); (isTarget ? leadHeader : header).Value = selected.Row; }
+                finally { loading = false; }
+                RefreshFields(isTarget);
+                if (changed) { if (isTarget) leadRow.Value = 0; else { first.Value = 0; last.Value = 0; } }
+            }
+            else if (kind == "data") { first.Value = selected.Row; last.Value = selected.LastRow; }
+            else if (kind == "leadRow") leadRow.Value = selected.Row;
+            else
+            {
+                ComboBox box = kind == "naming" ? naming : kind == "code" ? code : kind == "full" ? full : kind == "targetCode" ? targetCode : targetName;
+                Select(box, selected.Field);
+            }
+            NamePreview.Clear(); confirmed.Checked = false;
+            selectionInfo.Text = "已选择：" + selected.Sheet + " / 第 " + selected.Row + (selected.LastRow > selected.Row ? "—" + selected.LastRow : "") + " 行，列 " + SummaryColumns.Letter(selected.Column)
+                + (string.IsNullOrEmpty(selected.Field) ? "" : "，字段「" + selected.Field + "」") + "。请重新预览并核对。";
+            Append(selectionInfo.Text);
         }
         private void AddRow(string title, params Control[] controls)
         {
@@ -230,10 +292,12 @@ namespace Excel_Iterate
             }
             catch (Exception error) { Append("读取字段失败：" + error.Message); }
         }
-        private void SetLeadEnabled() { foreach (Control c in new Control[] { target, leadHeader, leadRow, targetCode, targetName, code, full }) c.Enabled = update.Checked; }
+        private void SetLeadEnabled() { foreach (Control c in new Control[] { target, leadHeader, leadRow, targetCode, targetName, code, full }) c.Enabled = update.Checked;
+            foreach (string key in new[] { "targetHeader", "targetCode", "targetName", "leadRow", "code", "full" }) selectionButtons[key].Enabled = update.Checked; }
         private void SetBusy(bool busy)
         {
             inputs.Enabled = !busy; start.Enabled = PreviewNames.Enabled = !busy; cancel.Enabled = busy;
+            if (!busy) SetLeadEnabled();
             if (BusyChanged != null) BusyChanged(busy);
         }
         private void Start()

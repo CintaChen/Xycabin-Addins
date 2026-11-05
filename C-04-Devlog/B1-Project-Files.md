@@ -135,6 +135,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
+本轮为单体模板生成补齐来源表及表头、来源数据范围、文件命名字段、公司编码/全称、目标表及表头、目标编码/全称和 Lead 写入行的九个原生选区入口及说明。每次从不可变模板快照创建独立只读交互副本，仅取坐标，取消/异常后关闭且不保存、清理临时文件并恢复宿主状态。汇总链接支持 Lead 可选“来源文件名”列，空项回退全称.xlsx，允许不同公司共享文件并提示，预检后映射变更阻断执行，映射列只读。编译、汇总 138 项、模板生成 86 项、迁移 168 项及线程/分类/窗口登记检查通过；模拟 100%、125%、150% 离屏布局无标签高度裁剪。证据见[编译日志](../C-01-ExcelIterate/build/template-picker-mapping-build-2.log)、[汇总检查](../C-01-ExcelIterate/build/template-picker-mapping-summary.log)、[模板检查](../C-01-ExcelIterate/build/template-picker-mapping-company.log)、[布局检查](../C-01-ExcelIterate/build/template-picker-mapping-layout.log)。真实 Excel/WPS 原生选区及实际取数需本地验收；固定签名证书缺失，未更新安装包。
+
 本轮修复单体汇总复制列的校验公式仍指向模板列：复用已有引用扫描器，只平移同表相对列，保留绝对列、跨表及跨簿取数地址；普通与年度模式统一处理，预检阻断引用越界，逐列公式核对失败按备份还原。四个行列参数新增“在表中选择…”按钮，复用迁移 Type=8 原生区域选择，隐藏后恢复窗体，取消保留参数，确定后再次校验绑定身份。编译、单体汇总 125 项、数据迁移 168 项及线程/源码分类检查通过，见[编译日志](../C-01-ExcelIterate/build/summary-formula-picker-build.log)、[汇总检查](../C-01-ExcelIterate/build/summary-formula-picker-tests.log)与[迁移检查](../C-01-ExcelIterate/build/summary-formula-picker-migration.log)。原生选区及实际宿主公式重算需本地验收；固定签名证书缺失，未更新安装包。
 
 本轮统一功能显示名称为“单体模板生成”和“单体汇总批量链接”，内部接口及按钮 ID 沿用。模板生成行标题改为自适应高度，参数行随可用宽度换行；汇总参数区可滚动，新增 Lead 表头行、汇总表表头行、模板列和年度行的当前选区读取入口，并保留手填。复用数据迁移坐标读取与身份校验，拒绝多区域、错误工作簿/表、跨行/列及合并选区；模板外链文件名支持可编辑候选列表，多个匹配不猜选；年度检查默认不勾选，自动识别目录可见且可改。编译、单体汇总 114 项、公司工作簿 71 项、数据迁移 168 项检查通过，见[编译日志](../C-01-ExcelIterate/build/summary-ui-build-3.log)、[汇总检查](../C-01-ExcelIterate/build/summary-ui-summary-tests.log)与[迁移检查](../C-01-ExcelIterate/build/summary-ui-migration-tests.log)。真实 Excel/WPS 选区交互、不同进程 DPI 和 32/64 位宿主仍需本地验收；固定签名证书缺失，未更新安装包。

@@ -269,6 +269,8 @@ namespace Excel_Iterate
             Companies.Columns.Add(pick);
             MakeColumn("code", "编码&简称", 160, 320);
             MakeColumn("name", "全称", 260, 420);
+            MakeColumn("sourceFileName", "实际来源文件名", 250, 450);
+            MakeColumn("sourceMapping", "映射依据", 140, 200);
             MakeColumn("leadRow", "Lead 行", 80, 120);
             MakeColumn("prior", "原选用值", 100, 0);
             Companies.Columns[Companies.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
@@ -389,6 +391,7 @@ namespace Excel_Iterate
             foreach (SummaryCompany company in list)
             {
                 int index = Companies.Rows.Add(company.Selected, company.Code, company.Name,
+                    company.FileName, string.IsNullOrWhiteSpace(company.SourceFileName) ? "全称.xlsx（回退）" : "Lead 来源文件名",
                     company.Row.ToString(CultureInfo.InvariantCulture),
                     company.PriorSelection.Length == 0 ? "（空）" : company.PriorSelection);
                 Companies.Rows[index].Tag = company;

@@ -260,6 +260,8 @@ namespace Excel_Iterate
                     }
 
                     int count = request.Chosen().Count;
+                    SummaryFileMapping.Validate(request.Chosen());
+                    foreach (string line in SummaryFileMapping.Describe(request.Chosen())) text.AppendLine(line);
                     if (count == 0) throw new InvalidOperationException("没有勾选任何公司，请先选择公司再预检。");
                     var columns = request.Columns();
                     int lastColumn = request.TemplateColumn + columns.Count - 1;
@@ -304,6 +306,10 @@ namespace Excel_Iterate
                         text.AppendLine("已按公式推断模板公司全称：" + suggested + "（可改）。");
 
                     request.SourceFile = suggested;
+                    if (suggested.Length > 0)
+                        foreach (var company in snapshot.Companies)
+                            if (string.Equals(suggested, company.FileName, StringComparison.OrdinalIgnoreCase))
+                                text.AppendLine("模板来源匹配：" + suggested + " → Lead 第 " + company.Row + " 行「" + company.Name + "」。");
                     if (request.Annual && suggested.Length > 0 && probe.Blocking.Count == 0)
                     {
                         foreach (string line in SummaryTemplateReader.AnnualPreview(book, target, request, probe)) text.AppendLine(line);
@@ -475,8 +481,9 @@ namespace Excel_Iterate
                 if (!byRow.TryGetValue(company.Row, out actual))
                     return "Lead 第 " + company.Row.ToString(CultureInfo.InvariantCulture) + " 行已不再是候选行，请重新预检。";
                 if (!string.Equals(actual.Code, company.Code, StringComparison.Ordinal) ||
-                    !string.Equals(actual.Name, company.Name, StringComparison.Ordinal))
-                    return "Lead 第 " + company.Row.ToString(CultureInfo.InvariantCulture) + " 行的编码或全称已变化，请重新预检。";
+                    !string.Equals(actual.Name, company.Name, StringComparison.Ordinal) ||
+                    !string.Equals(actual.SourceFileName, company.SourceFileName, StringComparison.Ordinal))
+                    return "Lead 第 " + company.Row.ToString(CultureInfo.InvariantCulture) + " 行的编码、全称或来源文件名已变化，请重新预检。";
             }
             return null;
         }

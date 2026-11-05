@@ -62,11 +62,47 @@ namespace Excel_Iterate
         internal int Row;                    // Lead 表中的行号（回写「选用」用）
         internal string Code = "";           // 编码&简称 → 写进该列表头
         internal string Name = "";           // 全称 → 换链目标文件名主体
+        internal string SourceFileName = ""; // Lead 可选来源文件名；空值沿用全称.xlsx
         internal bool Selected = true;       // 确认窗勾选状态（默认全勾）
         internal string PriorSelection = ""; // 「选用」列原值，仅作展示
 
         /// <summary>换链目标文件名：全称 + ".xlsx"。含「（合并）」的公司同样只有这一条规则。</summary>
-        internal string FileName { get { return Name + ".xlsx"; } }
+        internal string FileName { get { return string.IsNullOrWhiteSpace(SourceFileName) ? Name + ".xlsx" : SourceFileName; } }
+    }
+    internal static class SummaryFileMapping
+    {
+        internal const string Header = "来源文件名";
+        internal static void Validate(IEnumerable<SummaryCompany> companies)
+        {
+            foreach (var company in companies)
+            {
+                if (string.IsNullOrWhiteSpace(company.SourceFileName)) continue;
+                string value = company.SourceFileName;
+                try
+                {
+                    CompanyWorkbookRules.FileName(value);
+                    if (!SummaryLinkRewriter.IsLinkFile(value) || value.IndexOfAny(new[] { '[', ']' }) >= 0)
+                        throw new InvalidOperationException("只填写一个 .xlsx 文件名，不含路径或方括号。");
+                }
+                catch (InvalidOperationException error) { throw new InvalidOperationException("Lead 第 " + company.Row + " 行「来源文件名」无效：" + error.Message); }
+            }
+        }
+        internal static List<string> Describe(IList<SummaryCompany> companies)
+        {
+            var lines = new List<string>();
+            var shared = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var company in companies)
+            {
+                lines.Add("来源映射：Lead 第 " + company.Row + " 行｜" + company.Name + " → " + company.FileName
+                    + (string.IsNullOrWhiteSpace(company.SourceFileName) ? "（来源文件名未填，沿用全称.xlsx）" : "（读取来源文件名）"));
+                List<string> names;
+                if (!shared.TryGetValue(company.FileName, out names)) shared.Add(company.FileName, names = new List<string>());
+                names.Add(company.Name);
+            }
+            foreach (var item in shared) if (item.Value.Count > 1)
+                lines.Add("共享来源提示：" + string.Join("、", item.Value.ToArray()) + " 共用 " + item.Key + "；工作表及取数地址相同时，数据也相同。");
+            return lines;
+        }
     }
 
     /// <summary>一次生成的完整请求（全部来自弹窗，不含 COM）。</summary>
@@ -142,6 +178,7 @@ namespace Excel_Iterate
             if (SourceFile.Trim().Length == 0) return "请填写模板公司全称（换链源文件名，如 示例有限公司.xlsx）。";
             if (!SummaryLinkRewriter.IsLinkFile(SourceFile)) return "模板公司全称需拼成「全称.xlsx」的样式。";
             List<SummaryCompany> chosen = Chosen();
+            try { SummaryFileMapping.Validate(chosen); } catch (InvalidOperationException error) { return error.Message; }
             if (chosen.Count == 0) return "没有勾选任何公司（N=0），已阻断，未改动工作表。";
             if (TemplateColumn + (long)chosen.Count * YearCount - 1 > 16384)
                 return "勾选 " + chosen.Count.ToString(CultureInfo.InvariantCulture)
