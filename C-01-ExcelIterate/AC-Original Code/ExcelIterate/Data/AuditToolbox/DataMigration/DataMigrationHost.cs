@@ -160,13 +160,18 @@ namespace Excel_Iterate
             if (!string.IsNullOrWhiteSpace(current)) try { initial = MigrationArea.Parse(current).Address; } catch (InvalidOperationException) { }
             using (var refs = new ComBag())
             {
-                object chosen = picker != null ? picker(handle.Sheet) : ((dynamic)app).InputBox(
+                object chosen = picker != null ? picker(handle.Sheet) : PickNativeRange(app,
                     "请用鼠标框选“" + sheetName + "”中的连续单元格区域，然后点确定。取消会保留原区域。",
-                    "选择源区域 · " + Path.GetFileName(full), initial, Type.Missing, Type.Missing, Type.Missing, Type.Missing, 8);
+                    "选择源区域 · " + Path.GetFileName(full), initial);
                 if (chosen == null || chosen is bool) return null;
                 chosen = refs.Own(chosen);
                 return SourceRangeAddress(chosen, handle.Book, handle.Sheet);
             }
+        }
+        // Caller owns the returned Range; false/null indicates cancellation.
+        internal static object PickNativeRange(object application, string prompt, string title, object initial)
+        {
+            return ((dynamic)application).InputBox(prompt, title, initial, Type.Missing, Type.Missing, Type.Missing, Type.Missing, 8);
         }
         // Shared coordinate reader; callers retain their own business size limits.
         internal static MigrationArea ReadCoordinates(object selection, object expectedBook, object expectedSheet)

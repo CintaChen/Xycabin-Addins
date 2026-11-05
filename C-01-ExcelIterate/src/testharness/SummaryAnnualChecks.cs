@@ -82,6 +82,27 @@ internal static class SummaryAnnualChecks
     internal static void Run(Action<string, bool, string> check)
     {
         SelectionChecks(check);
+        check("F列校验公式复制到G列随列平移", SummaryFormulaShift.Shift("=ROUND(F76-F121,2)", 1) == "=ROUND(G76-G121,2)", "formula stayed on F");
+        check("复制多列使用真实列偏移", SummaryFormulaShift.Shift("=ROUND(F76-F121,2)", 4) == "=ROUND(J76-J121,2)", "wrong offset");
+        check("绝对列不移动而相对列移动", SummaryFormulaShift.Shift("=$F76+F$121+$F$9", 1) == "=$F76+G$121+$F$9", "mixed anchors changed");
+        check("同表范围和整列按相对规则移动", SummaryFormulaShift.Shift("=SUM(F76:F121)+SUM(F:F)+SUM($F:$F)", 1) == "=SUM(G76:G121)+SUM(G:G)+SUM($F:$F)", "range shift failed");
+        check("字符串及跨表跨簿地址沿用原规则", SummaryFormulaShift.Shift("=F76+BS!L14+'N:\\[甲.xlsx]BS'!F6+\"F76\"", 1) == "=G76+BS!L14+'N:\\[甲.xlsx]BS'!F6+\"F76\"", "qualified references changed");
+        check("表格结构引用及函数名不误识别", SummaryFormulaShift.Shift("=LOG10(F76)+Table1[Column1]", 1) == "=LOG10(G76)+Table1[Column1]", "function/table rewritten");
+        bool overflow = false;
+        try { SummaryFormulaShift.Shift("=XFD1", 1); } catch (InvalidOperationException) { overflow = true; }
+        check("公式引用列越界在写入前阻断", overflow, "overflow accepted");
+        var ordinary = Request(); ordinary.Annual = false; ordinary.TemplateColumn = 6;
+        var destination = new SummaryYearColumn { Column = 7, Company = ordinary.Companies[0] };
+        check("普通模式换链使用同表平移后的公式", ordinary.Rewrite("=ROUND(F76-F121,2)", destination).Text == "=ROUND(G76-G121,2)", "ordinary mode wrong");
+        ordinary.Annual = true; ordinary.YearPathPattern = "GROUP_DEMO_{yyyy}1231"; destination.Year = 2024;
+        check("年度模式混合公式仅移动同表引用", ordinary.Rewrite("=F76+'N:\\GROUP_DEMO_20251231\\[！模板公司.xlsx]BS'!F6", destination).Text == "=G76+'N:\\GROUP_DEMO_20241231\\[！甲公司.xlsx]BS'!F6", "annual mixed formula wrong");
+        using (var form = new SingleSummaryForm())
+        {
+            form.SetContext("C:\\fixture.xlsx", new List<string> { "lead", "summary" }, "lead", "summary", "F");
+            check("四个参数均提供在表中选择入口", form.Controls.Find("summaryRange_lead", true).Length == 1 && form.Controls.Find("summaryRange_header", true).Length == 1 && form.Controls.Find("summaryRange_column", true).Length == 1 && form.Controls.Find("summaryRange_year", true).Length == 1, "picker missing");
+            form.SetUndoAvailable(true);
+            check("待还原时禁止原生选择", !form.Controls.Find("summaryRange_column", true)[0].Enabled, "picker unlocked");
+        }
         Action<Action, string> reject = delegate(Action action, string title)
         { bool failed = false; try { action(); } catch (InvalidOperationException) { failed = true; } check(title, failed, "应阻断"); };
         try

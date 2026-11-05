@@ -27,6 +27,7 @@ namespace Excel_Iterate
                 form.BrowseRequested += delegate { RunSummaryBrowse(form); };
                 form.SheetsRequested += delegate { RunSummaryRefresh(form); };
                 form.SelectionRequested += delegate(string kind) { RunSummarySelection(form, kind); };
+                form.RangeRequested += delegate(string kind) { RunSummarySelection(form, kind, true); };
                 form.PreviewRequested += delegate { RunSummaryPreview(form); };
                 form.ExecuteRequested += delegate { RunSummaryExecute(form); };
                 form.UndoRequested += delegate { RunSummaryUndo(form); };

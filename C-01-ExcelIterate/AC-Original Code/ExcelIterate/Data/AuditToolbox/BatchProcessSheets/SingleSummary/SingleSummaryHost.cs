@@ -334,6 +334,14 @@ namespace Excel_Iterate
     /// <summary>模板列体检：占位表头、末行、外链文件名、跨列合并。</summary>
     internal static class SummaryTemplateReader
     {
+        internal static void ValidateRelativeFormulas(SummaryRequest request, SummaryTemplateProbe probe)
+        {
+            // Check the farthest destination before touching the workbook. Intermediate
+            // column offsets are nonnegative and cannot overflow if this one is valid.
+            var columns = request.Columns();
+            int delta = columns.Count == 0 ? 0 : columns[columns.Count - 1].Column - request.TemplateColumn;
+            foreach (string formula in probe.Formulas) SummaryFormulaShift.Shift(formula, delta);
+        }
         internal static List<string> AnnualPreview(object book, object sheet, SummaryRequest request, SummaryTemplateProbe probe)
         {
             var lines = new List<string>();
@@ -605,9 +613,8 @@ namespace Excel_Iterate
                     if (width > 0) WriteColumnWidth(bag, s, column, width);
                 }
 
-                // 4) 换链 + 公式原样带出
-                //    复制会把相对引用平移，所以复制出来的列必须把公式原文写回；
-                //    模板列本身没有复制，只在确实替换成功时才写。
+                // 4) From the immutable snapshot, shift internal relative columns;
+                //    freeze external addresses and replace only the source company/year.
                 for (int i = 0; i < columns.Count; i++)
                 {
                     int column = firstColumn + i;
@@ -672,7 +679,7 @@ namespace Excel_Iterate
 
                 // 6) 读回校验：表头与首列公式必须与预期一致
                 string verify = Verify(s, columns, request, headerRow, startRow, lastRow, sourceFormulas);
-                if (verify != null) { if (request.Annual) throw new InvalidOperationException(verify); report.Warnings.Add(verify); }
+                if (verify != null) throw new InvalidOperationException(verify);
 
                 // 6b) 趁「不询问链接」仍然生效时先把目标表算完：
                 //     否则稍后自动重算会逐条弹「更新值」，用户看到的就是反复弹窗。
@@ -878,7 +885,6 @@ namespace Excel_Iterate
                         dynamic year = bag.Own(s.Cells[request.YearHeaderRow, columns[i].Column]);
                         if (SummaryArrays.Text(year.Value2) != columns[i].YearLabel) return "年度表头读回不一致：" + SummaryColumns.Letter(columns[i].Column);
                     }
-                    if (!request.Annual && i > 0) continue;
                     object formulas = ReadFormulas(bag, s, columns[i].Column, startRow, lastRow);
                     for (int r = 0; r < sourceFormulas.Count; r++)
                     {

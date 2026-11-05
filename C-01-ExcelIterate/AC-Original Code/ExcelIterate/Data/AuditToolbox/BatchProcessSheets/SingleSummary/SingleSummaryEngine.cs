@@ -5,6 +5,32 @@ using System.Text;
 
 namespace Excel_Iterate
 {
+    internal static class SummaryFormulaShift
+    {
+        internal static string Shift(string formula, int delta)
+        {
+            if (string.IsNullOrEmpty(formula) || delta == 0) return formula;
+            var text = new System.Text.StringBuilder(formula);
+            var spans = FormulaRefRewriter.Scan(formula);
+            for (int i = spans.Count - 1; i >= 0; i--)
+            {
+                var span = spans[i];
+                // Freeze every external source address, including range endpoints.
+                if (span.Kind != RefKind.Local) continue;
+                string replacement = Cell(span.Column1, span.Row1, span.Column1Absolute, span.Row1Absolute, span.IsWholeColumn, delta);
+                if (span.IsRange) replacement += ":" + Cell(span.Column2, span.Row2, span.Column2Absolute, span.Row2Absolute, span.IsWholeColumn, delta);
+                text.Remove(span.Start, span.Length); text.Insert(span.Start, replacement);
+            }
+            return text.ToString();
+        }
+        private static string Cell(int column, int row, bool absoluteColumn, bool absoluteRow, bool wholeColumn, int delta)
+        {
+            long shifted = absoluteColumn ? column : (long)column + delta;
+            if (shifted < 1 || shifted > FormulaRefRewriter.MaxColumn) throw new InvalidOperationException("内部公式引用平移后超出工作表列范围，请调整模板列或生成数量。");
+            return (absoluteColumn ? "$" : "") + FormulaRefRewriter.ColumnLetters((int)shifted)
+                + (wholeColumn ? "" : (absoluteRow ? "$" : "") + row.ToString(CultureInfo.InvariantCulture));
+        }
+    }
     internal static class SummarySelectionRules
     {
         internal static void Validate(int row, int column, int rows, int columns, bool columnMode, object merged)
@@ -88,6 +114,7 @@ namespace Excel_Iterate
         }
         internal SummaryRewrite Rewrite(string formula, SummaryYearColumn column)
         {
+            formula = SummaryFormulaShift.Shift(formula, column.Column - TemplateColumn);
             return Annual ? SummaryAnnualLinks.Rewrite(formula, SourceFile, column.Company.FileName, YearPathPattern, column.Year)
                 : SummaryLinkRewriter.Replace(formula, SourceFile, column.Company.FileName);
         }

@@ -165,9 +165,11 @@ namespace Excel_Iterate
             return null;
         }
 
-        private static void RunSummarySelection(SingleSummaryForm form, string kind)
+        private static void RunSummarySelection(SingleSummaryForm form, string kind, bool pick = false)
         {
             if (_busy || form.IsBusy || (_summarySession != null && _summarySession.CanUndo)) return;
+            bool hidden = false;
+            _busy = true; form.SetBusy(true);
             try
             {
                 SummaryRequest request = form.BuildRequest();
@@ -177,7 +179,20 @@ namespace Excel_Iterate
                     string sheetName = kind == "lead" ? request.LeadSheet : request.TargetSheet;
                     object sheet = FindSheet(book, sheetName, bag);
                     if (sheet == null) throw new InvalidOperationException("请先选择对应的 Lead 或汇总工作表。");
-                    object selection = bag.Own(((dynamic)_summaryWorkbook.Application).Selection);
+                    object selection;
+                    if (pick)
+                    {
+                        ((dynamic)book).Activate(); ((dynamic)sheet).Activate();
+                        form.Hide(); hidden = true;
+                        object chosen = DataMigrationHost.PickNativeRange(_summaryWorkbook.Application,
+                            kind == "column" ? "请选择模板列中的单元格或单列区域。取消保留原参数。" : "请选择表头所在行中的单元格或单行区域。取消保留原参数。",
+                            "单体汇总批量链接 · 在表中选择", Type.Missing);
+                        if (chosen == null || chosen is bool) return;
+                        selection = bag.Own(chosen);
+                        // The native dialog permits workbook switching; recheck the binding.
+                        book = RequireSummaryBook();
+                    }
+                    else selection = bag.Own(((dynamic)_summaryWorkbook.Application).Selection);
                     var coordinates = DataMigrationHost.ReadCoordinates(selection, book, sheet);
                     SummarySelectionRules.Validate(coordinates.Row, coordinates.Column, coordinates.Rows, coordinates.Columns,
                         kind == "column", ((dynamic)selection).MergeCells);
@@ -196,6 +211,15 @@ namespace Excel_Iterate
                 }
             }
             catch (Exception error) { form.AppendLog("读取选区失败：" + error.Message + " 可重新选择，或手动填写参数。"); }
+            finally
+            {
+                _busy = false;
+                if (!form.IsDisposed)
+                {
+                    form.SetBusy(false);
+                    if (hidden) { form.Show(); form.Activate(); }
+                }
+            }
         }
 
         // ---------------------------- 预检 ----------------------------
@@ -287,6 +311,7 @@ namespace Excel_Iterate
                         text.AppendLine("公司名在每列重复写入，年度按" + (request.DescendingYears ? "倒序" : "升序") + "排列；公司表头不合并。");
                     }
 
+                    SummaryTemplateReader.ValidateRelativeFormulas(request, probe);
                     bool ok = probe.Blocking.Count == 0 && suggested.Length > 0;
                     form.SetPreview(suggested, ok, text.ToString());
 
@@ -366,6 +391,7 @@ namespace Excel_Iterate
                     SummaryTemplateProbe probe = SummaryTemplateReader.Read(target, request.SheetHeaderRow, request.TemplateColumn, lastColumn, request.Placeholder);
                     if (probe.Blocking.Count > 0) throw new InvalidOperationException(string.Join("；", probe.Blocking.ToArray()));
                     foreach (string line in SummaryTemplateReader.AnnualPreview(book, target, request, probe)) form.AppendLog(line);
+                    SummaryTemplateReader.ValidateRelativeFormulas(request, probe);
 
                     string confirm = "工作簿：" + request.WorkbookName + "\r\n将覆盖 "
                         + SummaryColumns.Letter(request.TemplateColumn) + "～" + SummaryColumns.Letter(lastColumn)

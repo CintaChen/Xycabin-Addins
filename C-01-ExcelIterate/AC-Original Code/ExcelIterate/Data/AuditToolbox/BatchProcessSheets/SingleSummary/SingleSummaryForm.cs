@@ -58,6 +58,7 @@ namespace Excel_Iterate
 
         internal event Action SheetsRequested;
         internal event Action<string> SelectionRequested;
+        internal event Action<string> RangeRequested;
         private readonly List<Control> selectionButtons = new List<Control>();
         internal event Action WorkbooksRequested, BrowseRequested, CurrentRequested;
         internal event Action<string> WorkbookRequested;
@@ -218,6 +219,9 @@ namespace Excel_Iterate
             button.Click += delegate { if (!busy && !canUndo && SelectionRequested != null) SelectionRequested(kind); };
             selectionButtons.Add(button);
             panel.Controls.Add(Ui.Grip(field, title)); panel.Controls.Add(button);
+            var pick = Ui.Button("在表中选择…", 116); pick.Name = "summaryRange_" + kind;
+            pick.Click += delegate { if (!busy && !canUndo && RangeRequested != null) RangeRequested(kind); };
+            selectionButtons.Add(pick); panel.Controls.Add(pick);
             return panel;
         }
         internal void ApplySelection(string kind, int row, int column, string description, string title)

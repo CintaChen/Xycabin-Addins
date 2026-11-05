@@ -135,6 +135,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
+本轮修复单体汇总复制列的校验公式仍指向模板列：复用已有引用扫描器，只平移同表相对列，保留绝对列、跨表及跨簿取数地址；普通与年度模式统一处理，预检阻断引用越界，逐列公式核对失败按备份还原。四个行列参数新增“在表中选择…”按钮，复用迁移 Type=8 原生区域选择，隐藏后恢复窗体，取消保留参数，确定后再次校验绑定身份。编译、单体汇总 125 项、数据迁移 168 项及线程/源码分类检查通过，见[编译日志](../C-01-ExcelIterate/build/summary-formula-picker-build.log)、[汇总检查](../C-01-ExcelIterate/build/summary-formula-picker-tests.log)与[迁移检查](../C-01-ExcelIterate/build/summary-formula-picker-migration.log)。原生选区及实际宿主公式重算需本地验收；固定签名证书缺失，未更新安装包。
+
 本轮统一功能显示名称为“单体模板生成”和“单体汇总批量链接”，内部接口及按钮 ID 沿用。模板生成行标题改为自适应高度，参数行随可用宽度换行；汇总参数区可滚动，新增 Lead 表头行、汇总表表头行、模板列和年度行的当前选区读取入口，并保留手填。复用数据迁移坐标读取与身份校验，拒绝多区域、错误工作簿/表、跨行/列及合并选区；模板外链文件名支持可编辑候选列表，多个匹配不猜选；年度检查默认不勾选，自动识别目录可见且可改。编译、单体汇总 114 项、公司工作簿 71 项、数据迁移 168 项检查通过，见[编译日志](../C-01-ExcelIterate/build/summary-ui-build-3.log)、[汇总检查](../C-01-ExcelIterate/build/summary-ui-summary-tests.log)与[迁移检查](../C-01-ExcelIterate/build/summary-ui-migration-tests.log)。真实 Excel/WPS 选区交互、不同进程 DPI 和 32/64 位宿主仍需本地验收；固定签名证书缺失，未更新安装包。
 
 本轮解决上游 PR #11 合并冲突：保留批量生成过程表功能，合入上游六个数据迁移文件更新，合并双方交付记录，生成文件保留功能分支内容。迁移检查替身补齐 ClearContents，以匹配上游新增的清空单元格调用。编译、单体汇总 99 项、公司工作簿 71 项、数据迁移 168 项及共享源码分类检查通过；见[合并编译日志](../C-01-ExcelIterate/build/pr11-merge-build-2.log)与[迁移检查日志](../C-01-ExcelIterate/build/pr11-migration-tests-2.log)。检查使用受管替身，未进行 Excel/WPS 实机验收；固定签名证书缺失，未更新安装包。
