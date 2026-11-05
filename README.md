@@ -134,7 +134,7 @@ Invoke-Checked -Program "gh" -Arguments @("auth", "status", "--hostname", "githu
 
 ### 新增或调整功能
 
-分类约束见 [B3 的 R-30](<C-04-Devlog/B3-Gate Control.md#6-功能源码分类与代码索引>)，代码定位见 [B4-Code Index](<C-04-Devlog/B4-Code Index.md>)。
+分类约束见 [B3 的 R-30](<C-04-Devlog/B3-Spec Coding.md#6-功能源码分类与代码索引>)，代码定位见 [B4-Code Index](<C-04-Devlog/B4-Code Index.md>)。
 
 1. 在对应 AA-Program 配置器的 BUTTONS / EXTRA_TABS 定义菜单与稳定 ID。
 2. 在 project.json 的 code_layout 为新增节点 ID 登记英文 PascalCase 目录名。目录由“选项卡→分组→菜单→末级功能”的真实 ID 路径推导，不能仅修改 features.directory 蒙混通过；显示名称或同层排序变化不要求移动源码。
