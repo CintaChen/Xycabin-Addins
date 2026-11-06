@@ -37,6 +37,7 @@ namespace Excel_Iterate
                     dynamic books = held.Own(((dynamic)app).Workbooks);
                     book = held.Own(books.Open(reading, 0, true));
                     if (book == null) throw new InvalidOperationException("无法打开模板读取副本。");
+                    MigrationWindowScope.SetOwnedVisible(book, false);
                     using (var bag = new ComBag())
                     {
                         dynamic sheets = bag.Own(((dynamic)book).Worksheets);
@@ -57,7 +58,7 @@ namespace Excel_Iterate
         {
             using (var bag = new ComBag()) return HeadersOn(Sheet(name, bag), row);
         }
-        internal CompanyWorkbookSelection Pick(string kind, CompanyWorkbookRequest request, Func<object, object> picker = null)
+        internal CompanyWorkbookSelection Pick(string kind, CompanyWorkbookRequest request, Func<object, object> picker = null, Action<string> preparation = null)
         {
             bool target = kind == "targetHeader" || kind == "targetCode" || kind == "targetName" || kind == "leadRow";
             bool sheetPicker = kind == "sourceHeader" || kind == "targetHeader";
@@ -72,8 +73,10 @@ namespace Excel_Iterate
             {
                 try
                 {
+                    if (preparation != null) preparation("正在复制选区副本");
                     File.Copy(Snapshot, path, false);
                     dynamic books = refs.Own(((dynamic)app).Workbooks);
+                    if (preparation != null) preparation("正在通过宿主打开只读副本，大模板可能需要数秒");
                     selectionBook = refs.Own(books.Open(path, 0, true));
                     if (selectionBook == null) throw new InvalidOperationException("无法打开模板选区副本。");
                     if (picker == null)
@@ -88,6 +91,7 @@ namespace Excel_Iterate
                         }
                         ((dynamic)app).ScreenUpdating = true;
                     }
+                    if (preparation != null) preparation(null);
                     object chosen = picker != null ? picker(selectionBook) : DataMigrationHost.PickNativeRange(app,
                         sheetPicker ? "请切换到所需工作表，选择一个表头单元格。此副本只用于取坐标，取消保留原设置。" : kind == "data" ? "请选择连续公司数据行，不含表头；所选列不限制实际读取字段。" : kind == "leadRow" ? "请选择目标表中待更新数据行的一个单元格。" : "请选择所需字段的实际表头单元格；将替换旧工作表、表头行及字段。",
                         "单体模板生成 · 临时只读副本选区", Type.Missing);

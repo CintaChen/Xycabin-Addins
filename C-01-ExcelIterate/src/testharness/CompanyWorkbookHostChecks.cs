@@ -55,8 +55,16 @@ public sealed class CompanyFakeSheets
     public int Count { get { return 2; } }
     public CompanyFakeSheet Item(object key) { return Convert.ToString(key) == "1" || Convert.ToString(key) == "source" ? Source : Lead; }
 }
+public sealed class CompanyFakeWindow { public bool Visible { get; set; } public CompanyFakeWindow() { Visible = true; } }
+public sealed class CompanyFakeWindows
+{
+    public readonly CompanyFakeWindow Window = new CompanyFakeWindow();
+    public int Count { get { return 1; } }
+    public CompanyFakeWindow Item(int index) { return Window; }
+}
 public sealed class CompanyFakeBook
 {
+    public readonly CompanyFakeWindows Windows = new CompanyFakeWindows();
     public CompanyFakeSheets Worksheets { get; private set; }
     public bool ReadOnly { get; set; }
     public bool Closed, FailSave;
@@ -112,6 +120,7 @@ internal static class CompanyWorkbookHostChecks
         using (var host = new CompanyWorkbookHost(app, template))
         {
             snapshot = host.Snapshot;
+            check(!app.Workbooks.Template.Windows.Window.Visible, "background template reader stays hidden");
             cells.Item(2, 1).Value2 = "newname"; cells.Item(2, 2).Value2 = "newcode"; cells.Item(2, 3).Value2 = "newfull";
             using (var form = new CompanyWorkbookForm())
             {
@@ -138,7 +147,8 @@ internal static class CompanyWorkbookHostChecks
                 }
                 finally { typeof(CompanyWorkbookForm).GetField("host", flags).SetValue(form, null); }
             }
-            var selected = host.Pick("sourceHeader", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 1 }; });
+            var stages = new List<string>();
+            var selected = host.Pick("sourceHeader", request, delegate(object b) { check(stages.Count == 3 && stages[2] == null, "preparation ends before native selection"); return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 1 }; }, stages.Add);
             check(selected.Sheet == "source" && selected.Row == 1 && app.Workbooks.LastSelection.ReadOnly && app.Workbooks.LastSelection.Closed && app.Workbooks.LastSelection.Saved == 0, "snapshot picker returns header coordinates and closes only its readonly copy without saving");
             selected = host.Pick("code", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 2 }; });
             check(selected.Field == "code" && !app.Workbooks.Template.Closed, "field picker resolves column from immutable reader headers");

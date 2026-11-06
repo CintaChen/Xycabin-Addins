@@ -172,19 +172,27 @@ namespace Excel_Iterate
         {
             if (Running || ticking || preparing || (CanRun != null && !CanRun())) return;
             bool hidden = false;
+            BatchProgressSession selectionProgress = null;
             try
             {
                 if (host == null) throw new InvalidOperationException("请先选择磁盘模板。");
                 ValidateChildren();
                 var currentRequest = BuildRequest(false);
                 preparing = true; SetBusy(true); cancel.Enabled = false;
+                selectionProgress = new BatchProgressSession("正在准备表中选区");
                 Hide(); hidden = true;
-                var selected = host.Pick(kind, currentRequest);
+                var selected = host.Pick(kind, currentRequest, null, delegate(string stage)
+                {
+                    if (selectionProgress.State.Cancelled) throw new OperationCanceledException("已取消准备选区。");
+                    if (stage == null) selectionProgress.Close();
+                    else { selectionProgress.State.Update(0, 0, stage, "只读副本仅用于读取坐标，不运行外部脚本。"); selectionProgress.State.Log(stage); }
+                });
                 if (selected != null) ApplyPicked(kind, selected);
             }
             catch (Exception error) { Append("选区未应用：" + error.Message + "；可重新选择或手动配置。"); }
             finally
             {
+                if (selectionProgress != null) selectionProgress.Close();
                 preparing = false;
                 if (!IsDisposed)
                 {
