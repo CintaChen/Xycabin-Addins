@@ -50,6 +50,9 @@ namespace Excel_Iterate
         internal readonly ResultGrid Companies = new ResultGrid();
         internal readonly RoundedButton Refresh, Preview, Execute, Undo, Confirm, CopyLog, CloseButton;
 
+        internal BatchProgressSession ProgressSession;
+        internal BatchProgressSession OpenProgress()
+        { if (ProgressSession != null) ProgressSession.Close(); ProgressSession = new BatchProgressSession("单体汇总批量链接"); return ProgressSession; }
         private bool busy;
         private bool canUndo;
         private bool previewOk;
@@ -70,6 +73,7 @@ namespace Excel_Iterate
         internal SingleSummaryForm()
         {
             Text = "单体汇总批量链接";
+            Disposed += delegate { if (ProgressSession != null) ProgressSession.Close(); };
             DialogSizing.Prepare(this, "summary.single", "table", Ui.Blue);
             KeyPreview = true;
 
@@ -434,11 +438,12 @@ namespace Excel_Iterate
         /// <summary>宿主信息（版本等），空工作簿时用来告诉用户到底连到了谁。</summary>
         internal void SetHint(string text) { if (!IsDisposed) hostLabel.Text = text ?? ""; }
 
-        internal void SetLog(string text) { logView.Clear(); logView.AppendText(text ?? ""); }
+        internal void SetLog(string text) { logView.Clear(); logView.AppendText(text ?? ""); if (ProgressSession != null) ProgressSession.State.Log(text ?? ""); }
 
         internal void AppendLog(string text)
         {
             if (IsDisposed) return;
+            if (ProgressSession != null) ProgressSession.State.Log(text);
             // 句柄没建时 BeginInvoke 排不上队，日志会被静默丢掉——先缓存，OnHandleCreated 再刷出
             if (!IsHandleCreated) { pendingLog.Add(text); return; }
             BeginInvoke((MethodInvoker)delegate

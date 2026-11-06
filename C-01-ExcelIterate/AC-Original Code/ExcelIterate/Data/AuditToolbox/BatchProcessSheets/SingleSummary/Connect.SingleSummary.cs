@@ -376,8 +376,12 @@ namespace Excel_Iterate
             _busy = true;
             form.SetBusy(true);
             SummaryRunReport report = new SummaryRunReport();
+            BatchProgressSession display = null;
+            bool successful = false;
             try
             {
+                display = form.OpenProgress();
+                display.State.Update(0, 0, "正在预检", "核对工作簿、Lead 名单、模板列和年度来源…");
                 using (ComBag bag = new ComBag())
                 {
                     object book = RequireSummaryBook();
@@ -407,13 +411,19 @@ namespace Excel_Iterate
                         + "\r\n执行前自动备份工作表，勾选状态回写 Lead 的「" + SummaryHeaders.PickHeader + "」列；本功能不自动保存工作簿。"
                         + (request.Annual ? "\r\n年度范围：" + request.FirstYear + "—" + request.LastYear + "，" + (request.DescendingYears ? "倒序" : "升序") + "；年度表头第 " + request.YearHeaderRow + " 行，目录 " + request.YearPathPattern : "")
                         + "\r\n继续吗？";
+                    if (display.State.Cancelled) throw new OperationCanceledException("用户取消");
+                    display.State.Update(0, 0, "等待确认", "请在确认窗口核对覆盖范围");
                     if (UiDialog.Show(form, confirm, "确认生成单体汇总表",
                         MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.OK)
                     {
                         form.AppendLog("已取消，未写入任何内容。");
+                        display.State.Finish("用户取消，未写入任何内容");
                         return;
                     }
 
+                    display.State.Update(columns.Count + 2, 0, "准备写入", "回写选用并建立恢复备份");
+                    if (display.State.Cancelled) throw new OperationCanceledException("用户取消");
+                    form.AppendLog("正在回写选用并备份工作表…");
                     RequireSummaryBook(); // Recheck identity after the isolated confirmation.
                     // 回写「选用」列（勾选 TRUE / 取消 FALSE），再生成
                     SummaryLeadReader.ApplySelection(snapshot, chosen);
@@ -433,8 +443,10 @@ namespace Excel_Iterate
                     _summarySession.WorkbookVersion = _summaryWorkbook.Version;
                     _summarySession.CanUndo = true;
 
+                    display.State.Update(columns.Count + 2, 1, "正在链接", "备份已完成");
                     report = SummaryWriter.Run(_summaryWorkbook.Application, book, target, request, probe, backupSheet,
-                        delegate(string status) { form.AppendLog(status); });
+                        delegate(string status) { if (display.State.Cancelled) throw new OperationCanceledException("用户取消"); display.State.Update(columns.Count + 2, display.State.Snapshot().Completed, "正在链接", status); form.AppendLog(status); },
+                        delegate(int completed, string status) { if (display.State.Cancelled) throw new OperationCanceledException("用户取消"); display.State.Update(columns.Count + 2, completed + 1, "正在链接", status); form.AppendLog(status); });
 
                     _summarySession.CanUndo = true;
                     form.SetUndoAvailable(true);
@@ -452,8 +464,16 @@ namespace Excel_Iterate
                         text.AppendLine("样例 " + sample.Cell + "：" + sample.Before + "  →  " + sample.After);
                     form.SetLog(text.ToString());
                     form.AppendLog("完成。");
+                    display.State.Update(columns.Count + 2, columns.Count + 2, "已完成", "逐列核验通过，工作簿尚未保存");
+                    successful = true;
                     Log("单体汇总批量链接：" + request.TargetSheet + "，" + report.Columns + " 列，备份 " + report.BackupSheet);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                form.AppendLog("已请求取消，正在尝试按备份还原目标范围；Lead 选用列如已回写则保留。请核对还原日志。");
+                TryRestoreSummary(form, false);
+                if (display != null) display.State.Finish("已取消，请核对还原日志");
             }
             catch (Exception ex)
             {
@@ -465,6 +485,7 @@ namespace Excel_Iterate
             }
             finally
             {
+                if (display != null) display.State.Finish(successful ? "完成；请核对后自行保存工作簿" : "任务已结束，请核对日志");
                 form.SetBusy(false);
                 _busy = false;
             }

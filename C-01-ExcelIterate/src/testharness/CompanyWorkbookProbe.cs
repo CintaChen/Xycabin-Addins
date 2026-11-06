@@ -14,11 +14,13 @@ internal static class CompanyWorkbookProbe
         Directory.CreateDirectory(folder);
         try
         {
+            BatchProgressChecks.Run(Check);
             CompanyWorkbookSelectionRules.Validate("data", 3, 1, 8, 4, false, 2);
             Check(true, "data rectangle supplies row interval independent of chosen columns");
             Reject(delegate { CompanyWorkbookSelectionRules.Validate("data", 2, 1, 5, 4, false, 2); }, "data excludes header");
             Reject(delegate { CompanyWorkbookSelectionRules.Validate("data", 3, 1, 1048576, 1, false, 2); }, "whole columns refused");
-            Reject(delegate { CompanyWorkbookSelectionRules.Validate("code", 3, 2, 1, 1, false, 2); }, "field requires header cell");
+            CompanyWorkbookSelectionRules.Validate("code", 3, 2, 1, 1, false, 2);
+            Check(true, "field picker can replace previously entered header row");
             Reject(delegate { CompanyWorkbookSelectionRules.Validate("sourceHeader", 1, 1, 1, 2, false, 1); }, "header picker requires one cell");
             Reject(delegate { CompanyWorkbookSelectionRules.Validate("leadRow", 1, 1, 1, 1, false, 1); }, "write row below target header");
             Reject(delegate { CompanyWorkbookSelectionRules.Validate("code", 1, 1, 1, 1, DBNull.Value, 1); }, "mixed merge state refused");

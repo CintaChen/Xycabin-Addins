@@ -22,8 +22,6 @@ namespace Excel_Iterate
                 if (rows > 100000) throw new InvalidOperationException("请选择具体公司数据行，不支持整列或超过十万行的范围。");
             }
             else if (rows != 1 || columns != 1) throw new InvalidOperationException("请选择一个单元格：字段选表头，写入行选目标数据格。");
-            if ((kind == "naming" || kind == "code" || kind == "full" || kind == "targetCode" || kind == "targetName") && row != headerRow)
-                throw new InvalidOperationException("字段必须选择当前配置表头行中的单元格，请先选择正确表头行。");
             if (kind == "leadRow" && row <= headerRow) throw new InvalidOperationException("Lead 写入行必须在目标表头行下方。");
         }
     }

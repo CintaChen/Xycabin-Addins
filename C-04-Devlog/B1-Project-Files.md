@@ -135,6 +135,8 @@ AA-Program放配置器、批处理与正式程序，AB-Graphic放界面截图、
 
 ### (2). 本轮交付证据
 
+本轮为模板生成和汇总链接增加独立 STA 进度窗口，实时展示阶段日志、实际完成数量、耗时与活动指示，宿主保存/核验阻塞期间 UI 仍可刷新；取消只在安全边界执行。Excel COM 仍在宿主线程，UI 仅接收纯状态，进度窗已登记尺寸/预览/目录。字段选区可用新表头覆盖旧工作表、表头行及字段，手填编辑先提交，新行号同时更新显示和请求值；数据范围仍受对应工作表约束。Excel 与 Word 编译通过，模板检查 101 项（含主线程阻塞时 UI 日志更新、预览关闭和参数覆盖）、汇总 138 项、迁移 168 项、尺寸核心 113 项、隔离确认 11 项及静态门禁通过。见[编译日志](../C-01-ExcelIterate/build/live-progress-build-final.log)、[模板检查](../C-01-ExcelIterate/build/live-progress-company-final.log)、[汇总检查](../C-01-ExcelIterate/build/live-progress-summary-final.log)、[迁移检查](../C-01-ExcelIterate/build/live-progress-migration-final.log)、[隔离确认检查](../C-01-ExcelIterate/build/live-progress-dialog-tests.log)。实际 Excel/WPS 选区与长时间保存仍需本地验收；固定签名证书缺失，未更新安装包。
+
 本轮同步上游 B3-Spec Coding 工程规范，Spec 正文与上游 blob 11a400216da05acb6bfdc5aa8c9a552c2866f6f5 完全一致；更新文档入口、打包清单、资源收集与文档/布局门禁中的活动文件名引用，历史迁移记录保留。30 条 R、12 条 H 及 23 个 G 的要求和执行次序沿用，仅 R-01 的文件名相应更新；未修改窗口尺寸、DPI 或业务规则。Excel/Word 文档门禁、共享源码分类、文档资源 49 项与布局自测 8 项通过。本轮为规范及 Python 引用同步，未编译加载项或更新安装包。
 
 本轮为单体模板生成补齐来源表及表头、来源数据范围、文件命名字段、公司编码/全称、目标表及表头、目标编码/全称和 Lead 写入行的九个原生选区入口及说明。每次从不可变模板快照创建独立只读交互副本，仅取坐标，取消/异常后关闭且不保存、清理临时文件并恢复宿主状态。汇总链接支持 Lead 可选“来源文件名”列，空项回退全称.xlsx，允许不同公司共享文件并提示，预检后映射变更阻断执行，映射列只读。编译、汇总 138 项、模板生成 86 项、迁移 168 项及线程/分类/窗口登记检查通过；模拟 100%、125%、150% 离屏布局无标签高度裁剪。证据见[编译日志](../C-01-ExcelIterate/build/template-picker-mapping-build-2.log)、[汇总检查](../C-01-ExcelIterate/build/template-picker-mapping-summary.log)、[模板检查](../C-01-ExcelIterate/build/template-picker-mapping-company.log)、[布局检查](../C-01-ExcelIterate/build/template-picker-mapping-layout.log)。真实 Excel/WPS 原生选区及实际取数需本地验收；固定签名证书缺失，未更新安装包。

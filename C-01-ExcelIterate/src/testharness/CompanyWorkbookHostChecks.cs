@@ -112,12 +112,40 @@ internal static class CompanyWorkbookHostChecks
         using (var host = new CompanyWorkbookHost(app, template))
         {
             snapshot = host.Snapshot;
+            cells.Item(2, 1).Value2 = "newname"; cells.Item(2, 2).Value2 = "newcode"; cells.Item(2, 3).Value2 = "newfull";
+            using (var form = new CompanyWorkbookForm())
+            {
+                var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                Func<string, object> field = delegate(string key) { return typeof(CompanyWorkbookForm).GetField(key, flags).GetValue(form); };
+                typeof(CompanyWorkbookForm).GetField("host", flags).SetValue(form, host);
+                try
+                {
+                    var sourceChoice = (System.Windows.Forms.ComboBox)field("source"); sourceChoice.Items.AddRange(new object[] { "source", "lead" }); sourceChoice.SelectedIndex = 0;
+                    var targetChoice = (System.Windows.Forms.ComboBox)field("target"); targetChoice.Items.AddRange(new object[] { "source", "lead" }); targetChoice.SelectedIndex = 1;
+                    ((System.Windows.Forms.NumericUpDown)field("first")).Value = 50; ((System.Windows.Forms.NumericUpDown)field("last")).Value = 80;
+                    form.ApplyPicked("data", new CompanyWorkbookSelection { Sheet = "source", Row = 3, LastRow = 9, Column = 1 });
+                    var built = (CompanyWorkbookRequest)typeof(CompanyWorkbookForm).GetMethod("BuildRequest", flags).Invoke(form, new object[] { false });
+                    check(built.FirstRow == 3 && built.LastRow == 9, "new selected interval replaces previously typed row numbers");
+                    form.ApplyPicked("code", new CompanyWorkbookSelection { Sheet = "source", Row = 2, LastRow = 2, Column = 2, Field = "newcode" });
+                    built = (CompanyWorkbookRequest)typeof(CompanyWorkbookForm).GetMethod("BuildRequest", flags).Invoke(form, new object[] { false });
+                    check(built.HeaderRow == 2 && built.CodeField == "newcode" && built.FirstRow == 0 && built.LastRow == 0, "new field selection replaces header and field rather than retaining old manual values");
+                    form.ApplyPicked("code", new CompanyWorkbookSelection { Sheet = "lead", Row = 1, LastRow = 1, Column = 2, Field = "code" });
+                    built = (CompanyWorkbookRequest)typeof(CompanyWorkbookForm).GetMethod("BuildRequest", flags).Invoke(form, new object[] { false });
+                    check(built.SourceSheet == "lead" && built.HeaderRow == 1 && built.CodeField == "code", "new field can replace old sheet context inside snapshot");
+                    ((System.Windows.Forms.NumericUpDown)field("leadRow")).Value = 99;
+                    form.ApplyPicked("leadRow", new CompanyWorkbookSelection { Sheet = "lead", Row = 8, LastRow = 8, Column = 2 });
+                    check(((System.Windows.Forms.NumericUpDown)field("leadRow")).Value == 8 && ((System.Windows.Forms.NumericUpDown)field("leadRow")).Text == "8", "selected target row replaces displayed and stored previous values");
+                }
+                finally { typeof(CompanyWorkbookForm).GetField("host", flags).SetValue(form, null); }
+            }
             var selected = host.Pick("sourceHeader", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 1 }; });
             check(selected.Sheet == "source" && selected.Row == 1 && app.Workbooks.LastSelection.ReadOnly && app.Workbooks.LastSelection.Closed && app.Workbooks.LastSelection.Saved == 0, "snapshot picker returns header coordinates and closes only its readonly copy without saving");
             selected = host.Pick("code", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Source, Row = 1, Column = 2 }; });
             check(selected.Field == "code" && !app.Workbooks.Template.Closed, "field picker resolves column from immutable reader headers");
             check(host.Pick("data", request, delegate { return false; }) == null && app.Workbooks.LastSelection.Closed, "native cancellation closes selection copy and preserves reader");
-            reject(delegate { host.Pick("code", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Lead, Row = 1, Column = 2 }; }); }, "field selection rejects wrong sheet");
+            var otherSheet = host.Pick("code", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Lead, Row = 1, Column = 2 }; });
+            check(otherSheet.Sheet == "lead" && otherSheet.Field == "code", "field picker can replace old sheet context within the same snapshot");
+            reject(delegate { host.Pick("data", request, delegate(object b) { return new CompanyPickRange { Parent = ((CompanyFakeBook)b).Worksheets.Lead, Row = 3, Column = 2 }; }); }, "data still requires configured source sheet");
             reject(delegate { host.Pick("code", request, delegate { return new CompanyPickRange { Parent = app.Workbooks.Template.Worksheets.Source, Row = 1, Column = 2 }; }); }, "original or other workbook selection rejected");
             check(Directory.GetFiles(Path.GetDirectoryName(snapshot), ".company-select-*").Length == 0 && app.DisplayAlerts && app.ScreenUpdating && app.EnableEvents, "picker cancellation and invalid selections clean temporary files and restore host settings");
             var rows = host.Preview(request, delegate { }); check(rows.Count == 3 && rows[0].Row == 3, "custom start row");

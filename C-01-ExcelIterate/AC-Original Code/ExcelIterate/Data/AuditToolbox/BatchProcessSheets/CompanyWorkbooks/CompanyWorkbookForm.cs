@@ -32,6 +32,7 @@ namespace Excel_Iterate
         private readonly Dictionary<string, Control> selectionButtons = new Dictionary<string, Control>();
         private readonly Label selectionInfo = Label("在表中选择会打开临时只读模板副本；取消保留原参数，原模板修改后须重新选择模板。");
         private readonly Timer timer = new Timer { Interval = 30 };
+        private BatchProgressSession progressView;
         private CompanyWorkbookHost host;
         private CompanyWorkbookRequest request;
         private List<CompanyWorkbookRecord> records;
@@ -41,6 +42,8 @@ namespace Excel_Iterate
         internal Func<bool> CanRun;
         internal bool Running { get { return records != null; } }
         private static ComboBox Choice() { return new ComboBox { Width = 180, DropDownWidth = 300, DropDownStyle = ComboBoxStyle.DropDownList }; }
+        private static void SetNumber(NumericUpDown control, int value)
+        { control.Value = value; control.Text = value.ToString(System.Globalization.CultureInfo.InvariantCulture); }
         private static NumericUpDown Number(int value) { return new NumericUpDown { Minimum = 0, Maximum = 1048576, Value = value, Width = 85 }; }
         internal CompanyWorkbookForm()
         {
@@ -66,7 +69,7 @@ namespace Excel_Iterate
             AddRow("选区结果", selectionInfo);
             AddRow("核对", confirmed);
             AddRow("来源说明", Label("每个公司数据行生成一个工作簿。数据范围不含表头；选中哪些列不限制实际读取字段。"));
-            AddRow("字段说明", Label("字段请选择表头单元格；程序按字段读取编码、全称及文件名。下拉与手填行号仍可使用。"));
+            AddRow("字段说明", Label("字段请选择实际表头单元格；新选区会替换原工作表、表头行与字段。程序按字段读取编码、全称及文件名。下拉与手填行号仍可使用。"));
             AddRow("目标说明", Label("仅更新生成副本的指定数据行中编码、全称两个字段。原始模板不会写入或覆盖。"));
             AddRow("说明", Label("读取磁盘模板快照；空行提示跳过，其他异常阻断；已有文件绝不覆盖。\n只复制模式保留原文件字节；更新 Lead 模式会经宿主保存，请先用小样本核验。"));
             progressArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -94,7 +97,7 @@ namespace Excel_Iterate
             timer.Tick += delegate { Tick(); };
             FormClosing += delegate(object sender, FormClosingEventArgs e)
             { if (Running || ticking || preparing) { e.Cancel = true; closePending = true; RequestCancel(); } };
-            Disposed += delegate { timer.Stop(); timer.Dispose(); ReleaseHost(); };
+            Disposed += delegate { timer.Stop(); timer.Dispose(); if (progressView != null) progressView.Close(); ReleaseHost(); };
             inputs.ClientSizeChanged += delegate { FitInputRows(); };
             Shown += delegate { FitInputRows(); };
             ResetProgress("等待开始");
@@ -109,6 +112,7 @@ namespace Excel_Iterate
             Progress.Maximum = Math.Max(1, taskProgress.Total); Progress.Value = taskProgress.Completed;
             ProgressCounts.Text = taskProgress.Counts(state);
             ProgressTiming.Text = taskProgress.Timing(elapsed.Elapsed, running);
+            if (progressView != null) progressView.State.Update(taskProgress.Total, taskProgress.Completed, state, CurrentTask.Text);
             // Paint before the next STA COM operation without pumping other commands.
             progressArea.Refresh();
         }
@@ -116,6 +120,7 @@ namespace Excel_Iterate
         {
             if (cancelled) return;
             cancelled = true; cancel.Enabled = false;
+            if (progressView != null) progressView.State.Cancel();
             RenderProgress("正在取消，等待当前文件收尾", true);
             Append("已请求取消，当前文件完成后停止。");
         }
@@ -146,8 +151,10 @@ namespace Excel_Iterate
             try
             {
                 if (host == null) throw new InvalidOperationException("请先选择模板。");
+                ValidateChildren();
+                var previewRequest = BuildRequest(true);
                 preparing = true; SetBusy(true); cancel.Enabled = false; NamePreview.Clear(); confirmed.Checked = false;
-                var preview = host.Preview(BuildRequest(true), Append);
+                var preview = host.Preview(previewRequest, Append);
                 ShowNamePreview(preview); details.SelectedTab = namesTab;
                 elapsed.Reset(); taskProgress.Reset(preview.Count); CurrentTask.Text = "尚未开始生成。"; RenderProgress("文件名已预览，等待生成", false);
                 Append("文件名预览完成，共 " + preview.Count + " 项；未生成工作簿。生成前还会校验 Lead 配置和数据。");
@@ -168,9 +175,11 @@ namespace Excel_Iterate
             try
             {
                 if (host == null) throw new InvalidOperationException("请先选择磁盘模板。");
+                ValidateChildren();
+                var currentRequest = BuildRequest(false);
                 preparing = true; SetBusy(true); cancel.Enabled = false;
                 Hide(); hidden = true;
-                var selected = host.Pick(kind, BuildRequest(false));
+                var selected = host.Pick(kind, currentRequest);
                 if (selected != null) ApplyPicked(kind, selected);
             }
             catch (Exception error) { Append("选区未应用：" + error.Message + "；可重新选择或手动配置。"); }
@@ -187,18 +196,31 @@ namespace Excel_Iterate
         }
         internal void ApplyPicked(string kind, CompanyWorkbookSelection selected)
         {
+            bool fieldPicker = kind == "naming" || kind == "code" || kind == "full" || kind == "targetCode" || kind == "targetName";
+            if (fieldPicker)
+            {
+                bool isTarget = kind == "targetCode" || kind == "targetName";
+                var sheetBox = isTarget ? target : source;
+                var headerBox = isTarget ? leadHeader : header;
+                bool changed = sheetBox.Text != selected.Sheet || headerBox.Value != selected.Row;
+                loading = true;
+                try { Select(sheetBox, selected.Sheet); SetNumber(headerBox, selected.Row); }
+                finally { loading = false; }
+                RefreshFields(isTarget);
+                if (changed) { if (isTarget) SetNumber(leadRow, 0); else { SetNumber(first, 0); SetNumber(last, 0); } }
+            }
             if (kind == "sourceHeader" || kind == "targetHeader")
             {
                 bool isTarget = kind == "targetHeader";
                 bool changed = (isTarget ? target : source).Text != selected.Sheet || (isTarget ? leadHeader : header).Value != selected.Row;
                 loading = true;
-                try { Select(isTarget ? target : source, selected.Sheet); (isTarget ? leadHeader : header).Value = selected.Row; }
+                try { Select(isTarget ? target : source, selected.Sheet); SetNumber(isTarget ? leadHeader : header, selected.Row); }
                 finally { loading = false; }
                 RefreshFields(isTarget);
-                if (changed) { if (isTarget) leadRow.Value = 0; else { first.Value = 0; last.Value = 0; } }
+                if (changed) { if (isTarget) SetNumber(leadRow, 0); else { SetNumber(first, 0); SetNumber(last, 0); } }
             }
-            else if (kind == "data") { first.Value = selected.Row; last.Value = selected.LastRow; }
-            else if (kind == "leadRow") leadRow.Value = selected.Row;
+            else if (kind == "data") { SetNumber(first, selected.Row); SetNumber(last, selected.LastRow); }
+            else if (kind == "leadRow") SetNumber(leadRow, selected.Row);
             else
             {
                 ComboBox box = kind == "naming" ? naming : kind == "code" ? code : kind == "full" ? full : kind == "targetCode" ? targetCode : targetName;
@@ -226,7 +248,7 @@ namespace Excel_Iterate
                     if (control is Label) control.MaximumSize = new Size(Math.Min(control.MinimumSize.Width > 0 ? control.MinimumSize.Width : width - 12, width), 0);
             }
         }
-        internal void Append(string message) { if (!log.IsDisposed) log.AppendText(DateTime.Now.ToString("HH:mm:ss") + " " + message + Environment.NewLine); }
+        internal void Append(string message) { if (!log.IsDisposed) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + " " + message + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); } if (progressView != null) progressView.State.Log(message); }
         internal void Shutdown()
         {
             cancelled = true; closePending = true;
@@ -308,21 +330,26 @@ namespace Excel_Iterate
             {
                 if (host == null) throw new InvalidOperationException("请先选择模板。");
                 if (!confirmed.Checked) throw new InvalidOperationException("请核对并勾选确认来源范围及目标写入行。");
+                ValidateChildren();
+                request = BuildRequest(false);
+                if (progressView != null) progressView.Close();
+                progressView = new BatchProgressSession("单体模板生成");
                 preparing = true; cancelled = false;
                 SetBusy(true);
                 cancel.Enabled = false;
                 ResetProgress("正在预检，尚未开始生成");
                 NamePreview.Clear();
-                request = BuildRequest(false);
+                Append("正在预检模板、来源行、字段与输出目录…");
                 records = host.Preview(request, Append);
                 ShowNamePreview(records); details.SelectedTab = logTab;
                 taskProgress.Reset(records.Count); elapsed.Restart();
                 cancel.Enabled = !cancelled;
                 RenderProgress(cancelled ? "正在取消" : "开始生成", true);
                 Append("预检通过，共 " + records.Count + " 家；来源「" + request.SourceSheet + "」，目标「" + request.TargetSheet + "」第 " + request.TargetRow + " 行。开始生成。");
+                if (progressView.State.Cancelled) RequestCancel();
                 timer.Start();
             }
-            catch (Exception error) { records = null; NamePreview.Clear(); details.SelectedTab = logTab; ResetProgress("预检失败，未开始生成"); Append("预检失败：" + error); SetBusy(false); }
+            catch (Exception error) { records = null; NamePreview.Clear(); details.SelectedTab = logTab; ResetProgress("预检失败，未开始生成"); Append("预检失败：" + error); if (progressView != null) progressView.State.Finish("预检失败，未生成文件"); SetBusy(false); }
             finally { preparing = false; if (closePending && !Running) Close(); }
         }
         private void Tick()
@@ -331,12 +358,13 @@ namespace Excel_Iterate
             ticking = true; timer.Stop();
             try
             {
+                if (progressView != null && progressView.State.Cancelled && !cancelled) RequestCancel();
                 if (cancelled || taskProgress.Remaining == 0) { Finish(); return; }
                 var record = records[taskProgress.Completed];
                 CurrentTask.Text = "正在处理第 " + (taskProgress.Completed + 1) + " / " + taskProgress.Total + " 项：" + System.IO.Path.GetFileName(record.OutputPath);
                 RenderProgress("正在生成", true);
                 bool succeeded = false;
-                try { host.Generate(request, record, CompanyWorkbookHost.UpdateLead); succeeded = true; Append("成功：来源第 " + record.Row + " 行 → " + record.OutputPath); }
+                try { host.Generate(request, record, CompanyWorkbookHost.UpdateLead, Append); succeeded = true; Append("成功：来源第 " + record.Row + " 行 → " + record.OutputPath); }
                 catch (Exception error)
                 {
                     if (error is CompanyWorkbookStateException) cancelled = true;
@@ -359,6 +387,7 @@ namespace Excel_Iterate
             CurrentTask.Text = taskProgress.Remaining == 0 ? "本批任务已全部处理。" : "已停止，已成功文件保留。";
             RenderProgress(state, false);
             Append(state + "：成功 " + taskProgress.Succeeded + "，失败 " + taskProgress.Failed + "，未处理 " + taskProgress.Remaining + "。已成功文件保留；日志可选中复制。");
+            if (progressView != null) progressView.State.Finish(state);
             records = null; SetBusy(false);
         }
     }

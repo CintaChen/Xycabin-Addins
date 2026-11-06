@@ -566,7 +566,7 @@ namespace Excel_Iterate
         private const string BackupPrefix = "备份_单体汇总_";
 
         internal static SummaryRunReport Run(object app, object book, object sheet, SummaryRequest request,
-            SummaryTemplateProbe probe, string backupSheet, Action<string> status)
+            SummaryTemplateProbe probe, string backupSheet, Action<string> status, Action<int, string> progress = null)
         {
             List<SummaryYearColumn> columns = request.Columns();
             SummaryRunReport report = new SummaryRunReport();
@@ -627,6 +627,7 @@ namespace Excel_Iterate
                 {
                     int column = firstColumn + i;
                     SummaryCompany company = columns[i].Company;
+                    if (status != null) status("正在处理公司列 " + SummaryColumns.Letter(column) + "：" + company.Code);
                     string letter = SummaryColumns.Letter(column);
                     int touched = 0;
                     for (int r = 0; r < rows; r++)
@@ -683,9 +684,11 @@ namespace Excel_Iterate
                         yearCell.HorizontalAlignment = -4108; // xlCenter
                         yearCell.VerticalAlignment = -4108;   // xlCenter
                     }
+                    if (progress != null) progress(i + 1, "已写入列 " + SummaryColumns.Letter(firstColumn + i) + "，等待最终核验");
                 }
 
                 // 6) 读回校验：表头与首列公式必须与预期一致
+                if (status != null) status("正在逐列核验表头和公式…");
                 string verify = Verify(s, columns, request, headerRow, startRow, lastRow, sourceFormulas);
                 if (verify != null) throw new InvalidOperationException(verify);
 

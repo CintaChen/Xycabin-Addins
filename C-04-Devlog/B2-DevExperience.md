@@ -569,9 +569,11 @@ AnnualPreview 逐公司年度生成来源路径清单，默认不检查存在性
 
 公司工作簿命名统一经 NamingStem：先按来源原文移除用户指定的末尾字符数，再按显式 Excel 后缀白名单循环清理，最后添加模板扩展名。只处理末尾，保留其他点号；字符裁剪用 StringInfo 防止切断代理对或组合字符。ValidateRecords 在处理后校验空值、保留名称、路径、碰撞和既有输出，保留 CompanyWorkbookRecord.Name 原值与来源行绑定，不改 Lead 字段。独立“预览文件名”走相同命名路径但不校验 Lead、不生成工作簿；界面展示原值与实际 OutputPath 文件名，改选项使旧预览失效，生成前再次完整校验。命名顺序必须在界面明确，避免把用户输入的“去除 5 个字符”误用在已剥离后缀的公司主体上。
 
-CompanyWorkbookHost.Pick 从不向原模板或长期读取副本开放交互：每次从不可变 Snapshot 创建独立只读选区副本，复用 Type=8 及 ReadCoordinates，核对副本 COM 身份、工作表、连续矩形、合并状态及参数几何要求。字段按长期快照的 HeadersOn 查出列对应表头，交互副本仅提供坐标，不使用其编辑内容。finally 关闭且不保存自建副本、清理临时文件并恢复宿主状态，取消不改界面参数。窗体 preparing 与 BusyChanged 防重入，恢复可见性后再处理关闭请求，来源/目标上下文更改清空相关数据行，预览和确认失效。
+CompanyWorkbookHost.Pick 从不向原模板或长期读取副本开放交互：每次从不可变 Snapshot 创建独立只读选区副本，复用 Type=8 及 ReadCoordinates，核对副本 COM 身份、工作表、连续矩形、合并状态及参数几何要求。字段按新选单元格所在行、长期快照的 HeadersOn 查出列对应表头，交互副本仅提供坐标，不使用其编辑内容。finally 关闭且不保存自建副本、清理临时文件并恢复宿主状态，取消不改界面参数。窗体 preparing 与 BusyChanged 防重入，恢复可见性后再处理关闭请求，来源/目标上下文更改清空相关数据行，预览和确认失效。
 
 SummaryLeadReader 动态读取可选来源文件名列，空项保留全称.xlsx 兼容行为；SummaryCompany.FileName 统一提供实际文件名，普通/年度换链、源文件识别、路径预检和日志均使用该属性。只接受无路径的 .xlsx 文件名，拒绝重复映射表头；不同公司共享文件不阻断，但预检提示同路径同地址将取相同数据。CompareSelection 复查原始映射字符串，防止预检后修改映射仍按旧文件执行；程序不回写映射列。
+
+批量过程表复用 HostDialogService.OpenModeless 的独立 STA 消息循环呈现 BatchProgressForm，业务只向 BatchProgressState 传递字符串、计数及取消标志，禁止把 Excel COM 或源窗体引用传入 UI 线程。日志用 ConcurrentQueue 按序消费，计时和活动条由 UI 自己刷新，完成计数仅由宿主业务更新；不采用后台线程调用 Excel、DoEvents 或按时间推进的虚假百分比。取消在安全边界由宿主观察，窗体收尾后关闭其 UI 线程；进度窗在 DialogCatalog、预览、尺寸树和目录检查中登记。字段选择改为以新单格表头覆盖旧工作表/表头行/字段，先提交手填编辑，再禁用或隐藏源窗体；新数值同时更新 NumericUpDown.Value 与显示文本，变更上下文使旧范围与预览失效。
 
 单体模板生成的进度由 CompanyWorkbookProgress 按已收尾任务计数，分开保存成功、失败及剩余；百分比向下保留一位小数，最后一项前不显示 100%。CompanyWorkbookForm 用 Stopwatch 记录生成阶段耗时，按已处理数量计算平均每项耗时及预计剩余；首项未完成时不估计，取消后保留比例并移除预计剩余，新批次和预检失败重置状态。当前文件及计数在下一次 COM 调用前 Refresh 绘制，不使用 DoEvents、消息泵嵌套或按时间增长的假进度。预检期间单独提示，生成前禁用取消按钮；关闭请求等待预检或当前文件收尾。
 

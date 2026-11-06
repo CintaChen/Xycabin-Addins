@@ -61,9 +61,10 @@ namespace Excel_Iterate
         {
             bool target = kind == "targetHeader" || kind == "targetCode" || kind == "targetName" || kind == "leadRow";
             bool sheetPicker = kind == "sourceHeader" || kind == "targetHeader";
+            bool fieldPicker = kind == "naming" || kind == "code" || kind == "full" || kind == "targetCode" || kind == "targetName";
             string expected = target ? request.TargetSheet : request.SourceSheet;
             int header = target ? request.TargetHeaderRow : request.HeaderRow;
-            if (!sheetPicker && !Sheets.Contains(expected)) throw new InvalidOperationException("请先选择来源或目标工作表及表头行。");
+            if (!sheetPicker && !fieldPicker && !Sheets.Contains(expected)) throw new InvalidOperationException("请先选择来源或目标工作表及表头行。");
             string path = Path.Combine(folder, ".company-select-" + Guid.NewGuid().ToString("N") + Path.GetExtension(Snapshot));
             object selectionBook = null;
             using (var refs = new ComBag())
@@ -88,7 +89,7 @@ namespace Excel_Iterate
                         ((dynamic)app).ScreenUpdating = true;
                     }
                     object chosen = picker != null ? picker(selectionBook) : DataMigrationHost.PickNativeRange(app,
-                        sheetPicker ? "请切换到所需工作表，选择一个表头单元格。此副本只用于取坐标，取消保留原设置。" : kind == "data" ? "请选择连续公司数据行，不含表头；所选列不限制实际读取字段。" : kind == "leadRow" ? "请选择目标表中待更新数据行的一个单元格。" : "请选择当前表头行中所需字段的一个单元格。",
+                        sheetPicker ? "请切换到所需工作表，选择一个表头单元格。此副本只用于取坐标，取消保留原设置。" : kind == "data" ? "请选择连续公司数据行，不含表头；所选列不限制实际读取字段。" : kind == "leadRow" ? "请选择目标表中待更新数据行的一个单元格。" : "请选择所需字段的实际表头单元格；将替换旧工作表、表头行及字段。",
                         "单体模板生成 · 临时只读副本选区", Type.Missing);
                     if (chosen == null || chosen is bool) return null;
                     chosen = refs.Own(chosen);
@@ -96,7 +97,7 @@ namespace Excel_Iterate
                     string name = Convert.ToString(chosenSheet.Name);
                     if (!Sheets.Contains(name)) throw new InvalidOperationException("请选择模板中的工作表。");
                     object expectedSheet;
-                    if (sheetPicker) expectedSheet = chosenSheet;
+                    if (sheetPicker || fieldPicker) expectedSheet = chosenSheet;
                     else
                     {
                         dynamic sheets = refs.Own(((dynamic)selectionBook).Worksheets);
@@ -108,7 +109,7 @@ namespace Excel_Iterate
                     if (sheetPicker) Headers(name, area.Row);
                     else if (kind != "data" && kind != "leadRow")
                     {
-                        foreach (var field in Headers(name, header)) if (field.Value == area.Column) result.Field = field.Key;
+                        foreach (var field in Headers(name, area.Row)) if (field.Value == area.Column) result.Field = field.Key;
                         if (result.Field == null) throw new InvalidOperationException("所选表头为空或不是可用字段，请重新选择。");
                     }
                     return result;
@@ -171,6 +172,8 @@ namespace Excel_Iterate
                 object cells = bag.Own(sheet.Cells);
                 for (int row = request.FirstRow; row <= request.LastRow; row++)
                 {
+                    if (log != null && (row == request.FirstRow || (row - request.FirstRow) % 100 == 0))
+                        log("正在读取来源数据：第 " + row + " 行 / " + request.LastRow + " 行。");
                     try
                     {
                         string n = Read(cells, row, name);
@@ -235,7 +238,7 @@ namespace Excel_Iterate
             if (Convert.ToBoolean(c.HasFormula) || CompanyWorkbookRules.Text(c.Value2) != value)
                 throw new InvalidOperationException("目标字段写入后核验不一致。");
         }
-        internal void Generate(CompanyWorkbookRequest request, CompanyWorkbookRecord record, Action<object, CompanyWorkbookRequest, CompanyWorkbookRecord> update)
+        internal void Generate(CompanyWorkbookRequest request, CompanyWorkbookRecord record, Action<object, CompanyWorkbookRequest, CompanyWorkbookRecord> update, Action<string> progress = null)
         {
             string stage = Path.Combine(request.Output, ".company-" + Guid.NewGuid().ToString("N") + Path.GetExtension(Snapshot));
             object outputBook = null;
@@ -244,6 +247,7 @@ namespace Excel_Iterate
             {
                 try
                 {
+                    if (progress != null) progress("复制模板：" + Path.GetFileName(record.OutputPath));
                     File.Copy(Snapshot, stage, false);
                     File.SetAttributes(stage, FileAttributes.Normal);
                     if (request.UpdateLead)
@@ -251,11 +255,14 @@ namespace Excel_Iterate
                         using (var quiet = new CompanyWorkbookQuiet(app))
                         {
                             dynamic books = bag.Own(((dynamic)app).Workbooks);
+                            if (progress != null) progress("打开副本并更新 Lead：" + Path.GetFileName(record.OutputPath));
                             outputBook = bag.Own(books.Open(stage, 0, false));
                             if (outputBook == null || Convert.ToBoolean(((dynamic)outputBook).ReadOnly)) throw new InvalidOperationException("输出副本无法以可写方式打开。");
                             update(outputBook, request, record);
+                            if (progress != null) progress("保存工作簿：" + Path.GetFileName(record.OutputPath));
                             ((dynamic)outputBook).Save();
                             ((dynamic)outputBook).Close(false); closed = true;
+                            if (progress != null) progress("重新打开并核验字段与工作表：" + Path.GetFileName(record.OutputPath));
                             outputBook = bag.Own(books.Open(stage, 0, true)); closed = false;
                             using (var verify = new ComBag())
                             {
@@ -274,6 +281,7 @@ namespace Excel_Iterate
                             ((dynamic)outputBook).Close(false); closed = true;
                         }
                     }
+                    if (progress != null) progress("发布文件：" + Path.GetFileName(record.OutputPath));
                     File.Move(stage, record.OutputPath); // Atomic no-overwrite publication.
                 }
                 finally
