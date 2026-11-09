@@ -22,6 +22,8 @@ namespace Excel_Iterate
         private readonly RichTextBox log = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, BackColor = Color.White, BorderStyle = BorderStyle.None };
         private readonly RoundedButton preview = Ui.Button("读取 Lead 并预检", 150), execute = Ui.Button("执行", 90), undo = Ui.Button("撤销", 90), confirm = Ui.Button("确认", 90);
         private readonly Label state = new Label { Dock = DockStyle.Top, AutoSize = true, ForeColor = Ui.InkDim };
+        private readonly TableLayoutPanel parameters;
+        private BatchPresetActions presets;
         internal SummaryAreaView()
         {
             Dock = DockStyle.Fill;
@@ -29,7 +31,7 @@ namespace Excel_Iterate
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 60)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 40)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var parameters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 1 };
+            parameters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 1 };
             parameters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             parameters.Controls.Add(Picker("模板区域（可 Ctrl 多选）", "template"));
             parameters.Controls.Add(Picker("粘贴起点（一个单元格）", "paste"));
@@ -67,9 +69,17 @@ namespace Excel_Iterate
             inputs.Add(pick); inputs.Add(read); return row;
         }
         internal void Address(string kind, string value) { addresses[kind].Text = value; InvalidatePlan(); }
+        internal void AttachPresets(BatchPresetActions actions)
+        {
+            presets = actions; parameters.SuspendLayout();
+            var children = new List<Control>(); foreach (Control child in parameters.Controls) children.Add(child);
+            parameters.RowCount++;
+            foreach (var child in children) parameters.SetRow(child, parameters.GetRow(child) + 1);
+            parameters.Controls.Add(actions.Header(new Label { Text = "右侧齿轮可保存、管理预设；应用后重新预检。", AutoSize = true, ForeColor = Ui.InkDim }), 0, 0); parameters.ResumeLayout(true);
+        }
         internal void InvalidatePlan() { execute.Enabled = false; if (Changed != null) Changed(); }
         internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }
         internal void SetState(bool running, bool pending, bool ready)
-        { foreach (var c in inputs) c.Enabled = !running && !pending; Companies.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
+        { foreach (var c in inputs) c.Enabled = !running && !pending; if (presets != null) presets.Gear.Enabled = !running && !pending; Companies.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
     }
 }

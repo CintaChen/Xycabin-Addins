@@ -59,6 +59,25 @@ internal static class SummaryAreaChecks
         leadParts.Add(new SummaryAreaPlan { Sheet="Lead",Row=3,Column=6,Rows=2,Columns=1 }); rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 超过两列阻断");leadParts.RemoveAt(2);
         leadParts.Add(new SummaryAreaPlan { Sheet="Lead",Row=3,Column=1,Rows=1,Columns=1 });rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 重叠选区阻断");leadParts.RemoveAt(2);
         leadParts[1].Sheet="其他";rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 跨表选区阻断");
+        var preset = new BatchPreset { Feature="summary", Name="区域测试", Context="test.xlsx", Values=new Dictionary<string,string> {
+            {"mode","area-mvp"},{"templateSheet","汇总"},{"templateAreas","3,12,4,5;20,12,11,5"},{"pasteSheet","汇总"},{"pasteArea","3,17,1,1"},{"leadSheet","Lead"},{"leadAreas","3,1,2,1;3,4,2,1"},{"projectFolder",@"C:\项目"},{"checkFiles","False"} } };
+        var settings=SummaryAreaSettings.Read(BatchPresetStore.Decode(BatchPresetStore.Encode(preset),"summary"));
+        check("区域预设完整保存Ctrl模板与Lead字段",settings.Template.Count==2&&settings.Lead.Count==2&&settings.Paste.Column==17&&settings.Template[1].RowOffset==17,"preset lost area metadata");
+        check("预设保留路径及默认文件检查选项",settings.Folder==@"C:\项目"&&!settings.CheckFiles,"preset changed options");
+        preset.Values.Remove("mode");rejects(delegate { SummaryAreaSettings.Read(preset); },"旧整列预设不猜测转换为区域预设");preset.Values["mode"]="area-mvp";
+        preset.Values["pasteArea"]="3,12,1,1";rejects(delegate { SummaryAreaSettings.Read(preset); },"预设重叠模板在应用前阻断");preset.Values["pasteArea"]="3,17,1,1";
+        preset.Values["leadAreas"]="3,1,2,1;3,4,1,1";rejects(delegate { SummaryAreaSettings.Read(preset); },"预设Lead同行缺失阻断");
+        var matrixArea=new SummaryAreaPlan { Sheet="汇总",Row=3,Column=12,Rows=2,Columns=2 };
+        var block=new List<SummaryAreaCell> { new SummaryAreaCell { Row=3,Column=12,Text="BS!$A$1" },new SummaryAreaCell { Row=3,Column=13,Formula=true,R1C1="=ROUND(RC[-1]-RC[-1],2)" } };
+        var matrix=SummaryAreaEngine.FormulaMatrix(new object[,]{{"BS!$A$1","=ROUND(Q3-Q3,2)"},{null,null}},matrixArea,block,@"C:\项目","甲");
+        check("批量矩阵保留空白与原生复制公式",matrix[1,0]==null&&Convert.ToString(matrix[0,1])=="=ROUND(Q3-Q3,2)","bulk write changed blanks/native formula");
+        SummaryAreaEngine.VerifyMatrix(matrix,new object[,]{{null,"=ROUND(RC[-1]-RC[-1],2)"},{null,null}},matrixArea,block,@"C:\项目","甲");
+        matrix[0,0]="=WRONG";rejects(delegate { SummaryAreaEngine.VerifyMatrix(matrix,new object[,]{{null,"=ROUND(RC[-1]-RC[-1],2)"},{null,null}},matrixArea,block,@"C:\项目","甲"); },"批量公式读回不符阻断");
+        check("批量读取识别Excel HRESULT错误码",SummaryAreaEngine.IsError(unchecked((int)0x800A07D7))&&!SummaryAreaEngine.IsError(-25.0),"error values confused with ordinary negative numbers");
+        string xml="<Workbook xmlns='urn:schemas-microsoft-com:office:spreadsheet' xmlns:ss='urn:schemas-microsoft-com:office:spreadsheet'><Styles><Style ss:ID='Default'><Font ss:Color='#000000'/></Style></Styles><Worksheet><Table><Row><Cell ss:Formula='=1+1'><Data ss:Type='Number'>2</Data><Comment><Data>批注</Data></Comment></Cell></Row></Table></Worksheet></Workbook>";
+        check("整块状态忽略公式缓存变化",SummaryAreaEngine.XmlState(xml)==SummaryAreaEngine.XmlState(xml.Replace(">2</Data>",">3</Data>")),"formula cache treated as edit");
+        check("整块状态保留格式变化",SummaryAreaEngine.XmlState(xml)!=SummaryAreaEngine.XmlState(xml.Replace("#000000","#123456")),"font change lost");
+        check("整块状态保留批注变化",SummaryAreaEngine.XmlState(xml)!=SummaryAreaEngine.XmlState(xml.Replace("批注","另一批注")),"comment change lost");
         using (var form = new SingleSummaryForm(true))
         {
             check("Ribbon MVP使用四组参数视图", form.Controls.Count==1 && form.Controls[0] is SummaryAreaView, "view missing");
@@ -69,6 +88,7 @@ internal static class SummaryAreaChecks
             var app=new SummaryAreaFakeApp();
             using(var host=new SummaryAreaHost(app,form,view))
             {
+                check("MVP复用原保存预设齿轮",view.Controls.Find("batchPresetSettings",true).Length==1,"preset gear absent");
                 var flags=BindingFlags.Instance|BindingFlags.NonPublic;
                 Action<string,object> field=(name,value)=>typeof(SummaryAreaHost).GetField(name,flags).SetValue(host,value);
                 field("book",app.Book);field("bookName","test.xlsx");field("templateSheet","汇总");field("backup","备份");field("targets",SummaryAreaEngine.Targets(areas,3,17,2));
@@ -88,9 +108,10 @@ internal static class SummaryAreaChecks
 }
 public sealed class SummaryAreaFakeApp
 {
+    public int Calculation { get; set; }
     public bool EnableEvents{get;set;} public bool ScreenUpdating{get;set;} public bool AskToUpdateLinks{get;set;} public bool DisplayAlerts{get;set;}
     public SummaryAreaFakeBook Book=new SummaryAreaFakeBook();
-    public SummaryAreaFakeApp(){EnableEvents=ScreenUpdating=AskToUpdateLinks=DisplayAlerts=true;}
+    public SummaryAreaFakeApp(){Calculation=-4105;EnableEvents=ScreenUpdating=AskToUpdateLinks=DisplayAlerts=true;}
     public SummaryAreaFakeBooks Workbooks{get{return new SummaryAreaFakeBooks(Book);}}
 }
 public sealed class SummaryAreaFakeBooks

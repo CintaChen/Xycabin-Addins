@@ -13,8 +13,9 @@ internal static class SingleSummaryLiveProbe
     private static void Set(object host,string name,object value){host.GetType().GetField(name,Flags).SetValue(host,value);}
     private static object Get(object host,string name){return host.GetType().GetField(name,Flags).GetValue(host);}
     private static void Call(object host,string name,params object[] args){try{host.GetType().GetMethod(name,Flags).Invoke(host,args);}catch(TargetInvocationException e){throw e.InnerException;}}
-    [STAThread] private static int Main()
+    [STAThread] private static int Main(string[] args)
     {
+        if (Array.IndexOf(args, "--timing") >= 0) return SummaryAreaSpeedChecks.Run();
         using(var session=new ProbeSession("SummaryAreaLive"))
         {
             try
@@ -57,7 +58,8 @@ internal static class SingleSummaryLiveProbe
                             var areas=(List<SummaryAreaPlan>)Get(host,"areas");areas.Add(new SummaryAreaPlan{Sheet="汇总",Row=3,Column=12,Rows=1,Columns=2,Address="L3:M3"});areas.Add(new SummaryAreaPlan{Sheet="汇总",Row=6,Column=12,Rows=1,Columns=2,Address="L6:M6"});
                             Set(host,"paste",new SummaryAreaPlan{Row=3,Column=17,Rows=1,Columns=1});Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=1,Column=1,Rows=2,Columns=2,Address="A1:B2"});
                             Call(host,"Preview");Check((bool)Get(host,"ready"),"read-only preflight succeeds");Check(Convert.ToInt32(worksheets.Count)==before,"preflight creates no backup sheet");Check(Convert.ToString(old.Formula)==oldFormula,"preflight leaves target formula untouched");
-                            Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            int calculationBefore=Convert.ToInt32(app.Calculation);Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            Check(Convert.ToInt32(app.Calculation)==calculationBefore,"batch restores original calculation mode");Check(Convert.ToInt32(Get(host,"bulkWrites"))==4,"four company Areas use four matrix formula submissions");
                             Check((bool)Get(host,"pending")&&!(bool)Get(host,"running")&&!(bool)Get(host,"failed"),"execution reaches pending confirmation");
                             dynamic q3=bag.Own(target.Range["Q3"]),s3=bag.Own(target.Range["S3"]),r3=bag.Own(target.Range["R3"]),r6=bag.Own(target.Range["R6"]);
                             Check(Convert.ToBoolean(q3.HasFormula)&&Convert.ToString(q3.Formula).Contains("[！01-示例（集团）.xlsx]BS"),"first company real external formula");
@@ -82,6 +84,19 @@ internal static class SingleSummaryLiveProbe
                             Check(Convert.ToInt32(view.Companies.Rows[0].Cells["row"].Value)==expectedFirst,"disjoint Lead retains Excel Areas order");
                             Check(Convert.ToString(view.Companies.Rows[0].Cells["company"].Value)==(expectedFirst==7?"！01-示例（集团）":"！02-示例乙"),"nonadjacent code and name columns paired by same row");
                             view.Folder.Text="\""+session.DirectoryPath+"\"";Check(!(bool)Get(host,"ready"),"manual folder edit invalidates prior plan");Call(host,"Preview");Check((bool)Get(host,"ready"),"manually pasted quoted folder passes preflight");
+                            var saved=host.CapturePreset();string presetPath=session.Output("区域预设.xybatch.json");BatchPresetStore.Write(presetPath,saved,false);session.TrackFile(presetPath+".lock");saved=BatchPresetStore.Read(presetPath,"summary");
+                            Check(!saved.Values.ContainsKey("companies")&&saved.Values["leadAreas"].Split(';').Length==4,"saved presets contain settings and all Areas, not company data");
+                            Check((bool)typeof(SummaryAreaHost).GetMethod("ContextAvailable",Flags).Invoke(host,new object[]{saved.Context}),"unsaved open workbook context can be reused without file relocation");
+                            view.Folder.Text="待替换路径";var invalid=BatchPresetStore.Decode(BatchPresetStore.Encode(saved),"summary");invalid.Values["templateSheet"]="不存在的工作表";
+                            bool failedApply=false;try{host.ApplyPreset(invalid);}catch{failedApply=true;}Check(failedApply&&view.Folder.Text=="待替换路径","invalid preset retains prior UI and workbook binding");
+                            var legacy=BatchPresetStore.Decode(BatchPresetStore.Encode(saved),"summary");legacy.Values.Remove("mode");string legacyPath=session.Output("旧整列预设.xybatch.json");BatchPresetStore.Write(legacyPath,legacy,false);session.TrackFile(legacyPath+".lock");string legacyBytes=Convert.ToBase64String(System.IO.File.ReadAllBytes(legacyPath));
+                            failedApply=false;try{host.ApplyPreset(legacy);}catch(InvalidOperationException){failedApply=true;}Check(failedApply&&legacyBytes==Convert.ToBase64String(System.IO.File.ReadAllBytes(legacyPath)),"legacy preset remains unchanged and is not guessed into area mode");
+                            int sheetsBefore=Convert.ToInt32(worksheets.Count);host.ApplyPreset(saved);Check(!(bool)Get(host,"ready")&&view.Companies.Rows.Count==0&&view.Folder.Text==saved.Values["projectFolder"],"apply restores parameters and requires a fresh company preflight");
+                            Check(Convert.ToInt32(worksheets.Count)==sheetsBefore&&Convert.ToString(book.Path)=="","applying preset creates no backup and never saves workbook");
+                            Call(host,"Preview");Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);failedApply=false;try{host.ApplyPreset(saved);}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"pending rollback blocks preset application");Call(host,"Undo");
+                            Call(host,"Preview");dynamic formatCell=bag.Own(target.Range["L3"]),formatFont=bag.Own(formatCell.Font);object priorColor=formatFont.Color;formatFont.Color=12345;failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"native block fingerprint rejects a font-only change before execution");formatFont.Color=priorColor;
+                            dynamic priorNote=bag.Own(formatCell.AddComment("状态校验批注"));Call(host,"Preview");priorNote.Text("预检后修改批注");failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"native block fingerprint rejects comment-only change before execution");priorNote.Text("状态校验批注");
+                            dynamic computedName=bag.Own(lead.Range["D7"]),nameSource=bag.Own(lead.Range["Z7"]);nameSource.Value2="！01-示例（集团）";computedName.Formula="=Z7";computedName.Calculate();Call(host,"Preview");nameSource.Value2="！02-示例乙";computedName.Calculate();failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"computed Lead company name change invalidates plan even with unchanged formula text");computedName.Value2="！01-示例（集团）";nameSource.Clear();
                         }
                     }
                 }

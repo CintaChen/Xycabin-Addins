@@ -583,7 +583,8 @@
         "System.Drawing.dll"
       ],
       "additional_sources": [
-        "@shared/src/tools/LiveProbeSafety.cs"
+        "@shared/src/tools/LiveProbeSafety.cs",
+        "src/testharness/SummaryAreaSpeedChecks.cs"
       ]
     }
   ],

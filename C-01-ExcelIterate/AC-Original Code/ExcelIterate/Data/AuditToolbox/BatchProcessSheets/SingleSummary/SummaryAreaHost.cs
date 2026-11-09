@@ -16,6 +16,10 @@ namespace Excel_Iterate
         private readonly SummaryAreaView view;
         private readonly Action<bool> hostBusy;
         private readonly Func<bool> approveOverwrite;
+        private HostCalculation calculation;
+        private SummaryWorkbookBinding presetBinding;
+        private readonly System.Diagnostics.Stopwatch executionClock = new System.Diagnostics.Stopwatch();
+        private int bulkWrites;
         private readonly ComBag references = new ComBag();
         private readonly Timer timer = new Timer { Interval = 40 };
         private object book;
@@ -35,6 +39,7 @@ namespace Excel_Iterate
         {
             this.app = app; this.form = form; this.view = view; this.hostBusy = hostBusy ?? delegate { };
             this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, "将覆盖预检日志中列出的全部目标 Area（包括所选空白格）。中间未选区域不变。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
+            view.AttachPresets(new BatchPresetActions(form, "summary", CapturePreset, ApplyPreset, delegate { return !handling && !running && !pending; }, view.Message, ContextAvailable));
             view.Pick += Pick; view.PreviewRequested += delegate { Safe(Preview); };
             view.ExecuteRequested += delegate { Safe(Start); }; view.UndoRequested += delegate { Safe(Undo); };
             view.ConfirmRequested += delegate { Safe(Confirm); }; view.Changed += Invalidate;
@@ -51,6 +56,65 @@ namespace Excel_Iterate
             finally { handling = false; hostBusy(running); view.SetState(running, pending, ready); }
         }
         private void Invalidate() { if (loading) return; ready = false; if (!running) view.SetState(false, pending, false); }
+        private bool ContextAvailable(string path)
+        {
+            using (var bag = new ComBag())
+            {
+                dynamic books = bag.Own(((dynamic)app).Workbooks);
+                for (int i = 1; i <= Convert.ToInt32(books.Count); i++) if (string.Equals(Convert.ToString(((dynamic)bag.Own(books.Item(i))).FullName), path, StringComparison.OrdinalIgnoreCase)) return true;
+                return false;
+            }
+        }
+        internal BatchPreset CapturePreset()
+        {
+            return new BatchPreset { Feature = "summary", Name = "区域链接", Context = book == null ? "" : bookName, Values = new Dictionary<string, string> {
+                { "mode", "area-mvp" }, { "templateSheet", templateSheet ?? "" }, { "templateAreas", SummaryAreaSettings.Encode(areas) },
+                { "pasteSheet", pasteSheet ?? "" }, { "pasteArea", paste == null ? "" : SummaryAreaSettings.Encode(new[] { paste }) },
+                { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
+            } };
+        }
+        internal void ApplyPreset(BatchPreset preset)
+        {
+            if (handling || running || pending) throw new InvalidOperationException("执行中或待确认时不能应用预设。");
+            var settings = SummaryAreaSettings.Read(preset); var candidate = new SummaryWorkbookBinding(app); bool committed = false;
+            handling = true; hostBusy(true); view.SetState(true, false, false);
+            try
+            {
+                if (ContextAvailable(preset.Context)) candidate.Choose(preset.Context); else candidate.Browse(preset.Context);
+                object selectedBook = candidate.RequireBook();
+                using (var bag = new ComBag())
+                {
+                    dynamic sheets = bag.Own(((dynamic)selectedBook).Worksheets);
+                    foreach (var part in settings.Template.Concat(settings.Lead).Concat(new[] { settings.Paste }))
+                    { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); RejectSpecial(range, part.Address, bag); }
+                }
+                var oldBinding = presetBinding;
+                book = selectedBook; bookName = Convert.ToString(((dynamic)book).FullName); presetBinding = candidate;
+                templateSheet = settings.Template[0].Sheet; pasteSheet = settings.Paste.Sheet; leadSheet = settings.Lead[0].Sheet;
+                areas.Clear(); areas.AddRange(settings.Template); paste = settings.Paste; leadAreas.Clear(); leadAreas.AddRange(settings.Lead); lead = leadAreas[0];
+                loading = true;
+                try
+                {
+                    view.Folder.Text = settings.Folder; view.CheckFiles.Checked = settings.CheckFiles; view.Companies.Rows.Clear();
+                    view.Address("template", templateSheet + "!" + string.Join("; ", areas.Select(a => a.Address).ToArray()));
+                    view.Address("paste", pasteSheet + "!" + paste.Address); view.Address("lead", leadSheet + "!" + string.Join("; ", leadAreas.Select(a => a.Address).ToArray()));
+                }
+                finally { loading = false; }
+                ready = false; companies.Clear(); cells.Clear(); targets.Clear(); committed = true;
+                if (watch != null) { watch.Dispose(); watch = null; }
+                if (oldBinding != null) oldBinding.Dispose();
+                view.Message("已恢复区域预设；公司名单不从预设读取，请重新读取 Lead 并预检。未修改、未保存工作表。");
+            }
+            finally
+            {
+                if (!committed)
+                {
+                    try { if (candidate.OpenedByBrowse) using (var quiet = new HostQuiet(app)) ((dynamic)candidate.RequireBook()).Close(false); }
+                    finally { candidate.Dispose(); }
+                }
+                handling = false; hostBusy(false); view.SetState(false, false, ready);
+            }
+        }
         private void CheckBook()
         {
             if (book == null) throw new InvalidOperationException("请先选择模板区域。");
@@ -158,7 +222,7 @@ namespace Excel_Iterate
                 {
                     dynamic codeCell = one.Own(sheet.Cells[binding.Row, binding.CodeColumn]), nameCell = one.Own(sheet.Cells[binding.Row, binding.NameColumn]);
                     object codeValue = codeCell.Value2, nameValue = nameCell.Value2;
-                    if (codeValue is System.Runtime.InteropServices.ErrorWrapper || nameValue is System.Runtime.InteropServices.ErrorWrapper) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行含错误值。");
+                    if (SummaryAreaEngine.IsError(codeValue) || SummaryAreaEngine.IsError(nameValue)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行含错误值。");
                     string code = Convert.ToString(codeValue, CultureInfo.InvariantCulture), name = Convert.ToString(nameValue, CultureInfo.InvariantCulture);
                     if (code.Length == 0 && name.Length == 0) continue;
                     if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行两列必须同时填写。");
@@ -247,7 +311,7 @@ namespace Excel_Iterate
         { return view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
         private string Fingerprint()
         {
-            CheckBook(); var text = new StringBuilder(bookName);
+            CheckBook(); var clock = System.Diagnostics.Stopwatch.StartNew(); var text = new StringBuilder(bookName); int xmlAreas = 0, fallbackAreas = 0;
             using (var bag = new ComBag())
             {
                 var leadParts = LeadSelections();
@@ -255,6 +319,21 @@ namespace Excel_Iterate
                 {
                     dynamic sheet = Sheet(leadParts.Contains(part) ? leadSheet : templateSheet, bag);
                     if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("工作表保护状态变化。");
+                    using (var snapshot = new ComBag())
+                    {
+                        dynamic range = snapshot.Own(sheet.Range[SummaryAreaEngine.Address(part)]); string xml = null;
+                        // Company names may themselves be formulas. Their evaluated
+                        // values determine filenames and must invalidate the plan.
+                        if (leadParts.Contains(part))
+                        {
+                            object values = range.Value2;
+                            for (int r = 0; r < part.Rows; r++) for (int c = 0; c < part.Columns; c++) Append(text, SummaryArrays.Pick(values, r, part.Rows, c, part.Columns));
+                        }
+                        try { xml = SummaryAreaEngine.XmlState(Convert.ToString(range.Value[11])); }
+                        catch (Exception error) { UiDiagnostics.Record("summary-xml-fallback", error); }
+                        if (xml != null) { Append(text, "xml"); Append(text, xml); AppendComments(sheet, part, text); xmlAreas++; continue; }
+                    }
+                    Append(text, "cells"); fallbackAreas++;
                     for (int r = part.Row; r < part.Row + part.Rows; r++) for (int c = part.Column; c < part.Column + part.Columns; c++)
                     using (var one = new ComBag())
                     {
@@ -266,20 +345,41 @@ namespace Excel_Iterate
                     }
                 }
             }
+            view.Message("内容与格式状态校验耗时 " + clock.Elapsed.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture) + " 秒（整块 " + xmlAreas + "，兼容回退 " + fallbackAreas + "）。");
             using (var hash = System.Security.Cryptography.SHA256.Create()) return Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(text.ToString())));
+        }
+        private static void AppendComments(dynamic sheet, SummaryAreaPlan part, StringBuilder text)
+        {
+            using (var bag = new ComBag())
+            {
+                dynamic comments = bag.Own(sheet.Comments); var entries = new List<string>();
+                for (int i = 1; i <= Convert.ToInt32(comments.Count); i++)
+                using (var one = new ComBag())
+                {
+                    dynamic comment = one.Own(comments.Item(i)), cell = one.Own(comment.Parent);
+                    int r = Convert.ToInt32(cell.Row), c = Convert.ToInt32(cell.Column);
+                    if (r >= part.Row && r < part.Row + part.Rows && c >= part.Column && c < part.Column + part.Columns)
+                        entries.Add(CellAddress.Name(r, c) + "|" + Convert.ToString(comment.Text()));
+                }
+                entries.Sort(StringComparer.Ordinal); foreach (string entry in entries) Append(text, entry);
+            }
         }
         private static void Append(StringBuilder text, object value) { string s = Convert.ToString(value, CultureInfo.InvariantCulture) ?? ""; text.Append(s.Length).Append(':').Append(s); }
         private void Start()
         {
             if (!ready || running || pending) throw new InvalidOperationException("请先重新预检。");
             CheckBook(); if (watch != null) watch.Validate();
-            if (selectedKey != SelectionKey() || stamp != Fingerprint()) throw new InvalidOperationException("参数、名单、模板或目标状态变化，请重新预检。");
+            if (selectedKey != SelectionKey()) throw new InvalidOperationException("参数或名单变化，请重新预检。");
             if (!approveOverwrite()) return;
             if (selectedKey != SelectionKey() || stamp != Fingerprint()) throw new InvalidOperationException("确认期间工作簿变化，请重新预检。");
             if (watch != null) watch.Validate();
             using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var bag = new ComBag())
-            { backup = SummaryWriter.Backup(app, book, Sheet(templateSheet, bag)); ((dynamic)Sheet(templateSheet, bag)).Activate(); }
-            pending = true; running = true; ready = failed = false; step = formulaCount = touched = 0; view.SetState(true, true, false);
+            {
+                executionClock.Restart();
+                try { calculation = new HostCalculation(app); backup = SummaryWriter.Backup(app, book, Sheet(templateSheet, bag)); ((dynamic)Sheet(templateSheet, bag)).Activate(); }
+                catch { EndCalculation(); throw; }
+            }
+            pending = true; running = true; ready = failed = false; step = formulaCount = touched = bulkWrites = 0; view.SetState(true, true, false);
             view.Message("已建立原始模板及目标备份：" + backup + "。逐 Area 执行，不复制外接矩形。"); timer.Start();
         }
         private void Tick(object sender, EventArgs e)
@@ -295,20 +395,17 @@ namespace Excel_Iterate
                     var sourceArea = areas[step % areas.Count]; var targetArea = targets[step]; var company = picked[step / areas.Count];
                     dynamic source = bag.Own(original.Range[SummaryAreaEngine.Address(sourceArea)]), target = bag.Own(sheet.Range[SummaryAreaEngine.Address(targetArea)]);
                     touched = step + 1; source.Copy(target);
-                    foreach (var cell in cells.Where(c => c.Row >= sourceArea.Row && c.Row < sourceArea.Row + sourceArea.Rows && c.Column >= sourceArea.Column && c.Column < sourceArea.Column + sourceArea.Columns))
+                    var block = cells.Where(c => c.Row >= sourceArea.Row && c.Row < sourceArea.Row + sourceArea.Rows && c.Column >= sourceArea.Column && c.Column < sourceArea.Column + sourceArea.Columns).ToList();
+                    if (block.Any(c => !c.Formula))
                     {
-                        using (var one = new ComBag())
-                        {
-                            dynamic destination = one.Own(sheet.Cells[targetArea.Row + cell.Row - sourceArea.Row, targetArea.Column + cell.Column - sourceArea.Column]);
-                            if (!cell.Formula)
-                            {
-                                string formula = SummaryTextReference.External(view.ProjectFolder, company.Name, cell.Text); destination.Formula = formula;
-                                if (!Bool(destination.HasFormula) || !Equivalent(Convert.ToString(destination.Formula), formula)) throw new InvalidOperationException("真实公式写入核验失败：" + destination.Address);
-                            }
-                            else if (!Bool(destination.HasFormula) || !Equivalent(Convert.ToString(destination.FormulaR1C1), cell.R1C1)) throw new InvalidOperationException("原生公式相对引用复制核验失败：" + destination.Address);
-                            formulaCount++;
-                        }
+                        target.Formula = SummaryAreaEngine.FormulaMatrix((object)target.Formula, sourceArea, block, view.ProjectFolder, company.Name); bulkWrites++;
                     }
+                    if (block.Count > 0)
+                    {
+                        VerifyFormulaCells(sheet, target, sourceArea, targetArea, block);
+                        SummaryAreaEngine.VerifyMatrix((object)target.Formula, (object)target.FormulaR1C1, sourceArea, block, view.ProjectFolder, company.Name);
+                    }
+                    formulaCount += block.Count;
                     step++; view.Message("已完成 " + step + "/" + targets.Count + "：" + company.Name + " → " + SummaryAreaEngine.Address(targetArea));
                     if (step == targets.Count)
                     {
@@ -317,9 +414,12 @@ namespace Excel_Iterate
                         {
                             dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(area)]);
                             try { range.Calculate(); } catch (Exception error) { view.Message("重新计算失败：" + error.Message); }
-                            for (int r = area.Row; r < area.Row + area.Rows; r++) for (int c = area.Column; c < area.Column + area.Columns; c++)
-                            using (var one = new ComBag()) { dynamic value = one.Own(sheet.Cells[r, c]); if (value.Value2 is System.Runtime.InteropServices.ErrorWrapper || Convert.ToString(value.Text).StartsWith("#", StringComparison.Ordinal)) errors++; }
+                            object values = range.Value2;
+                            for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++)
+                                if (SummaryAreaEngine.IsError(SummaryArrays.Pick(values, r, area.Rows, c, area.Columns))) errors++;
                         }
+                        EndCalculation();
+                        view.Message("批量公式提交 " + bulkWrites + " 次；备份及执行耗时 " + executionClock.Elapsed.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture) + " 秒。");
                         view.Message("公式写入核验成功 " + formulaCount + " 格；已尝试重新计算。数值异常 " + errors + " 格。链接未强制更新：源文件关闭或访问策略可能保留缓存，请在 Excel 检查链接状态。未保存，请确认或撤销。"); running = false; view.SetState(false, true, false);
                     }
                 }
@@ -331,12 +431,43 @@ namespace Excel_Iterate
                 catch (Exception restore) { pending = true; view.Message("自动还原失败：" + restore.Message + "；备份保留，请重试撤销。禁止确认丢弃恢复信息。"); }
                 ready = false; view.SetState(false, pending, false);
             }
-            finally { ticking = false; hostBusy(running); if (running) timer.Start(); }
+            finally
+            {
+                ticking = false;
+                if (!running) { try { EndCalculation(); } catch (Exception error) { view.Message("恢复计算模式失败，请检查 Excel 计算选项：" + error.Message); } executionClock.Stop(); }
+                hostBusy(running); if (running) timer.Start();
+            }
+        }
+        private void EndCalculation()
+        {
+            if (calculation == null) return;
+            var scope = calculation; calculation = null;
+            using (var links = new HostLinkQuiet(app)) scope.Dispose();
+        }
+        private static void VerifyFormulaCells(dynamic sheet, dynamic target, SummaryAreaPlan source, SummaryAreaPlan destination, IList<SummaryAreaCell> block)
+        {
+            // One HasFormula call for dense blocks; for sparse blocks verify
+            // horizontal runs, never mistake a literal '=...' for a formula.
+            if (Bool((object)target.HasFormula)) return;
+            using (var bag = new ComBag())
+            foreach (var row in block.GroupBy(c => c.Row))
+            {
+                var columns = row.Select(c => c.Column).OrderBy(c => c).ToList();
+                int start = columns[0], end = start;
+                for (int i = 1; i <= columns.Count; i++)
+                {
+                    if (i < columns.Count && columns[i] == end + 1) { end = columns[i]; continue; }
+                    string address = CellAddress.Name(destination.Row + row.Key - source.Row, destination.Column + start - source.Column) + ":" + CellAddress.Name(destination.Row + row.Key - source.Row, destination.Column + end - source.Column);
+                    dynamic run = bag.Own(sheet.Range[address]);
+                    if (!Bool((object)run.HasFormula)) throw new InvalidOperationException("真实公式写入失败：" + address);
+                    if (i < columns.Count) start = end = columns[i];
+                }
+            }
         }
         private static bool Equivalent(string a, string b) { return string.Equals(a, b, StringComparison.OrdinalIgnoreCase); }
         private void Restore(int count)
         {
-            CheckBook(); using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var bag = new ComBag())
+            CheckBook(); using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var recalc = new HostCalculation(app)) using (var bag = new ComBag())
             {
                 dynamic sheet = Sheet(templateSheet, bag), original = Sheet(backup, bag);
                 for (int i = 0; i < count; i++)
@@ -366,6 +497,11 @@ namespace Excel_Iterate
             if (failed || step != targets.Count) throw new InvalidOperationException("失败批次只能撤销，不能确认。");
             pending = ready = false; view.SetState(false, false, false); view.Message("已确认并结束本批回滚会话；未保存工作簿。备份仍保留：" + backup);
         }
-        public void Dispose() { timer.Stop(); timer.Dispose(); hostBusy(false); if (watch != null) watch.Dispose(); references.Dispose(); }
+        public void Dispose()
+        {
+            timer.Stop(); timer.Dispose();
+            try { EndCalculation(); } catch (Exception error) { UiDiagnostics.Record("summary-calculation-restore", error); }
+            finally { hostBusy(false); if (presetBinding != null) presetBinding.Dispose(); if (watch != null) watch.Dispose(); references.Dispose(); }
+        }
     }
 }

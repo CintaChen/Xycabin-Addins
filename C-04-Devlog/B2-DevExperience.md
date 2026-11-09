@@ -662,6 +662,8 @@ B3-Spec Coding.md 为 B3 工程规范入口。改名需要同时修改 verify_de
 
 当前单体汇总 Ribbon 入口调用 SingleSummaryForm(true) 和 SummaryAreaView/Host/Engine。View 仅传递参数事件，Host 在宿主 STA 读取 Range.Areas、绑定 COM 身份、只读预检和逐 Area 计时执行；Engine 负责外链文本、坐标步长与公式白名单。保留旧构造器及参数 API 用于兼容既有探针，不从新入口执行整列铺列或回写 Lead。备份复用 SummaryWriter.Backup，但复制及恢复只访问计划 Area，失败批次禁止确认；不调用 Save 或 UpdateLink。未知公式、所有合并、数组和溢出保守阻断。迁移原生 Type=8 选择器、SourceChangeWatch、HostQuiet、HostLinkQuiet、ComBag 与 UiCard/ResultGrid 直接复用。
 
+区域模式复用 BatchPresetActions/BatchPresetManagerForm 与同一 summary 库，mode=area-mvp 区分新参数；候选绑定及区域校验成功后才提交，旧整列参数不猜测转换。捕获只含四组配置，不序列化公司数据、COM 或回滚状态，恢复后清空名单并失效预检。执行按 Area 使用 Formula 矩阵批写、Formula/R1C1 批读及真实公式类型核验；HostCalculation 跨批次暂停自动重算并在完成、失败及释放时恢复。Fingerprint 优先每 Area 的 Value[11] SpreadsheetML，提取 Styles/Table 并移除公式缓存 Data，另核对批注；不支持或格式不完整时保留原逐格回退。覆盖确认后仍执行最终完整状态校验。SingleSummaryLiveProbe --timing 以自建200模板格、两家公司400公式验证吞吐及空隙/撤销，不操作用户文件，速度不代表真实网络审计文件。
+
 Lead 多 Area 通过 SummaryAreaEngine.LeadRows 建立实际行号和两列坐标映射，按 Areas/区域内行序输出，拒绝缺失、重复及超过两列；读取、指纹及目标覆盖保护只使用实际 Lead Area。原生 Lead 选择前激活绑定工作簿内可见的 Lead 表，读取当前选区不跳表，取消不改已存参数。项目文件夹为可编辑 TextBox，保留浏览按钮；实际解析允许粘贴带外层双引号的路径，字段改动仍触发原预检失效。
 
 旧参数模式的两项单体功能由 BatchProcessSheets/_Shared/BatchPresets.cs 保留版本 1 的存储协议，BatchPresetUi.cs 保留业务适配。将迁移原弹窗的布局、双行列表绘制、详情格式、命名输入区和齿轮说明行抽到 AuditToolbox/_Shared/PresetManagerView.cs；迁移与两个单体功能直接调用同一界面实现。各自保留预设格式、存储位置和应用校验，不复制迁移专用数据模型。保留原子替换与独占锁；同名导入另存，重命名不覆盖已有预设。窗口各自白名单捕获参数，不序列化控件、COM、公司名单或还原记录。

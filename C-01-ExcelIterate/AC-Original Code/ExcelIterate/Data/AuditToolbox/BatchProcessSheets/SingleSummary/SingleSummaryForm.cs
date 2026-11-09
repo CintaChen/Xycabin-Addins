@@ -231,7 +231,12 @@ namespace Excel_Iterate
             Text = "单体汇总批量链接";
             KeyPreview = true;
             DialogSizing.Prepare(this, "summary.single", "table", Ui.Blue);
-            Controls.Add(new SummaryAreaView());
+            var areaView = new SummaryAreaView(); Controls.Add(areaView);
+            if (DialogPreviewFactory.IsConstructing)
+            {
+                var actions = new BatchPresetActions(this, "summary", delegate { return new BatchPreset { Feature = "summary", Name = "区域预设", Context = "", Values = new Dictionary<string, string>() }; }, delegate { }, delegate { return false; }, areaView.Message);
+                areaView.AttachPresets(actions); actions.Gear.Enabled = false;
+            }
         }
 
         private Control SelectionParameter(Control field, string title, string kind)

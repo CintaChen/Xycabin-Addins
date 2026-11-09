@@ -9,6 +9,43 @@ namespace Excel_Iterate
     {
         internal int Row, CodeColumn, NameColumn;
     }
+    internal sealed class SummaryAreaSettings
+    {
+        internal readonly List<SummaryAreaPlan> Template = new List<SummaryAreaPlan>(), Lead = new List<SummaryAreaPlan>();
+        internal SummaryAreaPlan Paste;
+        internal string Folder;
+        internal bool CheckFiles;
+        internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
+        { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
+        private static List<SummaryAreaPlan> Decode(string text, string sheet)
+        {
+            if (string.IsNullOrEmpty(sheet) || string.IsNullOrEmpty(text)) throw new InvalidOperationException("预设缺少工作表或选区，请重新选择后保存。");
+            var result = new List<SummaryAreaPlan>();
+            foreach (string token in text.Split(';'))
+            {
+                string[] fields = token.Split(','); var n = new int[4];
+                if (fields.Length != 4) throw new InvalidOperationException("预设区域格式无效。");
+                for (int i = 0; i < 4; i++) if (!int.TryParse(fields[i], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out n[i]) || n[i] < 1) throw new InvalidOperationException("预设区域坐标无效。");
+                if ((long)n[0] + n[2] - 1 > 1048576 || (long)n[1] + n[3] - 1 > 16384 || (long)n[2] * n[3] > SummaryAreaEngine.CellLimit) throw new InvalidOperationException("预设区域越界或过大。");
+                var area = new SummaryAreaPlan { Sheet = sheet, Row = n[0], Column = n[1], Rows = n[2], Columns = n[3] }; area.Address = SummaryAreaEngine.Address(area); result.Add(area);
+            }
+            return result;
+        }
+        internal static SummaryAreaSettings Read(BatchPreset preset)
+        {
+            BatchPresetStore.Validate(preset, "summary"); var values = preset.Values;
+            if (!values.ContainsKey("mode") || values["mode"] != "area-mvp") throw new InvalidOperationException("这是旧整列参数预设，已保留在库中；请重新指定模板区域和粘贴起点后另存区域预设，不会覆盖旧预设。");
+            foreach (string key in new[] { "templateSheet", "templateAreas", "pasteSheet", "pasteArea", "leadSheet", "leadAreas", "projectFolder", "checkFiles" }) if (!values.ContainsKey(key)) throw new InvalidOperationException("区域预设缺少参数：" + key);
+            var result = new SummaryAreaSettings { Folder = values["projectFolder"] };
+            if (!bool.TryParse(values["checkFiles"], out result.CheckFiles)) throw new InvalidOperationException("来源文件检查选项无效。");
+            result.Template.AddRange(Decode(values["templateAreas"], values["templateSheet"])); result.Lead.AddRange(Decode(values["leadAreas"], values["leadSheet"]));
+            var paste = Decode(values["pasteArea"], values["pasteSheet"]);
+            if (paste.Count != 1 || paste[0].Rows != 1 || paste[0].Columns != 1 || values["pasteSheet"] != values["templateSheet"]) throw new InvalidOperationException("预设粘贴起点须为模板同表的一个单元格。");
+            result.Paste = paste[0]; SummaryAreaEngine.LeadRows(result.Lead); SummaryAreaEngine.Targets(result.Template, result.Paste.Row, result.Paste.Column, 1);
+            int row = result.Template.Min(p => p.Row), column = result.Template.Min(p => p.Column); foreach (var part in result.Template) { part.RowOffset = part.Row - row; part.ColumnOffset = part.Column - column; }
+            return result;
+        }
+    }
     internal sealed class SummaryAreaCell
     {
         internal int Row, Column;
@@ -90,6 +127,39 @@ namespace Excel_Iterate
         }
         internal static string Address(SummaryAreaPlan area)
         { return CellAddress.Name(area.Row, area.Column) + ":" + CellAddress.Name(area.Row + area.Rows - 1, area.Column + area.Columns - 1); }
+        internal static object[,] FormulaMatrix(object copied, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company)
+        {
+            var result = new object[area.Rows, area.Columns];
+            for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++) result[r, c] = SummaryArrays.Pick(copied, r, area.Rows, c, area.Columns);
+            foreach (var cell in cells) if (!cell.Formula) result[cell.Row - area.Row, cell.Column - area.Column] = SummaryTextReference.External(folder, company, cell.Text);
+            return result;
+        }
+        internal static void VerifyMatrix(object actual, object r1c1, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company)
+        {
+            foreach (var cell in cells)
+            {
+                int r = cell.Row - area.Row, c = cell.Column - area.Column;
+                string expected = cell.Formula ? cell.R1C1 : SummaryTextReference.External(folder, company, cell.Text);
+                string found = Convert.ToString(SummaryArrays.Pick(cell.Formula ? r1c1 : actual, r, area.Rows, c, area.Columns));
+                if (!string.Equals(found, expected, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("公式批量读回核验失败，模板位置：" + CellAddress.Name(cell.Row, cell.Column));
+            }
+        }
+        internal static bool IsError(object value)
+        { return value is System.Runtime.InteropServices.ErrorWrapper || (value is int && (((uint)(int)value & 0xFFFF0000u) == 0x800A0000u)) || (value is uint && (((uint)value & 0xFFFF0000u) == 0x800A0000u)); }
+        internal static string XmlState(string xml)
+        {
+            var doc = new System.Xml.XmlDocument { XmlResolver = null };
+            var options = new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 64L * 1024 * 1024 };
+            using (var reader = System.Xml.XmlReader.Create(new System.IO.StringReader(xml), options)) doc.Load(reader);
+            var ns = new System.Xml.XmlNamespaceManager(doc.NameTable); ns.AddNamespace("s", "urn:schemas-microsoft-com:office:spreadsheet");
+            var styles = doc.SelectSingleNode("/s:Workbook/s:Styles", ns); var tables = doc.SelectNodes("/s:Workbook/s:Worksheet/s:Table", ns);
+            if (styles == null || tables.Count != 1) throw new InvalidOperationException("宿主不支持完整区域 XML 状态。");
+            var table = tables[0];
+            // Cached results may change on recalculation; formula text and all
+            // table/style/comment markup remain in the read-only fingerprint.
+            foreach (System.Xml.XmlNode cache in table.SelectNodes(".//s:Cell[@s:Formula]/s:Data", ns)) cache.ParentNode.RemoveChild(cache);
+            return styles.OuterXml + table.OuterXml;
+        }
         internal static void ValidateShift(string formula, int rows, int columns)
         {
             NativeFormula(formula);
