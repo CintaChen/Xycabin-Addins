@@ -22,6 +22,7 @@ namespace Excel_Iterate
         private string bookName, templateSheet, pasteSheet, leadSheet, backup;
         private readonly List<SummaryAreaPlan> areas = new List<SummaryAreaPlan>();
         private SummaryAreaPlan paste, lead;
+        private readonly List<SummaryAreaPlan> leadAreas = new List<SummaryAreaPlan>();
         private readonly List<SummaryAreaCell> cells = new List<SummaryAreaCell>();
         private List<SummaryAreaPlan> targets = new List<SummaryAreaPlan>();
         private readonly List<SummaryCompany> companies = new List<SummaryCompany>();
@@ -65,6 +66,28 @@ namespace Excel_Iterate
         {
             return new SummaryAreaPlan { Row = Convert.ToInt32(range.Row), Column = Convert.ToInt32(range.Column), Rows = Convert.ToInt32(((dynamic)bag.Own(range.Rows)).Count), Columns = Convert.ToInt32(((dynamic)bag.Own(range.Columns)).Count), Address = Convert.ToString(range.Address) };
         }
+        private List<SummaryAreaPlan> LeadSelections()
+        { return leadAreas.Count > 0 ? leadAreas : lead == null ? new List<SummaryAreaPlan>() : new List<SummaryAreaPlan> { lead }; }
+        internal bool ActivateLeadSheet()
+        {
+            using (var bag = new ComBag())
+            {
+                object context = book;
+                if (context == null) context = bag.Own(((dynamic)app).ActiveWorkbook); else CheckBook();
+                if (context == null) return false;
+                dynamic sheets = bag.Own(((dynamic)context).Worksheets);
+                for (int i = 1; i <= Convert.ToInt32(sheets.Count); i++)
+                using (var one = new ComBag())
+                {
+                    dynamic sheet = one.Own(sheets.Item(i));
+                    if (!string.Equals(Convert.ToString(sheet.Name), "Lead", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (Convert.ToInt32(sheet.Visible) != -1) { view.Message("Lead 表已隐藏，未自动取消隐藏；请自行选择可见的公司字段表。"); return false; }
+                    ((dynamic)context).Activate(); sheet.Activate();
+                    view.Message("已跳转到 " + sheet.Name + "；可 Ctrl 选择分段数据或不相邻的两列，同一行需同时选中编码和全称。"); return true;
+                }
+                view.Message("未找到 Lead 表，请在现有工作表中选择公司字段。"); return false;
+            }
+        }
         private void Pick(string kind, bool native)
         {
             if (running || pending) return;
@@ -74,7 +97,7 @@ namespace Excel_Iterate
                     object chosen = null;
                     try
                     {
-                        if (native) { form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "template" ? "选择模板区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择公司编码、全称相邻两列的数据行，不含表头。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
+                        if (native) { if (kind == "lead") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "template" ? "选择模板区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择编码和全称两列的数据行，可 Ctrl 多选分段或不相邻两列；同一行需配对，不含表头。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
                         else chosen = ((dynamic)app).Selection;
                         if (chosen == null || chosen is bool) return;
                         dynamic range = bag.Own(chosen), sheet = bag.Own(range.Parent);
@@ -83,7 +106,7 @@ namespace Excel_Iterate
                         else { bag.Own(selectedBook); if (!WorksheetIdentity.SameObject(book, selectedBook)) throw new InvalidOperationException("三组选区必须来自同一个工作簿。"); }
                         CheckBook(); string sheetName = Convert.ToString(sheet.Name);
                         dynamic selectedAreas = bag.Own(range.Areas); int count = Convert.ToInt32(selectedAreas.Count);
-                        if (kind != "template" && count != 1) throw new InvalidOperationException("此参数只接受一个连续区域。");
+                        if (kind == "paste" && count != 1) throw new InvalidOperationException("此参数只接受一个连续区域。");
                         var values = new List<SummaryAreaPlan>();
                         for (int i = 1; i <= count; i++)
                         {
@@ -97,10 +120,10 @@ namespace Excel_Iterate
                             }
                         }
                         if (kind == "paste" && (values[0].Rows != 1 || values[0].Columns != 1)) throw new InvalidOperationException("粘贴起点必须是一个单元格。");
-                        if (kind == "lead" && values[0].Columns != 2) throw new InvalidOperationException("公司字段必须是相邻两列，第一列编码简称、第二列全称。");
+                        if (kind == "lead") SummaryAreaEngine.LeadRows(values);
                         if (kind == "template") { int minRow = values.Min(a => a.Row), minColumn = values.Min(a => a.Column); foreach (var a in values) { a.RowOffset = a.Row - minRow; a.ColumnOffset = a.Column - minColumn; } areas.Clear(); areas.AddRange(values); templateSheet = sheetName; }
                         else if (kind == "paste") { paste = values[0]; pasteSheet = sheetName; }
-                        else { lead = values[0]; leadSheet = sheetName; loading = true; try { view.Companies.Rows.Clear(); } finally { loading = false; } }
+                        else { lead = values[0]; leadAreas.Clear(); leadAreas.AddRange(values); leadSheet = sheetName; loading = true; try { view.Companies.Rows.Clear(); } finally { loading = false; } }
                         view.Address(kind, "[" + ((dynamic)book).Name + "]" + sheetName + "!" + string.Join("; ", values.Select(a => a.Address).ToArray()));
                     }
                     finally { if (native && !form.IsDisposed) { form.Show(); form.Activate(); } }
@@ -122,19 +145,24 @@ namespace Excel_Iterate
         {
             var selected = new Dictionary<int, bool>();
             foreach (DataGridViewRow row in view.Companies.Rows) selected[Convert.ToInt32(row.Cells["row"].Value)] = Bool(row.Cells["selected"].Value);
-            companies.Clear(); dynamic sheet = Sheet(leadSheet, bag); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(lead)]); RejectSpecial(range, lead.Address, bag);
-            object values = range.Value2;
+            var parts = LeadSelections(); var bindings = SummaryAreaEngine.LeadRows(parts);
+            companies.Clear(); dynamic sheet = Sheet(leadSheet, bag);
+            foreach (var part in parts)
+            using (var one = new ComBag()) { dynamic range = one.Own(sheet.Range[SummaryAreaEngine.Address(part)]); RejectSpecial(range, part.Address, one); }
             loading = true;
             try
             {
                 view.Companies.Rows.Clear();
-                for (int r = 1; r <= lead.Rows; r++)
+                foreach (var binding in bindings)
+                using (var one = new ComBag())
                 {
-                    string code = Convert.ToString(SummaryArrays.Pick(values, r - 1, lead.Rows, 0, 2), CultureInfo.InvariantCulture);
-                    string name = Convert.ToString(SummaryArrays.Pick(values, r - 1, lead.Rows, 1, 2), CultureInfo.InvariantCulture);
+                    dynamic codeCell = one.Own(sheet.Cells[binding.Row, binding.CodeColumn]), nameCell = one.Own(sheet.Cells[binding.Row, binding.NameColumn]);
+                    object codeValue = codeCell.Value2, nameValue = nameCell.Value2;
+                    if (codeValue is System.Runtime.InteropServices.ErrorWrapper || nameValue is System.Runtime.InteropServices.ErrorWrapper) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行含错误值。");
+                    string code = Convert.ToString(codeValue, CultureInfo.InvariantCulture), name = Convert.ToString(nameValue, CultureInfo.InvariantCulture);
                     if (code.Length == 0 && name.Length == 0) continue;
-                    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + (lead.Row + r - 1) + " 行两列必须同时填写。");
-                    var company = new SummaryCompany { Row = lead.Row + r - 1, Code = code, Name = name, Selected = !selected.ContainsKey(lead.Row + r - 1) || selected[lead.Row + r - 1] };
+                    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行两列必须同时填写。");
+                    var company = new SummaryCompany { Row = binding.Row, Code = code, Name = name, Selected = !selected.ContainsKey(binding.Row) || selected[binding.Row] };
                     companies.Add(company); view.Companies.Rows.Add(company.Selected, company.Row, code, name);
                 }
             }
@@ -145,7 +173,7 @@ namespace Excel_Iterate
             if (running || pending) return; ready = false; CheckBook();
             if (areas.Count == 0 || paste == null || lead == null) throw new InvalidOperationException("请完成三组选区。");
             if (templateSheet != pasteSheet) throw new InvalidOperationException("模板和粘贴起点必须属于同一工作表。");
-            if (!Directory.Exists(view.Folder.Text)) throw new InvalidOperationException("项目文件夹不存在。");
+            if (!Directory.Exists(view.ProjectFolder)) throw new InvalidOperationException("项目文件夹不存在。");
             using (var bag = new ComBag())
             {
                 if (Bool(((dynamic)book).ReadOnly) || Bool(((dynamic)book).ProtectStructure)) throw new InvalidOperationException("工作簿只读或结构受保护，不能执行及备份。");
@@ -153,7 +181,7 @@ namespace Excel_Iterate
                 if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("目标工作表受保护。");
                 ReadCompanies(bag); var picked = companies.Where(c => c.Selected).ToList();
                 targets = SummaryAreaEngine.Targets(areas, paste.Row, paste.Column, picked.Count);
-                if (leadSheet == templateSheet && targets.Any(t => SummaryAreaEngine.Intersects(t, lead))) throw new InvalidOperationException("目标不能覆盖 Lead 公司字段。");
+                if (leadSheet == templateSheet && targets.Any(t => LeadSelections().Any(part => SummaryAreaEngine.Intersects(t, part)))) throw new InvalidOperationException("目标不能覆盖 Lead 公司字段。");
                 cells.Clear(); var errors = new List<string>();
                 foreach (var area in areas)
                 {
@@ -168,7 +196,7 @@ namespace Excel_Iterate
                             try
                             {
                                 if (formula) SummaryAreaEngine.NativeFormula(text);
-                                else foreach (var company in picked) SummaryTextReference.External(view.Folder.Text, company.Name, text);
+                                else foreach (var company in picked) SummaryTextReference.External(view.ProjectFolder, company.Name, text);
                                 cells.Add(new SummaryAreaCell { Row = row, Column = column, Text = text, Formula = formula, R1C1 = formula ? Convert.ToString(cell.FormulaR1C1) : null });
                             }
                             catch (Exception error) { errors.Add(CellAddress.Name(row, column) + " | " + text + " | " + error.Message); }
@@ -178,7 +206,7 @@ namespace Excel_Iterate
                 // Validate filenames even for an entirely blank template.
                 foreach (var company in picked)
                 {
-                    try { SummaryTextReference.External(view.Folder.Text, company.Name, "BS!A1"); if (view.CheckFiles.Checked && !File.Exists(Path.Combine(view.Folder.Text, company.Name + ".xlsx"))) throw new InvalidOperationException("来源文件不存在。"); }
+                    try { SummaryTextReference.External(view.ProjectFolder, company.Name, "BS!A1"); if (view.CheckFiles.Checked && !File.Exists(Path.Combine(view.ProjectFolder, company.Name + ".xlsx"))) throw new InvalidOperationException("来源文件不存在。"); }
                     catch (Exception error) { errors.Add("Lead 第 " + company.Row + " 行 | " + company.Name + " | " + error.Message); }
                 }
                 for (int i = 0; i < targets.Count; i++)
@@ -222,9 +250,10 @@ namespace Excel_Iterate
             CheckBook(); var text = new StringBuilder(bookName);
             using (var bag = new ComBag())
             {
-                foreach (var part in areas.Concat(targets).Concat(new[] { lead }))
+                var leadParts = LeadSelections();
+                foreach (var part in areas.Concat(targets).Concat(leadParts))
                 {
-                    dynamic sheet = Sheet(part == lead ? leadSheet : templateSheet, bag);
+                    dynamic sheet = Sheet(leadParts.Contains(part) ? leadSheet : templateSheet, bag);
                     if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("工作表保护状态变化。");
                     for (int r = part.Row; r < part.Row + part.Rows; r++) for (int c = part.Column; c < part.Column + part.Columns; c++)
                     using (var one = new ComBag())
@@ -273,7 +302,7 @@ namespace Excel_Iterate
                             dynamic destination = one.Own(sheet.Cells[targetArea.Row + cell.Row - sourceArea.Row, targetArea.Column + cell.Column - sourceArea.Column]);
                             if (!cell.Formula)
                             {
-                                string formula = SummaryTextReference.External(view.Folder.Text, company.Name, cell.Text); destination.Formula = formula;
+                                string formula = SummaryTextReference.External(view.ProjectFolder, company.Name, cell.Text); destination.Formula = formula;
                                 if (!Bool(destination.HasFormula) || !Equivalent(Convert.ToString(destination.Formula), formula)) throw new InvalidOperationException("真实公式写入核验失败：" + destination.Address);
                             }
                             else if (!Bool(destination.HasFormula) || !Equivalent(Convert.ToString(destination.FormulaR1C1), cell.R1C1)) throw new InvalidOperationException("原生公式相对引用复制核验失败：" + destination.Address);

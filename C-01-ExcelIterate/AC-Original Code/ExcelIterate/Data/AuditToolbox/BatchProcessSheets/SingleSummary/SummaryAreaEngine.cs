@@ -5,6 +5,10 @@ using System.Text.RegularExpressions;
 
 namespace Excel_Iterate
 {
+    internal sealed class SummaryLeadRow
+    {
+        internal int Row, CodeColumn, NameColumn;
+    }
     internal sealed class SummaryAreaCell
     {
         internal int Row, Column;
@@ -14,6 +18,38 @@ namespace Excel_Iterate
     internal static class SummaryAreaEngine
     {
         internal const int CellLimit = 100000;
+        // Pair actual row identities rather than zipping flattened Areas: a
+        // missing cell in either column must never shift subsequent companies.
+        internal static List<SummaryLeadRow> LeadRows(IList<SummaryAreaPlan> areas)
+        {
+            if (areas.Count == 0) throw new InvalidOperationException("请选择 Lead 公司字段。");
+            var columns = new SortedSet<int>(); var rows = new Dictionary<int, HashSet<int>>(); var order = new List<int>(); long count = 0;
+            foreach (var area in areas)
+            {
+                if (area.Sheet != areas[0].Sheet) throw new InvalidOperationException("Lead 选区必须来自同一工作表。");
+                if (area.Rows < 1 || area.Columns < 1 || area.Columns > 2 || area.Row < 1 || area.Column < 1 || (long)area.Row + area.Rows - 1 > 1048576 || (long)area.Column + area.Columns - 1 > 16384)
+                    throw new InvalidOperationException("Lead 每个 Area 只能包含一列或两列的有效数据区域。");
+                count += (long)area.Rows * area.Columns;
+                if (count > CellLimit) throw new InvalidOperationException("Lead 选区最多十万单元格，请选择实际数据行。");
+                for (int c = area.Column; c < area.Column + area.Columns; c++) columns.Add(c);
+                if (columns.Count > 2) throw new InvalidOperationException("Lead 只能选择两列：左列编码简称，右列公司全称。");
+                for (int r = area.Row; r < area.Row + area.Rows; r++)
+                {
+                    HashSet<int> selected;
+                    if (!rows.TryGetValue(r, out selected)) { selected = new HashSet<int>(); rows.Add(r, selected); order.Add(r); }
+                    for (int c = area.Column; c < area.Column + area.Columns; c++)
+                        if (!selected.Add(c)) throw new InvalidOperationException("Lead 第 " + r + " 行有重复或重叠选区。");
+                }
+            }
+            if (columns.Count != 2) throw new InvalidOperationException("Lead 需要两列：可选连续两列，也可 Ctrl 选择不相邻的两列。");
+            var result = new List<SummaryLeadRow>();
+            foreach (int row in order)
+            {
+                if (rows[row].Count != 2) throw new InvalidOperationException("Lead 第 " + row + " 行未同时选中编码和全称，请按同一行补齐两列。");
+                result.Add(new SummaryLeadRow { Row = row, CodeColumn = columns.Min, NameColumn = columns.Max });
+            }
+            return result;
+        }
         internal static bool Intersects(SummaryAreaPlan a, SummaryAreaPlan b)
         { return a.Row <= (long)b.Row + b.Rows - 1 && b.Row <= (long)a.Row + a.Rows - 1 && a.Column <= (long)b.Column + b.Columns - 1 && b.Column <= (long)a.Column + a.Columns - 1; }
         internal static List<SummaryAreaPlan> Targets(IList<SummaryAreaPlan> areas, int pasteRow, int pasteColumn, int companies)

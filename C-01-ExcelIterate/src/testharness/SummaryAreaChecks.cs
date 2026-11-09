@@ -44,10 +44,28 @@ internal static class SummaryAreaChecks
         rejects(delegate { SummaryAreaEngine.NativeFormula("='C:\\[a.xlsx]BS'!A1"); }, "不明确已有外链阻断");
         rejects(delegate { SummaryAreaEngine.NativeFormula("=CustomName+1"); }, "未确认名称阻断");
         rejects(delegate { SummaryAreaEngine.ValidateShift("=XFD1",0,1); }, "原生相对引用越界预检阻断");
+        var leadParts = new List<SummaryAreaPlan> {
+            new SummaryAreaPlan { Sheet="Lead",Row=7,Column=1,Rows=2,Columns=2 },
+            new SummaryAreaPlan { Sheet="Lead",Row=3,Column=1,Rows=1,Columns=2 } };
+        var leadRows = SummaryAreaEngine.LeadRows(leadParts);
+        check("Lead 分段按Area和区域内行序读取",leadRows.Count==3&&leadRows[0].Row==7&&leadRows[1].Row==8&&leadRows[2].Row==3,"row order changed");
+        check("Lead 未选中间行不进入名单",leadRows.TrueForAll(r=>r.Row==7||r.Row==8||r.Row==3),"gap rows included");
+        leadParts = new List<SummaryAreaPlan> {
+            new SummaryAreaPlan { Sheet="Lead",Row=3,Column=4,Rows=2,Columns=1 },
+            new SummaryAreaPlan { Sheet="Lead",Row=3,Column=1,Rows=2,Columns=1 } };
+        leadRows=SummaryAreaEngine.LeadRows(leadParts);
+        check("Lead 不相邻两列按实际行配对且左编码右全称",leadRows.Count==2&&leadRows[0].CodeColumn==1&&leadRows[0].NameColumn==4&&leadRows[1].Row==4,"column pairing shifted");
+        leadParts[1].Rows=1; rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 缺少同行配对阻断而不串行");leadParts[1].Rows=2;
+        leadParts.Add(new SummaryAreaPlan { Sheet="Lead",Row=3,Column=6,Rows=2,Columns=1 }); rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 超过两列阻断");leadParts.RemoveAt(2);
+        leadParts.Add(new SummaryAreaPlan { Sheet="Lead",Row=3,Column=1,Rows=1,Columns=1 });rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 重叠选区阻断");leadParts.RemoveAt(2);
+        leadParts[1].Sheet="其他";rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 跨表选区阻断");
         using (var form = new SingleSummaryForm(true))
         {
             check("Ribbon MVP使用四组参数视图", form.Controls.Count==1 && form.Controls[0] is SummaryAreaView, "view missing");
             var view=(SummaryAreaView)form.Controls[0]; check("来源文件检查默认关闭",!view.CheckFiles.Checked,"default checked");
+            check("项目文件夹允许手动输入粘贴",!view.Folder.ReadOnly&&view.Folder.ShortcutsEnabled&&view.Folder.Enabled,"folder locked");
+            view.Folder.Text="  \"C:\\项目文件夹\"  ";check("手动粘贴路径支持外层引号",view.ProjectFolder==@"C:\项目文件夹","quoted folder not normalized");
+            int changes=0;view.Changed+=delegate { changes++; };view.Folder.Text=@"C:\另一文件夹";check("修改文件夹触发预检失效",changes==1,"path edit kept previous preview");
             var app=new SummaryAreaFakeApp();
             using(var host=new SummaryAreaHost(app,form,view))
             {

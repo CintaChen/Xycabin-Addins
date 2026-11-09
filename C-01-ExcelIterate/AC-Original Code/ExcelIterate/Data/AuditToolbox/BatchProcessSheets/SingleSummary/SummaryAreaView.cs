@@ -12,7 +12,11 @@ namespace Excel_Iterate
         internal event Action PreviewRequested, ExecuteRequested, UndoRequested, ConfirmRequested, Changed;
         private readonly List<Control> inputs = new List<Control>();
         private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
-        internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder" };
+        internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
+        internal string ProjectFolder
+        {
+            get { string value = Folder.Text.Trim(); return value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"' ? value.Substring(1, value.Length - 2) : value; }
+        }
         internal readonly CheckBox CheckFiles = new CheckBox { Text = "检查来源文件是否存在（不打开文件）", AutoSize = true, Checked = false };
         internal readonly ResultGrid Companies = new ResultGrid { Dock = DockStyle.Fill, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false };
         private readonly RichTextBox log = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, BackColor = Color.White, BorderStyle = BorderStyle.None };
@@ -29,10 +33,10 @@ namespace Excel_Iterate
             parameters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             parameters.Controls.Add(Picker("模板区域（可 Ctrl 多选）", "template"));
             parameters.Controls.Add(Picker("粘贴起点（一个单元格）", "paste"));
-            parameters.Controls.Add(Picker("Lead 公司字段（编码、全称两列，不含表头）", "lead"));
+            parameters.Controls.Add(Picker("Lead 公司字段（可 Ctrl 多选两列，不含表头）", "lead"));
             var folder = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
             folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            folder.Controls.Add(new Label { Text = "项目文件夹", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0); folder.Controls.Add(Folder, 1, 0);
+            folder.Controls.Add(new Label { Text = "项目文件夹（可输入）", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0); folder.Controls.Add(Folder, 1, 0);
             var browse = Ui.Button("选择文件夹…", 130); folder.Controls.Add(browse, 2, 0); inputs.Add(browse); inputs.Add(Folder);
             browse.Click += delegate { string value = HostDialogService.Folder(FindForm(), "选择公司底稿所在文件夹", true); if (!string.IsNullOrEmpty(value)) Folder.Text = value; };
             Folder.TextChanged += delegate { InvalidatePlan(); }; CheckFiles.CheckedChanged += delegate { InvalidatePlan(); };

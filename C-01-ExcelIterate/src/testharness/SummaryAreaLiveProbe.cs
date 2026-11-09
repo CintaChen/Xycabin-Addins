@@ -71,6 +71,17 @@ internal static class SingleSummaryLiveProbe
                             Call(host,"Preview");Call(host,"Start");Call(host,"Tick",null,EventArgs.Empty);target.Protect();Call(host,"Tick",null,EventArgs.Empty);
                             Check((bool)Get(host,"failed")&&(bool)Get(host,"pending"),"injected protection failure keeps recovery session");target.Unprotect();Call(host,"Undo");Check(!(bool)Get(host,"pending")&&Convert.ToString(q3.Formula)==oldFormula,"retry undo recovers failed batch");
                             Call(host,"Preview");Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);Call(host,"Confirm");Check(!(bool)Get(host,"pending"),"confirmation ends rollback session");Check(Convert.ToString(book.Path)=="","target workbook was never saved");
+                            target.Activate();lead.Name="lEaD";Check(host.ActivateLeadSheet(),"Lead jump recognizes case-insensitive sheet name");
+                            dynamic active=bag.Own(app.ActiveSheet);Check(Convert.ToString(active.Name)=="lEaD","Lead jump activates actual Lead worksheet");
+                            lead.Name="公司清单";target.Activate();Check(!host.ActivateLeadSheet(),"missing Lead keeps manual worksheet selection available");lead.Name="Lead";
+                            foreach(var pair in new[]{new[]{"A7","01"},new[]{"D7","！01-示例（集团）"},new[]{"A4","02"},new[]{"D4","！02-示例乙"},new[]{"A5","未选行"},new[]{"D5","未选行不得读取"}}){dynamic cell=bag.Own(lead.Range[pair[0]]);cell.Value2=pair[1];}
+                            lead.Activate();dynamic union=bag.Own(lead.Range["A7,D7,A4,D4"]);union.Select();
+                            dynamic unionAreas=bag.Own(union.Areas),firstArea=bag.Own(unionAreas.Item(1));int expectedFirst=Convert.ToInt32(firstArea.Row);
+                            Call(host,"Pick","lead",false);Check(((List<SummaryAreaPlan>)Get(host,"leadAreas")).Count==4,"actual Excel Selection.Areas captured for disjoint Lead fields");
+                            Call(host,"Preview");Check((bool)Get(host,"ready")&&view.Companies.Rows.Count==2,"disjoint Lead preflight ignores unselected middle rows");
+                            Check(Convert.ToInt32(view.Companies.Rows[0].Cells["row"].Value)==expectedFirst,"disjoint Lead retains Excel Areas order");
+                            Check(Convert.ToString(view.Companies.Rows[0].Cells["company"].Value)==(expectedFirst==7?"！01-示例（集团）":"！02-示例乙"),"nonadjacent code and name columns paired by same row");
+                            view.Folder.Text="\""+session.DirectoryPath+"\"";Check(!(bool)Get(host,"ready"),"manual folder edit invalidates prior plan");Call(host,"Preview");Check((bool)Get(host,"ready"),"manually pasted quoted folder passes preflight");
                         }
                     }
                 }

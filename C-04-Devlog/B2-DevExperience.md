@@ -662,6 +662,8 @@ B3-Spec Coding.md 为 B3 工程规范入口。改名需要同时修改 verify_de
 
 当前单体汇总 Ribbon 入口调用 SingleSummaryForm(true) 和 SummaryAreaView/Host/Engine。View 仅传递参数事件，Host 在宿主 STA 读取 Range.Areas、绑定 COM 身份、只读预检和逐 Area 计时执行；Engine 负责外链文本、坐标步长与公式白名单。保留旧构造器及参数 API 用于兼容既有探针，不从新入口执行整列铺列或回写 Lead。备份复用 SummaryWriter.Backup，但复制及恢复只访问计划 Area，失败批次禁止确认；不调用 Save 或 UpdateLink。未知公式、所有合并、数组和溢出保守阻断。迁移原生 Type=8 选择器、SourceChangeWatch、HostQuiet、HostLinkQuiet、ComBag 与 UiCard/ResultGrid 直接复用。
 
+Lead 多 Area 通过 SummaryAreaEngine.LeadRows 建立实际行号和两列坐标映射，按 Areas/区域内行序输出，拒绝缺失、重复及超过两列；读取、指纹及目标覆盖保护只使用实际 Lead Area。原生 Lead 选择前激活绑定工作簿内可见的 Lead 表，读取当前选区不跳表，取消不改已存参数。项目文件夹为可编辑 TextBox，保留浏览按钮；实际解析允许粘贴带外层双引号的路径，字段改动仍触发原预检失效。
+
 旧参数模式的两项单体功能由 BatchProcessSheets/_Shared/BatchPresets.cs 保留版本 1 的存储协议，BatchPresetUi.cs 保留业务适配。将迁移原弹窗的布局、双行列表绘制、详情格式、命名输入区和齿轮说明行抽到 AuditToolbox/_Shared/PresetManagerView.cs；迁移与两个单体功能直接调用同一界面实现。各自保留预设格式、存储位置和应用校验，不复制迁移专用数据模型。保留原子替换与独占锁；同名导入另存，重命名不覆盖已有预设。窗口各自白名单捕获参数，不序列化控件、COM、公司名单或还原记录。
 
 命名与管理窗经 HostDialogService 在独立 STA 创建、提取 JSON 结果并释放，不把宿主控件或 COM 传入该线程。齿轮菜单关闭后再排队打开弹窗。模板应用先创建候选读取快照并验证字段，失败只释放候选；汇总应用先建立候选绑定，校验表头和参数后才替换旧绑定，失败仅关闭本次新打开的文件且不保存。文件或输出目录重定位只修改本次应用的配置；取消保留旧设置，应用后旧预检失效。首次打开不自动绑定文件，有待还原批次或运行时禁止应用。新增窗口同步登记尺寸、格式预览和目录检查；预览仅显示明确的示例，不读取预设库。库仍在 LocalApplicationData/程序集名/单体预设，兼容已有文件；分享前应核对其中的用户路径。
