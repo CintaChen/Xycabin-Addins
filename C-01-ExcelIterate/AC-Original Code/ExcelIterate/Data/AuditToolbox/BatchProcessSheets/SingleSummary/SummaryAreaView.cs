@@ -1,0 +1,71 @@
+using System;
+using System.Drawing;
+using System.Collections.Generic;
+using System.Windows.Forms;
+
+namespace Excel_Iterate
+{
+    // UI only: no Excel objects cross this boundary. Uses the migration UI kit.
+    internal sealed class SummaryAreaView : UserControl
+    {
+        internal event Action<string, bool> Pick;
+        internal event Action PreviewRequested, ExecuteRequested, UndoRequested, ConfirmRequested, Changed;
+        private readonly List<Control> inputs = new List<Control>();
+        private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
+        internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder" };
+        internal readonly CheckBox CheckFiles = new CheckBox { Text = "检查来源文件是否存在（不打开文件）", AutoSize = true, Checked = false };
+        internal readonly ResultGrid Companies = new ResultGrid { Dock = DockStyle.Fill, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false };
+        private readonly RichTextBox log = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, BackColor = Color.White, BorderStyle = BorderStyle.None };
+        private readonly RoundedButton preview = Ui.Button("读取 Lead 并预检", 150), execute = Ui.Button("执行", 90), undo = Ui.Button("撤销", 90), confirm = Ui.Button("确认", 90);
+        private readonly Label state = new Label { Dock = DockStyle.Top, AutoSize = true, ForeColor = Ui.InkDim };
+        internal SummaryAreaView()
+        {
+            Dock = DockStyle.Fill;
+            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(16), BackColor = Ui.Canvas };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 60)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 40)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            var parameters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 1 };
+            parameters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            parameters.Controls.Add(Picker("模板区域（可 Ctrl 多选）", "template"));
+            parameters.Controls.Add(Picker("粘贴起点（一个单元格）", "paste"));
+            parameters.Controls.Add(Picker("Lead 公司字段（编码、全称两列，不含表头）", "lead"));
+            var folder = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
+            folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            folder.Controls.Add(new Label { Text = "项目文件夹", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0); folder.Controls.Add(Folder, 1, 0);
+            var browse = Ui.Button("选择文件夹…", 130); folder.Controls.Add(browse, 2, 0); inputs.Add(browse); inputs.Add(Folder);
+            browse.Click += delegate { string value = HostDialogService.Folder(FindForm(), "选择公司底稿所在文件夹", true); if (!string.IsNullOrEmpty(value)) Folder.Text = value; };
+            Folder.TextChanged += delegate { InvalidatePlan(); }; CheckFiles.CheckedChanged += delegate { InvalidatePlan(); };
+            parameters.Controls.Add(folder); parameters.Controls.Add(CheckFiles); inputs.Add(CheckFiles);
+            var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters); root.Controls.Add(card, 0, 0);
+            state.Text = "选区绑定同一工作簿；只复制选中的 Area。未选空隙不变；全程不自动保存。";
+            root.Controls.Add(state, 0, 1);
+            Companies.Columns.Add(new DataGridViewCheckBoxColumn { Name = "selected", HeaderText = "选用", Width = 70 });
+            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "row", HeaderText = "Lead 行", ReadOnly = true, Width = 95 });
+            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "code", HeaderText = "公司编码及简称", ReadOnly = true, Width = 230 });
+            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "company", HeaderText = "公司全称 / 文件名主体", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            Ui.StyleGrid(Companies); root.Controls.Add(Companies, 0, 2); root.Controls.Add(log, 0, 3);
+            Companies.CurrentCellDirtyStateChanged += delegate { if (Companies.IsCurrentCellDirty) Companies.CommitEdit(DataGridViewDataErrorContexts.Commit); };
+            Companies.CellValueChanged += delegate(object sender, DataGridViewCellEventArgs e) { if (e.ColumnIndex == 0) InvalidatePlan(); };
+            var bar = Ui.ActionBar(); bar.Controls.AddRange(new Control[] { preview, execute, confirm, undo }); root.Controls.Add(bar, 0, 4);
+            Ui.StylePrimary(preview); preview.Click += delegate { if (PreviewRequested != null) PreviewRequested(); };
+            execute.Click += delegate { if (ExecuteRequested != null) ExecuteRequested(); }; undo.Click += delegate { if (UndoRequested != null) UndoRequested(); }; confirm.Click += delegate { if (ConfirmRequested != null) ConfirmRequested(); };
+            Controls.Add(root); SetState(false, false, false);
+        }
+        private Control Picker(string title, string kind)
+        {
+            var row = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 0, 0, 6) };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            row.Controls.Add(new Label { Text = title, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+            var text = new TextBox { ReadOnly = true, Dock = DockStyle.Fill, Name = "summaryArea_" + kind }; addresses.Add(kind, text); row.Controls.Add(text, 1, 0);
+            var pick = Ui.Button("在 Excel 中选择…", 150); var read = Ui.Button("读取当前选区", 120); row.Controls.Add(pick, 2, 0); row.Controls.Add(read, 3, 0);
+            pick.Click += delegate { if (Pick != null) Pick(kind, true); }; read.Click += delegate { if (Pick != null) Pick(kind, false); };
+            inputs.Add(pick); inputs.Add(read); return row;
+        }
+        internal void Address(string kind, string value) { addresses[kind].Text = value; InvalidatePlan(); }
+        internal void InvalidatePlan() { execute.Enabled = false; if (Changed != null) Changed(); }
+        internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }
+        internal void SetState(bool running, bool pending, bool ready)
+        { foreach (var c in inputs) c.Enabled = !running && !pending; Companies.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
+    }
+}

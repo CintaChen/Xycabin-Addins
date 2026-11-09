@@ -76,7 +76,7 @@ namespace Excel_Iterate
                     case "batch.preset.name":form=new BatchPresetNameForm("company", "保存为预设", "示例年度预设");break;
                     case "batch.preset.manager":form=new BatchPresetManagerForm("company");break;
                     case "company.workbooks":form=new CompanyWorkbookForm();break;
-                    case "summary.single":form=new SingleSummaryForm();break;
+                    case "summary.single":form=new SingleSummaryForm(true);break;
                     case "migration.data":form=new DataMigrationForm();break;
                     case "migration.preset.name":form=new MigrationNameDialog("保存为预设", "预设名称：", "示例预设");break;
                     case "migration.preset.manager":form=new MigrationPresetManager(null);break;

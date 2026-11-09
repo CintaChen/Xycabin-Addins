@@ -224,6 +224,16 @@ namespace Excel_Iterate
             RefreshActions();
         }
 
+        // The MVP uses the existing registered Form and sizing ID. Its view
+        // and Excel controller are independent of the legacy column workflow.
+        internal SingleSummaryForm(bool areaMvp)
+        {
+            Text = "单体汇总批量链接";
+            KeyPreview = true;
+            DialogSizing.Prepare(this, "summary.single", "table", Ui.Blue);
+            Controls.Add(new SummaryAreaView());
+        }
+
         private Control SelectionParameter(Control field, string title, string kind)
         {
             var panel = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
@@ -541,15 +551,15 @@ namespace Excel_Iterate
 
         public Size MeasureDefaultClient()
         {
-            root.PerformLayout();
+            if (root != null) root.PerformLayout();
             return new Size(DialogSizing.LogicalClient(this).Width, 760);
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Escape) { e.Handled = true; e.SuppressKeyPress = true; Close(); }
-            if (e.Control && e.Shift && e.KeyCode == Keys.P && Preview.Enabled && PreviewRequested != null) { e.Handled = true; PreviewRequested(); }
-            if (e.Control && e.Shift && e.KeyCode == Keys.W && Execute.Enabled && ExecuteRequested != null) { e.Handled = true; ExecuteRequested(); }
+            if (e.Control && e.Shift && e.KeyCode == Keys.P && Preview != null && Preview.Enabled && PreviewRequested != null) { e.Handled = true; PreviewRequested(); }
+            if (e.Control && e.Shift && e.KeyCode == Keys.W && Execute != null && Execute.Enabled && ExecuteRequested != null) { e.Handled = true; ExecuteRequested(); }
             base.OnKeyDown(e);
         }
 

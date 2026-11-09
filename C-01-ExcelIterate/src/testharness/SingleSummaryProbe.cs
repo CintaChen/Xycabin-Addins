@@ -57,7 +57,7 @@ namespace Excel_Iterate.TestHarness
             return request;
         }
 
-        static int Main()
+        [STAThread] static int Main()
         {
             Console.WriteLine("=== 单体汇总表生成：换链与规划离线自测 ===");
             Console.WriteLine();
@@ -209,6 +209,7 @@ namespace Excel_Iterate.TestHarness
 
             SummaryWorkbookBindingChecks.Run(Assert);
             SummaryAnnualChecks.Run(Assert);
+            SummaryAreaChecks.Run(Assert);
 
             Console.WriteLine();
             Console.WriteLine("PASS " + _pass + "，FAIL " + _fail);
