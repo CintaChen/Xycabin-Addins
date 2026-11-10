@@ -15,6 +15,9 @@ namespace Excel_Iterate
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
         internal readonly ResultGrid ReferenceSources = new ResultGrid { AutoSize=false,Height=145,Dock=DockStyle.Top,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false };
         private Control referenceBody;
+        internal readonly CheckBox FormulaHeaders = new CheckBox {Text="使用公式关联 Lead（单列年度自动转置）",AutoSize=true,Checked=true};
+        internal readonly CheckBox RepeatNames = new CheckBox {Text="每个年度列都填写公司名称",AutoSize=true,Checked=true};
+        internal readonly CheckBox ReplaceHeaderArrays = new CheckBox {Text="允许整体重写既有表头数组（预检列出完整范围）",AutoSize=true};
         internal readonly CheckBox HeadersEnabled = new CheckBox { Text = "启用表头自动填充", AutoSize = true };
         internal readonly Label HeaderPreview = new Label { AutoSize = true, ForeColor = Ui.InkDim, MaximumSize = new Size(1000,0) };
         internal string ProjectFolder
@@ -60,9 +63,11 @@ namespace Excel_Iterate
             var expand=Ui.Button("▶ 表头自动填充",180);parameters.Controls.Add(expand);
             expand.Click+=delegate { headerBody.Visible=!headerBody.Visible;expand.Text=(headerBody.Visible?"▼":"▶")+" 表头自动填充"; };
             headerBody.Controls.Add(HeadersEnabled);inputs.Add(HeadersEnabled);
+            foreach(var option in new[]{FormulaHeaders,RepeatNames,ReplaceHeaderArrays}){headerBody.Controls.Add(option);inputs.Add(option);option.CheckedChanged+=delegate{InvalidatePlan();};}
+
             headerBody.Controls.Add(Picker("公司名称写入位置", "companyHeader"));
-            headerBody.Controls.Add(Picker("年度来源区域（一行）", "yearSource"));
-            headerBody.Controls.Add(Picker("年度写入起点", "yearTarget"));headerBody.Controls.Add(new Label { AutoSize=true,Text="名称取 Lead 第一列；年度按显示文字从左向右重复。仅写指定位置，冲突须重新选择。",ForeColor=Ui.InkDim });headerBody.Controls.Add(HeaderPreview);parameters.Controls.Add(headerBody);
+            headerBody.Controls.Add(Picker("年度来源区域（单列或单行）", "yearSource"));
+            headerBody.Controls.Add(Picker("年度写入起点", "yearTarget"));headerBody.Controls.Add(new Label { AutoSize=true,Text="名称取公司字段的编码简称列（例如 Lead 的 O 列）；年度可选 N 列区域。公式模式不依赖抵消表计数。",ForeColor=Ui.InkDim });headerBody.Controls.Add(HeaderPreview);parameters.Controls.Add(headerBody);
             HeadersEnabled.CheckedChanged+=delegate { InvalidatePlan(); };
 
             var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters);

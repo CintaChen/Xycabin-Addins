@@ -75,6 +75,9 @@ internal static class SummaryAreaChecks
         check("公式字符串不作为外链识别",literalFormula.Spans.TrueForAll(x=>x.Kind==RefKind.Local),"literal parsed as external");
         var cross=SummaryExistingFormula.Read("='公共表'!A1+A1");cross.Decisions["本工作簿!公共表"]=false;
         check("明确保留本簿跨表来源",cross.Render(@"C:\新","乙",1,2)=="='公共表'!A1+C2","cross-sheet shifted");
+        check("竖向年度直接转置",SummaryHeaderFormula.Years(new SummaryAreaPlan{Sheet="Lead",Row=2,Column=14,Rows=5,Columns=1})=="=TRANSPOSE('Lead'!$N$2:$N$6)","transpose mismatch");
+        check("公司公式直接关联编码简称列",SummaryHeaderFormula.Cell("Lead",3,15)=="='Lead'!$O$3","company link mismatch");
+        check("表名引号正确转义",SummaryHeaderFormula.Cell("公'司",3,15)=="='公''司'!$O$3","quote mismatch");
         var preset = new BatchPreset { Feature="summary", Name="区域测试", Context="test.xlsx", Values=new Dictionary<string,string> {
             {"mode","area-mvp"},{"templateSheet","汇总"},{"templateAreas","3,12,4,5;20,12,11,5"},{"pasteSheet","汇总"},{"pasteArea","3,17,1,1"},{"leadSheet","Lead"},{"leadAreas","3,1,2,1;3,4,2,1"},{"projectFolder",@"C:\项目"},{"checkFiles","False"} } };
         var settings=SummaryAreaSettings.Read(BatchPresetStore.Decode(BatchPresetStore.Encode(preset),"summary"));

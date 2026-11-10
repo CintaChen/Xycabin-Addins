@@ -24,6 +24,9 @@ namespace Excel_Iterate
         private readonly List<SummaryAreaPlan> headerTargets = new List<SummaryAreaPlan>();
         private readonly List<string> headerValues = new List<string>();
         private bool headersTouched;
+        private readonly Dictionary<string,string> headerExpressions=new Dictionary<string,string>(),headerFormats=new Dictionary<string,string>();
+        private readonly List<SummaryHeaderArray> oldHeaderArrays=new List<SummaryHeaderArray>(),yearHeaderArrays=new List<SummaryHeaderArray>();
+
 
         private readonly ComBag references = new ComBag();
         private readonly Timer timer = new Timer { Interval = 40 };
@@ -77,7 +80,7 @@ namespace Excel_Iterate
                 { "pasteSheet", pasteSheet ?? "" }, { "pasteArea", paste == null ? "" : SummaryAreaSettings.Encode(new[] { paste }) },
                 { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
             } };
-            preset.Values["headersEnabled"] = view.HeadersEnabled.Checked.ToString();
+            preset.Values["headersEnabled"] = view.HeadersEnabled.Checked.ToString();preset.Values["headersFormula"]=view.FormulaHeaders.Checked.ToString();preset.Values["headersRepeat"]=view.RepeatNames.Checked.ToString();
             var names = new[] { "companyHeader", "yearSource", "yearTarget" }; var parts = new[] { companyHeader, yearSource, yearTarget };
             for(int i=0;i<names.Length;i++) { preset.Values[names[i]] = parts[i] == null ? "" : SummaryAreaSettings.Encode(new[] { parts[i] }); preset.Values[names[i]+"Sheet"] = parts[i] == null ? "" : parts[i].Sheet; }
             return preset;
@@ -101,7 +104,8 @@ namespace Excel_Iterate
                 {
                     dynamic sheets = bag.Own(((dynamic)selectedBook).Worksheets);
                     foreach(var part in new[]{settings.CompanyHeader,settings.YearSource,settings.YearTarget}.Where(p=>p!=null))
-                    { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); if(part==settings.CompanyHeader) RejectArraySpill(range,"公司名称",bag); else RejectSpecial(range,"表头选区",bag); }
+                    { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); if(!settings.FormulaHeaders){if(part==settings.CompanyHeader)RejectArraySpill(range,"公司名称",bag);else RejectSpecial(range,"表头选区",bag);}
+                        else if(part!=settings.CompanyHeader){object merged=range.MergeCells;if(merged==null||merged==DBNull.Value||Bool(merged))throw new InvalidOperationException("年度选区不能包含合并格。");} }
                 }
                 var oldBinding = presetBinding;
                 book = selectedBook; bookName = Convert.ToString(((dynamic)book).FullName); presetBinding = candidate;
@@ -110,7 +114,7 @@ namespace Excel_Iterate
                 loading = true;
                 try
                 {
-                    companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;
+                    companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
                     var headerNames=new[]{"companyHeader","yearSource","yearTarget"}; var headerParts=new[]{companyHeader,yearSource,yearTarget};
                     for(int i=0;i<headerNames.Length;i++) view.Address(headerNames[i],headerParts[i]==null ? "未选择" : headerParts[i].Sheet+"!"+SummaryAreaEngine.Address(headerParts[i]));
                     view.HeaderPreview.Text="请重新预检以生成映射预览。";
@@ -180,7 +184,7 @@ namespace Excel_Iterate
                     object chosen = null;
                     try
                     {
-                        if (native) { if (kind == "lead") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "template" ? "选择已编制区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择编码和全称两列的数据行，可 Ctrl 多选分段或不相邻两列；同一行需配对，不含表头。" : kind == "yearSource" ? "选择单行连续年度来源，数量应等于已编制区域横向跨度；保留显示文字和顺序。" : kind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : kind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
+                        if (native) { if (kind == "lead" || kind == "yearSource") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "template" ? "选择已编制区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择编码和全称两列的数据行，可 Ctrl 多选分段或不相邻两列；同一行需配对，不含表头。" : kind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : kind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : kind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
                         else chosen = ((dynamic)app).Selection;
                         if (chosen == null || chosen is bool) return;
                         dynamic range = bag.Own(chosen), sheet = bag.Own(range.Parent);
@@ -213,7 +217,7 @@ namespace Excel_Iterate
                             values[0]=new SummaryAreaPlan{Sheet=sheetName,Row=bound.Row,Column=bound.Column,Rows=1,Columns=1,Address=CellAddress.Name(bound.Row,bound.Column)};
                         }
                         if (kind == "yearTarget" && (values[0].Rows!=1||values[0].Columns!=1))throw new InvalidOperationException("年度起点请选择一个单元格。");
-                        if (kind == "yearSource" && values[0].Rows!=1)throw new InvalidOperationException("年度来源只接受单行连续区域。");
+                        if (kind == "yearSource" && values[0].Rows!=1 && values[0].Columns!=1)throw new InvalidOperationException("年度来源只接受单列或单行连续区域。");
                         if (kind == "companyHeader") companyHeader=values[0];
                         else if (kind == "yearSource") yearSource=values[0];
                         else if (kind == "yearTarget") yearTarget=values[0];
@@ -381,14 +385,14 @@ namespace Excel_Iterate
             }
         }
         private string SelectionKey()
-        { return string.Join(";",view.ReferenceSources.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToString(r.Cells["source"].Value)+":"+Convert.ToString(r.Cells["decision"].Value)).ToArray()) + "|" + view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
+        { return view.FormulaHeaders.Checked+"|"+view.RepeatNames.Checked+"|"+view.ReplaceHeaderArrays.Checked+"|"+string.Join(";",view.ReferenceSources.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToString(r.Cells["source"].Value)+":"+Convert.ToString(r.Cells["decision"].Value)).ToArray()) + "|" + view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
         private string Fingerprint()
         {
             CheckBook(); var clock = System.Diagnostics.Stopwatch.StartNew(); var text = new StringBuilder(bookName); int xmlAreas = 0, fallbackAreas = 0;
             using (var bag = new ComBag())
             {
                 var leadParts = LeadSelections();
-                foreach (var part in areas.Concat(targets).Concat(leadParts).Concat(headerTargets).Concat(view.HeadersEnabled.Checked && yearSource!=null ? new[]{yearSource} : new SummaryAreaPlan[0]))
+                foreach (var part in areas.Concat(targets).Concat(leadParts).Concat(headerTargets).Concat(oldHeaderArrays.Select(a=>a.Area)).Concat(view.HeadersEnabled.Checked && yearSource!=null ? new[]{yearSource} : new SummaryAreaPlan[0]))
                 {
                     dynamic sheet = Sheet(leadParts.Contains(part) ? leadSheet : part.Sheet ?? templateSheet, bag);
                     if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("工作表保护状态变化。");
@@ -402,7 +406,7 @@ namespace Excel_Iterate
                             object values = range.Value2;
                             for (int r = 0; r < part.Rows; r++) for (int c = 0; c < part.Columns; c++) Append(text, SummaryArrays.Pick(values, r, part.Rows, c, part.Columns));
                         }
-                        if(view.HeadersEnabled.Checked && part==yearSource) for(int c=0;c<part.Columns;c++) { dynamic displayed=snapshot.Own(sheet.Range[CellAddress.Name(part.Row,part.Column+c)]); Append(text,displayed.Text); }
+                        if(view.HeadersEnabled.Checked && part==yearSource) for(int c=0;c<Math.Max(part.Rows,part.Columns);c++) { dynamic displayed=snapshot.Own(sheet.Range[CellAddress.Name(part.Row+(part.Rows>1?c:0),part.Column+(part.Rows==1?c:0))]); Append(text,displayed.Text); }
                         try { xml = SummaryAreaEngine.XmlState(Convert.ToString(range.Value[11])); }
                         catch (Exception error) { UiDiagnostics.Record("summary-xml-fallback", error); }
                         if (xml != null) { Append(text, "xml"); Append(text, xml); AppendComments(sheet, part, text); xmlAreas++; continue; }
@@ -612,68 +616,170 @@ namespace Excel_Iterate
                 view.Message(source.Key+" → "+decision);
             }
         }
+        private static string HeaderKey(SummaryAreaPlan part){return part.Row+":"+part.Column;}
         private void PrepareHeaders(ComBag bag, IList<SummaryCompany> picked)
         {
-            headerTargets.Clear();headerValues.Clear();view.HeaderPreview.Text="";
+            headerTargets.Clear();headerValues.Clear();headerExpressions.Clear();headerFormats.Clear();oldHeaderArrays.Clear();yearHeaderArrays.Clear();view.HeaderPreview.Text="";
             if(!view.HeadersEnabled.Checked)return;
-            if(companyHeader==null||yearSource==null||yearTarget==null)throw new InvalidOperationException("启用表头填充后，三个新增选区必须完整。");
-            if(companyHeader.Sheet!=templateSheet||yearTarget.Sheet!=templateSheet)throw new InvalidOperationException("表头目标必须与已编制区域、粘贴起点同表。");
+            if(companyHeader==null||yearSource==null||yearTarget==null)throw new InvalidOperationException("启用表头后，请完成名称目标、年度来源和年度目标。");
+            if(companyHeader.Sheet!=templateSheet||yearTarget.Sheet!=templateSheet)throw new InvalidOperationException("表头目标必须与已编制区域同表。");
             int width=areas.Max(a=>a.Column+a.Columns)-areas.Min(a=>a.Column);
-            if(yearSource.Rows!=1||yearSource.Columns!=width)throw new InvalidOperationException("年度来源有 "+yearSource.Columns+" 格，已编制区域横向跨度为 "+width+" 列，必须相等。");
-            dynamic years=Sheet(yearSource.Sheet,bag), sheet=Sheet(templateSheet,bag);
-            var values=new List<string>();
-            for(int c=0;c<width;c++)using(var one=new ComBag()) { dynamic cell=one.Own(years.Range[CellAddress.Name(yearSource.Row,yearSource.Column+c)]);RejectSpecial(cell,"年度来源",one); string text=Convert.ToString(cell.Text);if(string.IsNullOrWhiteSpace(text)||text.Trim('#').Length==0||SummaryAreaEngine.IsError((object)cell.Value2))throw new InvalidOperationException("年度显示值为空、错误或列宽不足，请检查来源。"); values.Add(text); }
-            view.Message("表头预检：公司 "+picked.Count+" 家；已编制区域跨度 "+width+"；年度 "+yearSource.Sheet+"!"+SummaryAreaEngine.Address(yearSource)+"："+string.Join("、",values.ToArray()));
-            for(int i=0;i<picked.Count;i++)
+            if((yearSource.Rows!=1&&yearSource.Columns!=1)||Math.Max(yearSource.Rows,yearSource.Columns)!=width)throw new InvalidOperationException("年度来源有 "+Math.Max(yearSource.Rows,yearSource.Columns)+" 格，已编制区域跨度为 "+width+" 列，须相等且为单行或单列。");
+            dynamic years=Sheet(yearSource.Sheet,bag),sheet=Sheet(templateSheet,bag),leadTable=Sheet(leadSheet,bag);var values=new List<string>();var formats=new List<string>();
+            for(int c=0;c<width;c++)using(var one=new ComBag())
             {
-                long nameColumn=(long)companyHeader.Column+i*width, yearColumn=(long)yearTarget.Column+i*width;
-                if(nameColumn>16384||yearColumn+width-1>16384)throw new InvalidOperationException("表头映射超出 Excel 列边界。");
-                using(var one=new ComBag())
-                {
-                    dynamic cell=one.Own(sheet.Range[CellAddress.Name(companyHeader.Row,(int)nameColumn)]);
-                    var name=new SummaryAreaPlan{Sheet=templateSheet,Row=companyHeader.Row,Column=(int)nameColumn,Rows=1,Columns=1};
-                    if(Bool((object)cell.MergeCells)) {dynamic merge=one.Own(cell.MergeArea);name=Coordinates(merge,one);name.Sheet=templateSheet;}
-                    dynamic nameRange=one.Own(sheet.Range[SummaryAreaEngine.Address(name)]); RejectArraySpill(nameRange,"公司名称目标",one);
-                    int groupStart=paste.Column+i*width;
-                    if(name.Column<groupStart||(long)name.Column+name.Columns>groupStart+width)throw new InvalidOperationException("公司名称合并区域跨越公司分组或授权边界："+SummaryAreaEngine.Address(name));
-                    AddHeader(name,picked[i].Code);
-                    for(int c=0;c<width;c++)
-                    {
-                        var year=new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=(int)yearColumn+c,Rows=1,Columns=1};dynamic y=one.Own(sheet.Range[CellAddress.Name(year.Row,year.Column)]);RejectSpecial(y,"年度目标",one);AddHeader(year,values[c]);
-                    }
-                    view.Message((i+1)+". "+picked[i].Code+" → 名称 "+SummaryAreaEngine.Address(name)+"；年度 "+CellAddress.Name(yearTarget.Row,(int)yearColumn)+":"+CellAddress.Name(yearTarget.Row,(int)yearColumn+width-1));
-                }
+                dynamic cell=one.Own(years.Range[CellAddress.Name(yearSource.Row+(yearSource.Rows>1?c:0),yearSource.Column+(yearSource.Rows==1?c:0))]);
+                object merged=cell.MergeCells;if(merged==null||merged==DBNull.Value||Bool(merged))throw new InvalidOperationException("年度来源不能含合并格。");
+                string text=Convert.ToString(cell.Text);if(string.IsNullOrWhiteSpace(text)||text.Trim('#').Length==0||SummaryAreaEngine.IsError((object)cell.Value2))throw new InvalidOperationException("年度来源显示为空、错误或列宽不足。");values.Add(text);formats.Add(Convert.ToString(cell.NumberFormat));
             }
-            view.HeaderPreview.Text=picked.Count+" 家公司，名称 "+picked.Count+" 处，年度 "+(picked.Count*width)+" 格："+string.Join("、",values.ToArray());
+            view.Message("表头预检："+picked.Count+" 家，跨度 "+width+"；年度 "+yearSource.Sheet+"!"+SummaryAreaEngine.Address(yearSource)+"："+string.Join("、",values.ToArray()));
+            var leadRows=SummaryAreaEngine.LeadRows(LeadSelections());
+            for(int i=0;i<picked.Count;i++)using(var one=new ComBag())
+            {
+                long start=(long)companyHeader.Column+(long)i*width,yearStart=(long)yearTarget.Column+(long)i*width;
+                if(start+(view.RepeatNames.Checked?width:1)-1>16384||yearStart+width-1>16384)throw new InvalidOperationException("表头映射超出列边界。");
+                var binding=leadRows.Single(x=>x.Row==picked[i].Row);dynamic source=one.Own(leadTable.Range[CellAddress.Name(binding.Row,binding.CodeColumn)]);
+                string nameText=view.FormulaHeaders.Checked?Convert.ToString(source.Text):picked[i].Code;
+                if(string.IsNullOrWhiteSpace(nameText)||nameText.Trim('#').Length==0)throw new InvalidOperationException("公司编码简称显示为空或列宽不足。");
+                for(int c=0;c<(view.RepeatNames.Checked?width:1);c++)
+                {
+                    dynamic cell=one.Own(sheet.Range[CellAddress.Name(companyHeader.Row,(int)start+c)]);var part=new SummaryAreaPlan{Sheet=templateSheet,Row=companyHeader.Row,Column=(int)start+c,Rows=1,Columns=1};
+                    if(Bool((object)cell.MergeCells)){dynamic merge=one.Own(cell.MergeArea);part=Coordinates(merge,one);part.Sheet=templateSheet;}
+                    int group=paste.Column+i*width;if(part.Column<group||(long)part.Column+part.Columns>group+width)throw new InvalidOperationException("公司名称合并区域跨组："+SummaryAreaEngine.Address(part));
+                    if(headerTargets.Any(x=>x.Row==part.Row&&x.Column==part.Column))continue;
+                    if(!view.FormulaHeaders.Checked){dynamic range=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);RejectArraySpill(range,"公司名称目标",one);}
+                    AddHeader(part,nameText);
+                    if(view.FormulaHeaders.Checked){headerExpressions[HeaderKey(part)]=SummaryHeaderFormula.Cell(leadSheet,binding.Row,binding.CodeColumn);headerFormats[HeaderKey(part)]=Convert.ToString(source.NumberFormat);}
+                }
+                for(int c=0;c<width;c++)
+                {
+                    var part=new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=(int)yearStart+c,Rows=1,Columns=1};dynamic cell=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);
+                    if(Bool((object)cell.MergeCells))throw new InvalidOperationException("年度目标不能合并。");if(!view.FormulaHeaders.Checked)RejectSpecial(cell,"年度目标",one);
+                    AddHeader(part,values[c]);if(view.FormulaHeaders.Checked){headerFormats[HeaderKey(part)]=formats[c];headerExpressions[HeaderKey(part)]=SummaryHeaderFormula.Cell(yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?c:0),yearSource.Column+(yearSource.Rows==1?c:0));}
+                }
+                if(view.FormulaHeaders.Checked)yearHeaderArrays.Add(new SummaryHeaderArray{Area=new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=(int)yearStart,Rows=1,Columns=width},Formula=SummaryHeaderFormula.Years(yearSource)});
+                view.Message((i+1)+". "+picked[i].Code+"，名称来源 "+leadSheet+"!"+CellAddress.Name(binding.Row,binding.CodeColumn)+"；名称目标 "+CellAddress.Name(companyHeader.Row,(int)start)+"；年度 "+CellAddress.Name(yearTarget.Row,(int)yearStart)+"，"+(view.FormulaHeaders.Checked?SummaryHeaderFormula.Years(yearSource):"显示文本"));
+            }
+            if(view.FormulaHeaders.Checked)PlanExistingHeaderArrays(sheet,leadTable,leadRows,values,formats,bag);
             foreach(var part in headerTargets)
             {
-                dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]);view.Message("表头授权覆盖 "+SummaryAreaEngine.Address(part)+"；合并="+Convert.ToString(range.MergeCells)+"；原内容="+Convert.ToString(((dynamic)bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)])).Formula));
-                dynamic first=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);if(Bool((object)first.HasFormula))originalTargetFormulas.Add(new SummaryAreaCell{Row=part.Row,Column=part.Column,Text=Convert.ToString(first.Formula)});
+                dynamic first=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);view.Message("表头授权覆盖 "+SummaryAreaEngine.Address(part)+"；原内容="+Convert.ToString(first.Formula));
+                if(Bool((object)first.HasFormula)&&!oldHeaderArrays.Any(a=>SummaryAreaEngine.Intersects(a.Area,part)))originalTargetFormulas.Add(new SummaryAreaCell{Row=part.Row,Column=part.Column,Text=Convert.ToString(first.Formula)});
             }
+            view.HeaderPreview.Text=picked.Count+" 家，"+(view.RepeatNames.Checked?"每年度列重复名称":"每家公司名称一次")+"；"+(view.FormulaHeaders.Checked?"直接公式关联 Lead":"显示文本")+"；既有数组 "+oldHeaderArrays.Count+" 块。";
         }
         private void AddHeader(SummaryAreaPlan part,string value)
         {
-            if(areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||targets.Any(a=>SummaryAreaEngine.Intersects(a,part))||headerTargets.Any(a=>SummaryAreaEngine.Intersects(a,part))||(yearSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(yearSource,part))||(leadSheet==part.Sheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("表头目标与已编制区域、复制目标、其他表头或来源选区冲突："+SummaryAreaEngine.Address(part));
+            if(areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||targets.Any(a=>SummaryAreaEngine.Intersects(a,part))||headerTargets.Any(a=>SummaryAreaEngine.Intersects(a,part))||(yearSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(yearSource,part))||(leadSheet==part.Sheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("表头与已编制区域、复制目标、其他表头或来源冲突："+SummaryAreaEngine.Address(part));
             headerTargets.Add(part);headerValues.Add(value);
+        }
+        private SummaryHeaderArray ExistingHeaderArray(dynamic cell,ComBag bag)
+        {
+            dynamic range=null;bool spill=false;
+            try { object state=cell.HasSpill;if(FormulaFlag(state,"表头","HasSpill")==1){dynamic parent=bag.Own(cell.SpillParent);range=bag.Own(parent.SpillingToRange);spill=true;} }
+            catch(Microsoft.CSharp.RuntimeBinder.RuntimeBinderException){}
+            catch(System.Runtime.InteropServices.COMException error){if(error.HResult!=unchecked((int)0x80020003)&&error.HResult!=unchecked((int)0x80020006))throw;}
+            if(range==null&&Bool((object)cell.HasArray))range=bag.Own(cell.CurrentArray);
+            if(range==null){RejectArraySpill(cell,"表头目标",bag);return null;}
+            var area=Coordinates(range,bag);area.Sheet=templateSheet;if((long)area.Rows*area.Columns>SummaryAreaEngine.CellLimit)throw new InvalidOperationException("既有表头数组过大。");
+            dynamic anchor=bag.Own(((dynamic)Sheet(templateSheet,bag)).Range[CellAddress.Name(area.Row,area.Column)]);
+            return new SummaryHeaderArray{Area=area,Formula=Convert.ToString(anchor.Formula),Dynamic=spill};
+        }
+        private void PlanExistingHeaderArrays(dynamic sheet,dynamic leadTable,IList<SummaryLeadRow> leadRows,IList<string> years,IList<string> formats,ComBag bag)
+        {
+            Dictionary<string,List<SummaryLeadRow>> nameLookup=null;
+            foreach(var part in headerTargets.ToList())using(var one=new ComBag())
+            {
+                dynamic cell=one.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);var existing=ExistingHeaderArray(cell,one);if(existing==null)continue;
+                if(!oldHeaderArrays.Any(a=>SummaryAreaEngine.Address(a.Area)==SummaryAreaEngine.Address(existing.Area)))oldHeaderArrays.Add(existing);
+            }
+            foreach(var existing in oldHeaderArrays)
+            {
+                var area=existing.Area;view.Message("既有表头数组将整体重写并纳入备份："+SummaryAreaEngine.Address(area)+"；原公式="+existing.Formula);
+                if(!view.ReplaceHeaderArrays.Checked)throw new InvalidOperationException("目标属于既有数组 "+SummaryAreaEngine.Address(area)+"；请核对日志并勾选允许整体重写既有表头数组，再预检。");
+                if(area.Rows!=1||(area.Row!=companyHeader.Row&&area.Row!=yearTarget.Row))throw new InvalidOperationException("只允许重写名称行或年度行上的单行表头数组。");
+                if(areas.Any(a=>SummaryAreaEngine.Intersects(a,area))||targets.Any(a=>SummaryAreaEngine.Intersects(a,area))||(yearSource.Sheet==templateSheet&&SummaryAreaEngine.Intersects(yearSource,area))||(leadSheet==templateSheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,area))))throw new InvalidOperationException("完整旧数组涉及已编制区域、数据目标或来源，不能扩大覆盖："+SummaryAreaEngine.Address(area));
+                for(int col=area.Column;col<area.Column+area.Columns;col++)
+                {
+                    var part=new SummaryAreaPlan{Sheet=templateSheet,Row=area.Row,Column=col,Rows=1,Columns=1};if(headerTargets.Any(p=>SummaryAreaEngine.Intersects(p,part)))continue;
+                    dynamic cell=bag.Own(sheet.Range[CellAddress.Name(area.Row,col)]);string text=Convert.ToString(cell.Text);if(SummaryAreaEngine.IsError((object)cell.Value2))throw new InvalidOperationException("旧数组目标外位置 "+CellAddress.Name(area.Row,col)+" 已有错误，无法安全恢复其 Lead 映射；请先修正或移除该旧数组。");
+                    string expression=null,format=Convert.ToString(cell.NumberFormat);
+                    if(!string.IsNullOrEmpty(text))
+                    {
+                        if(area.Row==companyHeader.Row)
+                        {
+                            if(nameLookup==null)
+                            {
+                                nameLookup=new Dictionary<string,List<SummaryLeadRow>>(StringComparer.Ordinal);
+                                foreach(var row in leadRows)using(var one=new ComBag()){dynamic source=one.Own(leadTable.Range[CellAddress.Name(row.Row,row.CodeColumn)]);string display=Convert.ToString(source.Text);if(!nameLookup.ContainsKey(display))nameLookup[display]=new List<SummaryLeadRow>();nameLookup[display].Add(row);}
+                            }
+                            List<SummaryLeadRow> matches;if(!nameLookup.TryGetValue(text,out matches)||matches.Count!=1)throw new InvalidOperationException("旧数组目标外名称 "+CellAddress.Name(area.Row,col)+" 无法唯一匹配 Lead 编码简称，请调整来源或先处理旧数组。");expression=SummaryHeaderFormula.Cell(leadSheet,matches[0].Row,matches[0].CodeColumn);
+                        }
+                        else {var positions=Enumerable.Range(0,years.Count).Where(i=>years[i]==text).ToList();if(positions.Count!=1)throw new InvalidOperationException("旧数组目标外年度无法唯一匹配来源："+CellAddress.Name(area.Row,col));int index=positions[0];expression=SummaryHeaderFormula.Cell(yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?index:0),yearSource.Column+(yearSource.Rows==1?index:0));format=formats[index];}
+                    }
+                    AddHeader(part,text);if(expression!=null){headerExpressions[HeaderKey(part)]=expression;headerFormats[HeaderKey(part)]=format;}view.Message("扩展授权 "+CellAddress.Name(part.Row,part.Column)+"：保留原显示并重新关联 Lead；"+(expression??"原为空"));
+                }
+            }
+        }
+        private void ClearHeaderArray(dynamic sheet,SummaryHeaderArray array,ComBag bag)
+        {
+            dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]),anchor=bag.Own(sheet.Range[CellAddress.Name(array.Area.Row,array.Area.Column)]);
+            if(array.Dynamic)anchor.ClearContents();else range.ClearContents();
         }
         private void WriteHeaders(dynamic sheet,ComBag bag)
         {
             headersTouched=headerTargets.Count>0;
+            foreach(var array in oldHeaderArrays)ClearHeaderArray(sheet,array,bag);
             for(int i=0;i<headerTargets.Count;i++)
             {
-                var part=headerTargets[i];dynamic cell=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);object format=cell.NumberFormat;
-                try{cell.NumberFormat="@";cell.Value2=headerValues[i];}finally{cell.NumberFormat=format;}
-                if(Bool((object)cell.HasFormula)||Convert.ToString(cell.Value2)!=headerValues[i])throw new InvalidOperationException("表头文字读回校验失败："+SummaryAreaEngine.Address(part));
+                var part=headerTargets[i];dynamic cell=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);string key=HeaderKey(part);
+                if(view.FormulaHeaders.Checked&&headerExpressions.ContainsKey(key))
+                {
+                    cell.NumberFormat=headerFormats[key];if(!yearHeaderArrays.Any(a=>SummaryAreaEngine.Intersects(a.Area,part)))cell.Formula=headerExpressions[key];
+                }
+                else {object format=cell.NumberFormat;try{cell.NumberFormat="@";cell.Value2=headerValues[i];}finally{cell.NumberFormat=format;}}
             }
-            if(headerTargets.Count>0)view.Message("公司名称与年度表头写入、读回校验成功 "+headerTargets.Count+" 项。");
+            foreach(var array in yearHeaderArrays){dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]);range.FormulaArray=array.Formula;range.Calculate();}
+            for(int i=0;i<headerTargets.Count;i++)
+            {
+                var part=headerTargets[i];dynamic cell=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);string key=HeaderKey(part);bool formula=view.FormulaHeaders.Checked&&headerExpressions.ContainsKey(key);if(formula)cell.Calculate();
+                string actual=formula?Convert.ToString(cell.Text):Convert.ToString(cell.Value2);
+                if(Bool((object)cell.HasFormula)!=formula||actual!=headerValues[i])throw new InvalidOperationException("表头公式/显示值读回失败："+SummaryAreaEngine.Address(part)+"；期望="+headerValues[i]+"；实际="+actual);
+            }
+            if(headerTargets.Count>0)view.Message("表头写入及读回成功 "+headerTargets.Count+" 项；直接关联 Lead，不使用抵消表计数。未保存。");
+        }
+        private void VerifyHeaderArrayBounds(dynamic sheet,SummaryHeaderArray expected,ComBag bag)
+        {
+            dynamic anchor=bag.Own(sheet.Range[CellAddress.Name(expected.Area.Row,expected.Area.Column)]),range=null;
+            if(expected.Dynamic)
+            {
+                if(FormulaFlag((object)anchor.HasSpill,"原表头数组","HasSpill")!=1)throw new InvalidOperationException("原动态数组未恢复为完整溢出范围；请保留备份并检查原来源参数。");
+                range=bag.Own(anchor.SpillingToRange);
+            }
+            else
+            {
+                if(!Bool((object)anchor.HasArray))throw new InvalidOperationException("原表头数组未完整恢复。");range=bag.Own(anchor.CurrentArray);
+            }
+            var actual=Coordinates(range,bag);if(actual.Row!=expected.Area.Row||actual.Column!=expected.Area.Column||actual.Rows!=expected.Area.Rows||actual.Columns!=expected.Area.Columns)throw new InvalidOperationException("原表头数组范围发生变化："+SummaryAreaEngine.Address(expected.Area)+"；请先恢复原来源参数，备份保留。");
         }
         private void RestoreHeaders(dynamic sheet,dynamic original,ComBag bag)
         {
             if(!headersTouched)return;
+            // Recalculate only the owned backup before restoring a dynamic formula:
+            // changed source counts must not expand the restored spill outside consent.
+            foreach(var array in oldHeaderArrays){dynamic source=bag.Own(original.Range[SummaryAreaEngine.Address(array.Area)]);source.Calculate();VerifyHeaderArrayBounds(original,array,bag);}
+            foreach(var array in yearHeaderArrays){dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]);range.ClearContents();}
+            foreach(var array in oldHeaderArrays)ClearHeaderArray(sheet,array,bag);
             foreach(var part in headerTargets)
             {
+                if(oldHeaderArrays.Any(a=>SummaryAreaEngine.Intersects(a.Area,part)))continue;
                 string address=SummaryAreaEngine.Address(part);dynamic source=bag.Own(original.Range[address]),destination=bag.Own(sheet.Range[address]);source.Copy(destination);
-                foreach(var prior in originalTargetFormulas.Where(p=>p.Row>=part.Row&&p.Row<part.Row+part.Rows&&p.Column>=part.Column&&p.Column<part.Column+part.Columns)){dynamic cell=bag.Own(sheet.Range[CellAddress.Name(prior.Row,prior.Column)]);cell.Formula=prior.Text;if(Convert.ToString(cell.Formula)!=prior.Text)throw new InvalidOperationException("表头原公式恢复失败。");}
+                foreach(var prior in originalTargetFormulas.Where(p=>p.Row>=part.Row&&p.Row<part.Row+part.Rows&&p.Column>=part.Column&&p.Column<part.Column+part.Columns)){dynamic cell=bag.Own(sheet.Range[CellAddress.Name(prior.Row,prior.Column)]);if(Convert.ToString(cell.Formula)!=prior.Text)cell.Formula=prior.Text;if(Convert.ToString(cell.Formula)!=prior.Text)throw new InvalidOperationException("表头原公式恢复失败。");}
+            }
+            foreach(var array in oldHeaderArrays)
+            {
+                string address=SummaryAreaEngine.Address(array.Area);dynamic source=bag.Own(original.Range[address]),destination=bag.Own(sheet.Range[address]);source.Copy(destination);dynamic anchor=bag.Own(sheet.Range[CellAddress.Name(array.Area.Row,array.Area.Column)]);
+                if(Convert.ToString(anchor.Formula)!=array.Formula)throw new InvalidOperationException("旧表头数组原公式恢复核验失败："+address+"；备份保留。");VerifyHeaderArrayBounds(sheet,array,bag);
             }
         }
         public void Dispose()

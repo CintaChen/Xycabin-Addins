@@ -13,6 +13,38 @@ internal static class SingleSummaryLiveProbe
     private static void Set(object host,string name,object value){host.GetType().GetField(name,Flags).SetValue(host,value);}
     private static object Get(object host,string name){return host.GetType().GetField(name,Flags).GetValue(host);}
     private static void Call(object host,string name,params object[] args){try{host.GetType().GetMethod(name,Flags).Invoke(host,args);}catch(TargetInvocationException e){throw e.InnerException;}}
+    private static void ProvidedHeaders(object application,ProbeSession session,string vectorsPath)
+    {
+        List<ProvidedHeaderVector> samples;
+        using(var stream=System.IO.File.OpenRead(vectorsPath))samples=(List<ProvidedHeaderVector>)new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(List<ProvidedHeaderVector>)).ReadObject(stream);
+        int number=0;
+        foreach(var sample in samples)
+        {
+            number++;using(var bag=new ComBag())
+            {
+                dynamic app=application,books=bag.Own(app.Workbooks),book=books.Add();bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+                dynamic sheets=bag.Own(book.Worksheets),sheet=bag.Own(sheets.Item(1));sheet.Name="汇总";dynamic source=bag.Own(sheets.Add());source.Name=sample.sheet;
+                foreach(var year in sample.years){dynamic cell=bag.Own(source.Range["N"+year.row]);cell.Value2=year.text;}
+                foreach(var company in sample.companies){dynamic code=bag.Own(source.Range["O"+company.row]),name=bag.Own(source.Range["P"+company.row]);code.Value2=company.code;name.Value2=company.name;}
+                int first=sample.companies[0].row,last=sample.companies[sample.companies.Count-1].row,width=sample.years.Count,oldGroups=Math.Min(3,sample.companies.Count);
+                dynamic oldNames=bag.Own(sheet.Range["L2:"+CellAddress.Name(2,12+oldGroups*width-1)]);oldNames.FormulaArray="=INDEX('"+sample.sheet+"'!$O$"+first+":$O$"+(first+oldGroups-1)+",INT((COLUMN("+"L2:"+CellAddress.Name(2,12+oldGroups*width-1)+")-COLUMN(L2))/"+width+")+1)";oldNames.Calculate();string oldFormula=Convert.ToString(((dynamic)bag.Own(sheet.Range["L2"])).Formula);
+                using(var form=new SingleSummaryForm(true))
+                {
+                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=true;view.RepeatNames.Checked=true;view.ReplaceHeaderArrays.Checked=true;
+                    using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;}))
+                    {
+                        Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet",sample.sheet);
+                        ((List<SummaryAreaPlan>)Get(host,"areas")).Add(new SummaryAreaPlan{Sheet="汇总",Row=10,Column=7,Rows=1,Columns=width});Set(host,"paste",new SummaryAreaPlan{Row=10,Column=12,Rows=1,Columns=1});
+                        Set(host,"lead",new SummaryAreaPlan{Sheet=sample.sheet,Row=first,Column=15,Rows=last-first+1,Columns=2});Set(host,"companyHeader",new SummaryAreaPlan{Sheet="汇总",Row=2,Column=12,Rows=1,Columns=1});Set(host,"yearSource",new SummaryAreaPlan{Sheet=sample.sheet,Row=sample.years[0].row,Column=14,Rows=width,Columns=1});Set(host,"yearTarget",new SummaryAreaPlan{Sheet="汇总",Row=7,Column=12,Rows=1,Columns=1});
+                        Call(host,"Preview");Check((bool)Get(host,"ready"),"provided sample "+number+" actual N/O/P fields preflight");Call(host,"Start");for(int i=0;i<sample.companies.Count;i++)Call(host,"Tick",null,EventArgs.Empty);
+                        bool correct=!(bool)Get(host,"failed")&&(bool)Get(host,"pending");for(int i=0;i<sample.companies.Count;i++)for(int c=0;c<width;c++){dynamic name=bag.Own(sheet.Range[CellAddress.Name(2,12+i*width+c)]),year=bag.Own(sheet.Range[CellAddress.Name(7,12+i*width+c)]);correct &= Convert.ToBoolean(name.HasFormula)&&Convert.ToString(name.Value2)==sample.companies[i].code&&Convert.ToBoolean(year.HasFormula)&&Convert.ToString(year.Value2)==sample.years[c].text;}
+                        Check(correct,"provided sample "+number+" company order repetition and transposed years");Call(host,"Undo");Check(Convert.ToBoolean(oldNames.HasArray)&&Convert.ToString(((dynamic)bag.Own(sheet.Range["L2"])).Formula)==oldFormula,"provided sample "+number+" original array rollback");Check(Convert.ToString(book.Path)=="","provided sample "+number+" isolated workbook never saved");
+                    }
+                }
+                book.Close(false);closed=true;
+            }
+        }
+    }
     [STAThread] private static int Main(string[] args)
     {
         if (Array.IndexOf(args, "--timing") >= 0) return SummaryAreaSpeedChecks.Run();
@@ -51,7 +83,7 @@ internal static class SingleSummaryLiveProbe
                     int before=Convert.ToInt32(worksheets.Count);
                     using(var form=new SingleSummaryForm(true))
                     {
-                        var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;
+                        var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.FormulaHeaders.Checked=false;view.RepeatNames.Checked=false;
                         using(var host=new SummaryAreaHost((object)app,form,view,null,delegate{return true;}))
                         {
                             Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet","Lead");
@@ -97,7 +129,7 @@ internal static class SingleSummaryLiveProbe
                             Call(host,"Preview");dynamic formatCell=bag.Own(target.Range["L3"]),formatFont=bag.Own(formatCell.Font);object priorColor=formatFont.Color;formatFont.Color=12345;failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"native block fingerprint rejects a font-only change before execution");formatFont.Color=priorColor;
                             dynamic priorNote=bag.Own(formatCell.AddComment("状态校验批注"));Call(host,"Preview");priorNote.Text("预检后修改批注");failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"native block fingerprint rejects comment-only change before execution");priorNote.Text("状态校验批注");
                             dynamic computedName=bag.Own(lead.Range["D7"]),nameSource=bag.Own(lead.Range["Z7"]);nameSource.Value2="！01-示例（集团）";computedName.Formula="=Z7";computedName.Calculate();Call(host,"Preview");nameSource.Value2="！02-示例乙";computedName.Calculate();failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"computed Lead company name change invalidates plan even with unchanged formula text");computedName.Value2="！01-示例（集团）";nameSource.Clear();
-                            Check(!view.HeadersEnabled.Checked,"headers default off");
+                            Check(!view.HeadersEnabled.Checked,"headers default off");view.FormulaHeaders.Checked=false;view.RepeatNames.Checked=false;
                             dynamic yearSource=bag.Own(lead.Range["G1:H1"]);yearSource.Value2=new object[,]{{46388,"2026年度"}};
                             dynamic dated=bag.Own(lead.Range["G1"]);dated.NumberFormat="yyyy年";string displayedYear=Convert.ToString(dated.Text);
                             dynamic firstName=bag.Own(target.Range["Q2:R2"]),secondName=bag.Own(target.Range["S2:T2"]);firstName.Merge();secondName.Merge();
@@ -155,6 +187,31 @@ internal static class SingleSummaryLiveProbe
                             Call(host,"Undo");Check(((dynamic)bag.Own(target.Range["Q10"])).Value2==null&&Convert.ToString(compiledSource.Formula)==compiledBefore,"compiled Area undo restores targets and leaves source unchanged");
                             publicSource.Formula=publicBefore+"+1";reviewBlocked=false;try{Call(host,"Preview");}catch(InvalidOperationException){reviewBlocked=true;}Check(reviewBlocked,"changed source formula requires renewed review");
                             publicSource.Value2="公共说明";view.ReferenceSources.Rows.Clear();Call(host,"Preview");Check((bool)Get(host,"ready")&&view.ReferenceSources.Rows.Count==1&&Convert.ToString(view.ReferenceSources.Rows[0].Cells["decision"].Value)=="参与公司替换","single Lead-matched source is automatically identified");
+                            // Linked O/P company source + vertical N years; independent of any elimination sheet.
+                            view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=true;view.RepeatNames.Checked=true;view.ReplaceHeaderArrays.Checked=false;
+                            dynamic newLead=bag.Own(lead.Range["O30:P32"]);newLead.Value2=new object[,]{{"甲简称","！01-示例（集团）"},{"乙简称","！02-示例乙"},{"丙简称","第三家公司"}};
+                            dynamic verticalYears=bag.Own(lead.Range["N30:N34"]);verticalYears.Value2=new object[,]{{"2027年度"},{"2026年度"},{"2025年度"},{"2024年度"},{"2023年度"}};
+                            ((List<SummaryAreaPlan>)Get(host,"leadAreas")).Clear();Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=30,Column=15,Rows=3,Columns=2});view.Companies.Rows.Clear();
+                            Set(host,"yearSource",new SummaryAreaPlan{Sheet="Lead",Row=30,Column=14,Rows=5,Columns=1});
+                            // Existing full-row CSE has five-year repetitions, matching LET/SEQUENCE output semantics.
+                            dynamic oldNames=bag.Own(target.Range["Q9:AE9"]);oldNames.FormulaArray="=INDEX(Lead!$O$30:$O$32,INT((COLUMN(Q9:AE9)-COLUMN(Q9))/5)+1)";oldNames.Calculate();string oldNamesFormula=Convert.ToString(((dynamic)bag.Own(target.Range["Q9"])).Formula);
+                            dynamic oldYearArray=bag.Own(target.Range["Q12:U12"]);oldYearArray.FormulaArray="=TRANSPOSE(Lead!$N$30:$N$34)";oldYearArray.Calculate();string priorYearFormula=Convert.ToString(((dynamic)bag.Own(target.Range["Q12"])).Formula);
+                            reviewBlocked=false;try{Call(host,"Preview");}catch(InvalidOperationException){reviewBlocked=true;}Check(reviewBlocked,"existing header arrays require explicit full-range rewrite consent");
+                            view.Companies.Rows[2].Cells["selected"].Value=false;view.ReplaceHeaderArrays.Checked=true;Call(host,"Preview");Check((bool)Get(host,"ready")&&((List<SummaryHeaderArray>)Get(host,"oldHeaderArrays")).Count==2,"vertical years and existing full company/year arrays pass preflight");
+                            Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending"),"linked headers replace existing arrays without LET dependencies");
+                            bool linked=true;for(int i=0;i<2;i++)for(int c=0;c<5;c++){dynamic name=bag.Own(target.Cells[9,17+i*5+c]);linked &= Convert.ToBoolean(name.HasFormula)&&Convert.ToString(name.Value2)==(i==0?"甲简称":"乙简称");}
+                            Check(linked,"each selected company name repeats across all year columns using Lead O links");
+                            dynamic newYearAnchor=bag.Own(target.Range["Q12"]);Check(Convert.ToBoolean(newYearAnchor.HasArray)&&Convert.ToString(newYearAnchor.Formula).Contains("TRANSPOSE")&&Convert.ToString(newYearAnchor.Value2)=="2027年度","vertical N years written as true TRANSPOSE array formula");
+                            Check(Convert.ToString(((dynamic)bag.Own(target.Range["AA9"])).Value2)=="丙简称"&&Convert.ToBoolean(((dynamic)bag.Own(target.Range["AA9"])).HasFormula),"unselected company outside current output keeps its Lead mapping after whole-array rewrite");
+                            dynamic changedCode=bag.Own(lead.Range["O30"]),changedYear=bag.Own(lead.Range["N30"]);changedCode.Value2="甲简称更新";changedYear.Value2="2030年度";target.Calculate();Check(Convert.ToString(((dynamic)bag.Own(target.Range["Q9"])).Value2)=="甲简称更新"&&Convert.ToString(newYearAnchor.Value2)=="2030年度","generated headers update when Lead source values change");changedCode.Value2="甲简称";changedYear.Value2="2027年度";target.Calculate();
+                            Call(host,"Undo");Check(Convert.ToBoolean(oldNames.HasArray)&&Convert.ToString(((dynamic)bag.Own(target.Range["Q9"])).Formula)==oldNamesFormula&&Convert.ToString(newYearAnchor.Formula)==priorYearFormula,"undo restores complete original company and year array formulas");
+                            var linkedPreset=host.CapturePreset();host.ApplyPreset(linkedPreset);Check(view.FormulaHeaders.Checked&&view.RepeatNames.Checked&&!view.ReplaceHeaderArrays.Checked,"formula and repeat settings persist but replacement permission resets");
+                            object priorYearFormat=newYearAnchor.NumberFormat;changedYear.Value2=46388;changedYear.NumberFormat="yyyy\"年\"";string expectedDateDisplay=Convert.ToString(changedYear.Text);view.ReplaceHeaderArrays.Checked=true;
+                            Call(host,"Preview");Call(host,"Start");int dateSteps=((List<SummaryAreaPlan>)Get(host,"targets")).Count;for(int i=0;i<dateSteps;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            Check(!(bool)Get(host,"failed")&&Convert.ToBoolean(newYearAnchor.HasFormula)&&Convert.ToDouble(newYearAnchor.Value2)==46388&&Convert.ToString(newYearAnchor.Text)==expectedDateDisplay,"linked TRANSPOSE retains numeric dates with source display format");
+                            Call(host,"Undo");Check(Convert.ToString(newYearAnchor.NumberFormat)==Convert.ToString(priorYearFormat)&&Convert.ToString(newYearAnchor.Formula)==priorYearFormula,"date header undo restores original format and array formula");changedYear.Value2="2027年度";changedYear.NumberFormat="General";
+
+
 
 
 
@@ -162,9 +219,28 @@ internal static class SingleSummaryLiveProbe
                         }
                     }
                 }
+                if(args.Length==2&&args[0]=="--provided-header-vectors")ProvidedHeaders((object)app,session,args[1]);
                 Console.WriteLine("PASS: "+checks+" Excel self-owned sample checks; no user workbook or real button interaction");return session.Finish(0);
             }
             catch(Exception e){Console.WriteLine(e);return session.Finish(1);}
         }
     }
+}
+
+[System.Runtime.Serialization.DataContract] public sealed class ProvidedHeaderVector
+{
+    [System.Runtime.Serialization.DataMember] public string sheet;
+    [System.Runtime.Serialization.DataMember] public List<ProvidedHeaderYear> years;
+    [System.Runtime.Serialization.DataMember] public List<ProvidedHeaderCompany> companies;
+}
+[System.Runtime.Serialization.DataContract] public sealed class ProvidedHeaderYear
+{
+    [System.Runtime.Serialization.DataMember] public int row;
+    [System.Runtime.Serialization.DataMember] public string text;
+}
+[System.Runtime.Serialization.DataContract] public sealed class ProvidedHeaderCompany
+{
+    [System.Runtime.Serialization.DataMember] public int row;
+    [System.Runtime.Serialization.DataMember] public string code;
+    [System.Runtime.Serialization.DataMember] public string name;
 }

@@ -14,7 +14,7 @@ namespace Excel_Iterate
         internal readonly List<SummaryAreaPlan> Template = new List<SummaryAreaPlan>(), Lead = new List<SummaryAreaPlan>();
         internal SummaryAreaPlan Paste;
         internal string Folder;
-        internal bool CheckFiles, HeadersEnabled;
+        internal bool CheckFiles, HeadersEnabled, FormulaHeaders, RepeatNames;
         internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget;
         internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
         { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
@@ -51,12 +51,32 @@ namespace Excel_Iterate
             var paste = Decode(values["pasteArea"], values["pasteSheet"]);
             if (paste.Count != 1 || paste[0].Rows != 1 || paste[0].Columns != 1 || values["pasteSheet"] != values["templateSheet"]) throw new InvalidOperationException("预设粘贴起点须为已编制区域同表的一个单元格。");
             if (values.ContainsKey("headersEnabled") && !bool.TryParse(values["headersEnabled"], out result.HeadersEnabled)) throw new InvalidOperationException("表头开关无效。");
+            if(values.ContainsKey("headersFormula")&&!bool.TryParse(values["headersFormula"],out result.FormulaHeaders))throw new InvalidOperationException("表头公式选项无效。");
+            if(values.ContainsKey("headersRepeat")&&!bool.TryParse(values["headersRepeat"],out result.RepeatNames))throw new InvalidOperationException("名称重复选项无效。");
             result.CompanyHeader = OptionalHeader(values, "companyHeader"); result.YearSource = OptionalHeader(values, "yearSource"); result.YearTarget = OptionalHeader(values, "yearTarget");
             if (result.HeadersEnabled && (result.CompanyHeader == null || result.YearSource == null || result.YearTarget == null)) throw new InvalidOperationException("启用表头的预设缺少选区。");
-            if ((result.CompanyHeader != null && (result.CompanyHeader.Rows != 1 || result.CompanyHeader.Columns != 1 || result.CompanyHeader.Sheet != values["templateSheet"])) || (result.YearTarget != null && (result.YearTarget.Rows != 1 || result.YearTarget.Columns != 1 || result.YearTarget.Sheet != values["templateSheet"])) || (result.YearSource != null && result.YearSource.Rows != 1)) throw new InvalidOperationException("表头预设的目标或年度来源形状无效。");
+            if ((result.CompanyHeader != null && (result.CompanyHeader.Rows != 1 || result.CompanyHeader.Columns != 1 || result.CompanyHeader.Sheet != values["templateSheet"])) || (result.YearTarget != null && (result.YearTarget.Rows != 1 || result.YearTarget.Columns != 1 || result.YearTarget.Sheet != values["templateSheet"])) || (result.YearSource != null && result.YearSource.Rows != 1 && result.YearSource.Columns != 1)) throw new InvalidOperationException("表头预设的目标或年度来源形状无效。");
             result.Paste = paste[0]; SummaryAreaEngine.LeadRows(result.Lead); SummaryAreaEngine.Targets(result.Template, result.Paste.Row, result.Paste.Column, 1);
             int row = result.Template.Min(p => p.Row), column = result.Template.Min(p => p.Column); foreach (var part in result.Template) { part.RowOffset = part.Row - row; part.ColumnOffset = part.Column - column; }
             return result;
+        }
+    }
+    internal sealed class SummaryHeaderArray
+    {
+        internal SummaryAreaPlan Area;
+        internal string Formula;
+        internal bool Dynamic;
+    }
+    internal static class SummaryHeaderFormula
+    {
+        internal static string Reference(SummaryAreaPlan area)
+        { return "'"+area.Sheet.Replace("'","''")+"'!$"+CellAddress.ColumnLetters(area.Column)+"$"+area.Row+":$"+CellAddress.ColumnLetters(area.Column+area.Columns-1)+"$"+(area.Row+area.Rows-1); }
+        internal static string Cell(string sheet,int row,int column)
+        {return "='"+sheet.Replace("'","''")+"'!$"+CellAddress.ColumnLetters(column)+"$"+row;}
+        internal static string Years(SummaryAreaPlan source)
+        {
+            if(source.Rows!=1&&source.Columns!=1)throw new InvalidOperationException("年度来源必须为单列或单行连续区域。");
+            return source.Rows>1?"=TRANSPOSE("+Reference(source)+")":"="+Reference(source);
         }
     }
     internal sealed class SummaryAreaCell
