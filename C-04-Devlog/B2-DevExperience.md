@@ -660,7 +660,9 @@ B3-Spec Coding.md 为 B3 工程规范入口。改名需要同时修改 verify_de
 
 模板长期读取副本打开后复用 MigrationWindowScope.SetOwnedVisible 隐藏自有窗口，避免重新选模板时占据操作页面。选区副本仍独立打开，准备阶段经纯数据回调驱动独立进度窗，进入原生选区框前关闭进度窗；取消在安全边界生效，异常沿原有 finally 关闭副本并恢复宿主活动表。离线托管测试核对读取窗口隐藏及准备回调顺序，实际宿主焦点与大文件耗时仍须本地验证。
 
-当前单体汇总 Ribbon 入口调用 SingleSummaryForm(true) 和 SummaryAreaView/Host/Engine。View 仅传递参数事件，Host 在宿主 STA 读取 Range.Areas、绑定 COM 身份、只读预检和逐 Area 计时执行；Engine 负责外链文本、坐标步长与公式白名单。保留旧构造器及参数 API 用于兼容既有探针，不从新入口执行整列铺列或回写 Lead。备份复用 SummaryWriter.Backup，但复制及恢复只访问计划 Area，失败批次禁止确认；不调用 Save 或 UpdateLink。未知公式、所有合并、数组和溢出保守阻断。迁移原生 Type=8 选择器、SourceChangeWatch、HostQuiet、HostLinkQuiet、ComBag 与 UiCard/ResultGrid 直接复用。
+当前单体汇总 Ribbon 入口调用 SingleSummaryForm(true) 和 SummaryAreaView/Host/Engine。View 仅传递参数事件，Host 在宿主 STA 读取 Range.Areas、绑定 COM 身份、只读预检和逐 Area 计时执行；Engine 负责外链文本、坐标步长与公式白名单。保留旧构造器及参数 API 用于兼容既有探针，不从新入口执行整列铺列或回写 Lead。备份复用 SummaryWriter.Backup，但复制及恢复只访问计划 Area，失败批次禁止确认；不调用 Save 或 UpdateLink。未知公式、模板合并、数组和溢出保守阻断。迁移原生 Type=8 选择器、SourceChangeWatch、HostQuiet、HostLinkQuiet、ComBag 与 UiCard/ResultGrid 直接复用。
+
+已编制区域的已有公式复用 FormulaRefRewriter.Scan/RefSpan，在纯逻辑 SummaryExistingFormula 中屏蔽已识别跨表前缀后调用既有白名单；任何未识别特殊引用仍阻断。来源按解码后的路径和文件分组，ReadCompanies 全名单匹配，决定与该来源涉及的原公式签名绑定，未确认不得执行；跨表只能保留。渲染时只移动本表引用，已确认公司来源重建路径文件，保留其他来源及源地址。常量不再误认作外链；含常量的 Area 只按连续公式段批写，避免 Formula 矩阵把文字重新解释成公式。原备份和撤销范围不变。
 
 表头计划复用 SummaryAreaPlan：PrepareHeaders 在只读预检中读取年度单格 Text，保存公司选用顺序对应的名称与年度写入值，并逐目标检查重叠、分组及合并授权。Fingerprint 包含表头目标、年度来源的格式、实际值与显示文本；输入变化使计划失效。表头与外链共用 SummaryWriter 整表备份，写入时临时使用文本格式并恢复原格式，逐格读回；RestoreHeaders 仅恢复明确授权范围并校正原公式文本，失败保留原回滚会话。预设字段可选，旧预设关闭表头；不持久化公司或年度实际数据。
 

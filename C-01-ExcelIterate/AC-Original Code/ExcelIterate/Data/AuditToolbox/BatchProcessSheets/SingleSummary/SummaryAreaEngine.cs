@@ -43,13 +43,13 @@ namespace Excel_Iterate
         internal static SummaryAreaSettings Read(BatchPreset preset)
         {
             BatchPresetStore.Validate(preset, "summary"); var values = preset.Values;
-            if (!values.ContainsKey("mode") || values["mode"] != "area-mvp") throw new InvalidOperationException("这是旧整列参数预设，已保留在库中；请重新指定模板区域和粘贴起点后另存区域预设，不会覆盖旧预设。");
+            if (!values.ContainsKey("mode") || values["mode"] != "area-mvp") throw new InvalidOperationException("这是旧整列参数预设，已保留在库中；请重新指定已编制区域和粘贴起点后另存区域预设，不会覆盖旧预设。");
             foreach (string key in new[] { "templateSheet", "templateAreas", "pasteSheet", "pasteArea", "leadSheet", "leadAreas", "projectFolder", "checkFiles" }) if (!values.ContainsKey(key)) throw new InvalidOperationException("区域预设缺少参数：" + key);
             var result = new SummaryAreaSettings { Folder = values["projectFolder"] };
             if (!bool.TryParse(values["checkFiles"], out result.CheckFiles)) throw new InvalidOperationException("来源文件检查选项无效。");
             result.Template.AddRange(Decode(values["templateAreas"], values["templateSheet"])); result.Lead.AddRange(Decode(values["leadAreas"], values["leadSheet"]));
             var paste = Decode(values["pasteArea"], values["pasteSheet"]);
-            if (paste.Count != 1 || paste[0].Rows != 1 || paste[0].Columns != 1 || values["pasteSheet"] != values["templateSheet"]) throw new InvalidOperationException("预设粘贴起点须为模板同表的一个单元格。");
+            if (paste.Count != 1 || paste[0].Rows != 1 || paste[0].Columns != 1 || values["pasteSheet"] != values["templateSheet"]) throw new InvalidOperationException("预设粘贴起点须为已编制区域同表的一个单元格。");
             if (values.ContainsKey("headersEnabled") && !bool.TryParse(values["headersEnabled"], out result.HeadersEnabled)) throw new InvalidOperationException("表头开关无效。");
             result.CompanyHeader = OptionalHeader(values, "companyHeader"); result.YearSource = OptionalHeader(values, "yearSource"); result.YearTarget = OptionalHeader(values, "yearTarget");
             if (result.HeadersEnabled && (result.CompanyHeader == null || result.YearSource == null || result.YearTarget == null)) throw new InvalidOperationException("启用表头的预设缺少选区。");
@@ -63,7 +63,82 @@ namespace Excel_Iterate
     {
         internal int Row, Column;
         internal string Text, R1C1;
-        internal bool Formula;
+        internal bool Formula, Literal;
+        internal SummaryExistingFormula Existing;
+    }
+    internal sealed class SummaryReferenceSource
+    {
+        internal string Key, File, Locations, Reason, Signature, Decision;
+    }
+    // Reuse the existing span scanner; literals are masked and never rewritten.
+    internal sealed class SummaryExistingFormula
+    {
+        internal string Original;
+        internal readonly List<RefSpan> Spans = new List<RefSpan>();
+        internal readonly Dictionary<string, bool> Decisions = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        internal static string Prefix(string formula, RefSpan span)
+        {
+            string raw = formula.Substring(span.PrefixStart, span.PrefixLength);
+            return raw.StartsWith("'", StringComparison.Ordinal) ? raw.Substring(1, raw.Length-2).Replace("''", "'") : raw;
+        }
+        internal static string Source(string formula, RefSpan span)
+        {
+            string prefix=Prefix(formula,span);
+            return span.Kind==RefKind.CrossSheet ? "本工作簿!"+prefix : prefix.Substring(0,prefix.LastIndexOf(']')+1);
+        }
+        internal static string File(string formula, RefSpan span)
+        {
+            if(span.Kind!=RefKind.CrossBook)return "";
+            string prefix=Prefix(formula,span);int open=prefix.LastIndexOf('['),close=prefix.LastIndexOf(']');
+            if(open<0||close<=open+1)throw new InvalidOperationException("无法识别外链文件。");
+            return prefix.Substring(open+1,close-open-1);
+        }
+        internal static SummaryExistingFormula Read(string formula)
+        {
+            var result=new SummaryExistingFormula{Original=formula};result.Spans.AddRange(FormulaRefRewriter.Scan(formula));
+            var mask=new System.Text.StringBuilder(formula);
+            foreach(var span in result.Spans.OrderByDescending(x=>x.Start))
+            {
+                if(span.Kind==RefKind.Local)continue;
+                if(span.Kind==RefKind.CrossBook)File(formula,span);
+                // Reject unsupported name/3D/structured/dynamic references via residual validation.
+                string prefix=Prefix(formula,span);if(span.Kind==RefKind.CrossSheet&&prefix.Contains(":"))throw new InvalidOperationException("不支持三维工作表引用。");
+                mask.Remove(span.PrefixStart,span.Start+span.Length-span.PrefixStart);mask.Insert(span.PrefixStart,"0");
+            }
+            SummaryAreaEngine.NativeFormula(mask.ToString());return result;
+        }
+        internal string Render(string folder,string company,int rows,int columns)
+        {
+            var result=new System.Text.StringBuilder(Original);
+            foreach(var span in Spans.OrderByDescending(x=>x.Start))
+            {
+                int start=span.Start,length=span.Length;string replacement;
+                if(span.Kind==RefKind.Local)
+                {
+                    replacement=Cell(span.Column1,span.Row1,span.Column1Absolute,span.Row1Absolute,span.IsWholeColumn,rows,columns);
+                    if(span.IsRange)replacement+=":"+Cell(span.Column2,span.Row2,span.Column2Absolute,span.Row2Absolute,span.IsWholeColumn,rows,columns);
+                }
+                else
+                {
+                    bool replace;if(!Decisions.TryGetValue(Source(Original,span),out replace))throw new InvalidOperationException("引用来源尚未确认："+Source(Original,span));
+                    if(!replace)continue;
+                    if(span.Kind!=RefKind.CrossBook)throw new InvalidOperationException("本工作簿跨表来源只能保留原引用。");
+                    string prefix=Prefix(Original,span);string sheet=prefix.Substring(prefix.LastIndexOf(']')+1);
+                    // External validates paths, filenames and worksheet names. Keep original address verbatim.
+                    string sample=SummaryTextReference.External(folder,company,"'"+sheet.Replace("'","''")+"'!A1");
+                    replacement=sample.Substring(1,sample.LastIndexOf('!'))+Original.Substring(span.Start,span.Length);
+                    start=span.PrefixStart;length=span.Start+span.Length-start;
+                }
+                result.Remove(start,length);result.Insert(start,replacement);
+            }
+            return result.ToString();
+        }
+        private static string Cell(int column,int row,bool absoluteColumn,bool absoluteRow,bool wholeColumn,int rows,int columns)
+        {
+            long c=absoluteColumn?column:(long)column+columns,r=wholeColumn?1:absoluteRow?row:(long)row+rows;
+            if(c<1||c>16384||r<1||r>1048576)throw new InvalidOperationException("本表公式平移后引用越界。");
+            return (absoluteColumn?"$":"")+CellAddress.ColumnLetters((int)c)+(wholeColumn?"":(absoluteRow?"$":"")+r.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
     }
     internal static class SummaryAreaEngine
     {
@@ -104,7 +179,7 @@ namespace Excel_Iterate
         { return a.Row <= (long)b.Row + b.Rows - 1 && b.Row <= (long)a.Row + a.Rows - 1 && a.Column <= (long)b.Column + b.Columns - 1 && b.Column <= (long)a.Column + a.Columns - 1; }
         internal static List<SummaryAreaPlan> Targets(IList<SummaryAreaPlan> areas, int pasteRow, int pasteColumn, int companies)
         {
-            if (areas.Count == 0 || companies < 1) throw new InvalidOperationException("请选择模板区域和至少一家公司。");
+            if (areas.Count == 0 || companies < 1) throw new InvalidOperationException("请选择已编制区域和至少一家公司。");
             int minRow = areas.Min(a => a.Row), minColumn = areas.Min(a => a.Column);
             int width = areas.Max(a => checked(a.Column + a.Columns - 1)) - minColumn + 1;
             long count = 0;
@@ -112,17 +187,17 @@ namespace Excel_Iterate
             {
                 var a = areas[i];
                 if (a.Rows < 1 || a.Columns < 1 || a.Row < 1 || a.Column < 1 || (long)a.Row + a.Rows - 1 > 1048576 || (long)a.Column + a.Columns - 1 > 16384)
-                    throw new InvalidOperationException("模板区域坐标无效。");
-                if (a.Sheet != areas[0].Sheet) throw new InvalidOperationException("模板不能跨工作表。");
+                    throw new InvalidOperationException("已编制区域坐标无效。");
+                if (a.Sheet != areas[0].Sheet) throw new InvalidOperationException("已编制区域不能跨工作表。");
                 count += (long)a.Rows * a.Columns;
-                for (int j = 0; j < i; j++) if (Intersects(a, areas[j])) throw new InvalidOperationException("模板 Area 相互重叠。");
+                for (int j = 0; j < i; j++) if (Intersects(a, areas[j])) throw new InvalidOperationException("已编制 Area 相互重叠。");
             }
             if (count * companies > CellLimit) throw new InvalidOperationException("MVP 每批目标最多十万单元格，请缩小区域或公司数量。");
             var result = new List<SummaryAreaPlan>();
             for (int company = 0; company < companies; company++) foreach (var area in areas)
             {
                 var target = area.Target(minRow, minColumn, pasteRow, pasteColumn, width, company);
-                if (areas.Any(source => Intersects(source, target))) throw new InvalidOperationException("模板与目标重叠，原始模板必须保持不变。");
+                if (areas.Any(source => Intersects(source, target))) throw new InvalidOperationException("已编制区域与目标重叠，原始已编制区域必须保持不变。");
                 result.Add(target);
             }
             return result;
@@ -140,21 +215,21 @@ namespace Excel_Iterate
         }
         internal static string Address(SummaryAreaPlan area)
         { return CellAddress.Name(area.Row, area.Column) + ":" + CellAddress.Name(area.Row + area.Rows - 1, area.Column + area.Columns - 1); }
-        internal static object[,] FormulaMatrix(object copied, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company)
+        internal static object[,] FormulaMatrix(object copied, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company, int rows = 0, int columns = 0)
         {
             var result = new object[area.Rows, area.Columns];
             for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++) result[r, c] = SummaryArrays.Pick(copied, r, area.Rows, c, area.Columns);
-            foreach (var cell in cells) if (!cell.Formula) result[cell.Row - area.Row, cell.Column - area.Column] = SummaryTextReference.External(folder, company, cell.Text);
+            foreach (var cell in cells) if (cell.Existing != null) result[cell.Row-area.Row,cell.Column-area.Column] = cell.Existing.Render(folder,company,rows,columns); else if (!cell.Formula && !cell.Literal) result[cell.Row - area.Row, cell.Column - area.Column] = SummaryTextReference.External(folder, company, cell.Text);
             return result;
         }
-        internal static void VerifyMatrix(object actual, object r1c1, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company)
+        internal static void VerifyMatrix(object actual, object r1c1, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company, int rows = 0, int columns = 0)
         {
-            foreach (var cell in cells)
+            foreach (var cell in cells.Where(c=>!c.Literal))
             {
                 int r = cell.Row - area.Row, c = cell.Column - area.Column;
-                string expected = cell.Formula ? cell.R1C1 : SummaryTextReference.External(folder, company, cell.Text);
-                string found = Convert.ToString(SummaryArrays.Pick(cell.Formula ? r1c1 : actual, r, area.Rows, c, area.Columns));
-                if (!string.Equals(found, expected, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("公式批量读回核验失败，模板位置：" + CellAddress.Name(cell.Row, cell.Column));
+                string expected = cell.Existing != null ? cell.Existing.Render(folder,company,rows,columns) : cell.Formula ? cell.R1C1 : SummaryTextReference.External(folder, company, cell.Text);
+                string found = Convert.ToString(SummaryArrays.Pick(cell.Formula && cell.Existing == null ? r1c1 : actual, r, area.Rows, c, area.Columns));
+                if (!string.Equals(found, expected, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("公式批量读回核验失败，已编制区域位置：" + CellAddress.Name(cell.Row, cell.Column));
             }
         }
         internal static bool IsError(object value)

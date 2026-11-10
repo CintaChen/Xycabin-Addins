@@ -30,7 +30,7 @@ internal static class SingleSummaryLiveProbe
                 using(var bag=new ComBag())
                 {
                     dynamic books=bag.Own(app.Workbooks);
-                    foreach(string name in new[]{"！01-示例（集团）","！02-示例乙"})
+                    foreach(string name in new[]{"！01-示例（集团）","！02-示例乙","公共参数","第三家公司"})
                     {
                         dynamic source=books.Add(); bool closed=false;
                         session.Own((object)source,delegate{if(!closed)source.Close(false);});
@@ -138,6 +138,24 @@ internal static class SingleSummaryLiveProbe
                             target.Protect();for(int i=0;i<2;i++)Call(host,"Tick",null,EventArgs.Empty);target.Unprotect();Call(host,"Undo");Check(((dynamic)bag.Own(target.Range["Q9"])).Value2==null&&((dynamic)bag.Own(target.Range["Q12"])).Value2==null,"failed batch retry undo includes headers already touched");
                             view.Companies.Rows[1].Cells["selected"].Value=false;Call(host,"Preview");Check(((List<SummaryAreaPlan>)Get(host,"headerTargets")).Count==12,"company filtering rebuilds header plan with two groups");Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);
                             Check(Convert.ToString(((dynamic)bag.Own(target.Range["V9"])).Value2)=="丙简称"&&((dynamic)bag.Own(target.Range["AA9"])).Value2==null,"unchecked middle company does not shift name and link pairing");Call(host,"Undo");
+                            // Existing compiled Area: company external + unrelated public external + constants.
+                            dynamic compiledSource=bag.Own(target.Range["L10"]),publicSource=bag.Own(target.Range["M10"]),constant=bag.Own(target.Range["N10"]),literalText=bag.Own(target.Range["O10"]);
+                            compiledSource.Formula=SummaryTextReference.External(session.DirectoryPath,"！01-示例（集团）","BS!A1")+"+A1";
+                            publicSource.Formula=SummaryTextReference.External(session.DirectoryPath,"公共参数","BS!$A$1");constant.Value2=123;literalText.Value2="说明! 请检查";dynamic formulaText=bag.Own(target.Range["P10"]);formulaText.NumberFormat="@";formulaText.Value2="=1+1";
+                            bool reviewBlocked=false;try{Call(host,"Preview");}catch(InvalidOperationException){reviewBlocked=true;}
+                            Check(reviewBlocked&&view.ReferenceSources.Rows.Count==2,"unrelated sources are reported and block first preflight");
+                            foreach(DataGridViewRow reviewRow in view.ReferenceSources.Rows)reviewRow.Cells["decision"].Value=Convert.ToString(reviewRow.Cells["source"].Value).Contains("公共参数")?"保留原引用":"参与公司替换";
+                            Call(host,"Preview");Check((bool)Get(host,"ready"),"explicit source decisions permit fresh preflight");string publicBefore=Convert.ToString(publicSource.Formula),compiledBefore=Convert.ToString(compiledSource.Formula);
+                            Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed"),"existing compiled Area executes");
+                            dynamic secondLink=bag.Own(target.Range["V10"]),publicOutput=bag.Own(target.Range["R10"]);
+                            Check(Convert.ToString(secondLink.Formula).Contains("[第三家公司.xlsx]BS'!A1+K1"),"existing external address frozen while local relative reference shifts");
+                            Check(Convert.ToString(publicOutput.Formula)==publicBefore,"public external formula remains unchanged");
+                            Check(Convert.ToDouble(((dynamic)bag.Own(target.Range["S10"])).Value2)==123&&Convert.ToString(((dynamic)bag.Own(target.Range["T10"])).Value2)=="说明! 请检查","plain numbers and text copied unchanged");
+                            dynamic literalOutput=bag.Own(target.Range["U10"]);Check(!Convert.ToBoolean(literalOutput.HasFormula)&&Convert.ToString(literalOutput.Value2)=="=1+1","literal equals text never becomes an Excel formula");
+                            Call(host,"Undo");Check(((dynamic)bag.Own(target.Range["Q10"])).Value2==null&&Convert.ToString(compiledSource.Formula)==compiledBefore,"compiled Area undo restores targets and leaves source unchanged");
+                            publicSource.Formula=publicBefore+"+1";reviewBlocked=false;try{Call(host,"Preview");}catch(InvalidOperationException){reviewBlocked=true;}Check(reviewBlocked,"changed source formula requires renewed review");
+                            publicSource.Value2="公共说明";view.ReferenceSources.Rows.Clear();Call(host,"Preview");Check((bool)Get(host,"ready")&&view.ReferenceSources.Rows.Count==1&&Convert.ToString(view.ReferenceSources.Rows[0].Cells["decision"].Value)=="参与公司替换","single Lead-matched source is automatically identified");
+
 
 
 

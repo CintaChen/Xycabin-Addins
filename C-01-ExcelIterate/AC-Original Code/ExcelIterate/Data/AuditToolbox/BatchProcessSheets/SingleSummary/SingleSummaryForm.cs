@@ -236,6 +236,8 @@ namespace Excel_Iterate
             {
                 var actions = new BatchPresetActions(this, "summary", delegate { return new BatchPreset { Feature = "summary", Name = "区域预设", Context = "", Values = new Dictionary<string, string>() }; }, delegate { }, delegate { return false; }, areaView.Message);
                 areaView.AttachPresets(actions); actions.Gear.Enabled = false;
+                // The shared preview filler otherwise puts arbitrary text in combo cells.
+                areaView.ReferenceSources.Rows.Add("预览来源", "L3", "预检后显示引用说明", "待确认");
             }
         }
 

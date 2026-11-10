@@ -59,6 +59,22 @@ internal static class SummaryAreaChecks
         leadParts.Add(new SummaryAreaPlan { Sheet="Lead",Row=3,Column=6,Rows=2,Columns=1 }); rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 超过两列阻断");leadParts.RemoveAt(2);
         leadParts.Add(new SummaryAreaPlan { Sheet="Lead",Row=3,Column=1,Rows=1,Columns=1 });rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 重叠选区阻断");leadParts.RemoveAt(2);
         leadParts[1].Sheet="其他";rejects(delegate { SummaryAreaEngine.LeadRows(leadParts); },"Lead 跨表选区阻断");
+        var compiled=SummaryExistingFormula.Read("=ROUND('N:\\旧目录\\[公司甲.xlsx]B S'!L17+A1-$B$2,2)");
+        compiled.Decisions[@"N:\旧目录\[公司甲.xlsx]"]=true;
+        string rewritten=compiled.Render(@"C:\新目录","公司乙",2,5);
+        check("已有外链更换路径文件且源地址不平移",rewritten=="=ROUND('C:\\新目录\\[公司乙.xlsx]B S'!L17+F3-$B$2,2)",rewritten);
+        var mixed=SummaryExistingFormula.Read("='C:\\旧\\[甲.xlsx]BS'!$A$1+'C:\\公共\\[参数.xlsx]BS'!B2+A1");
+        rejects(delegate { mixed.Render(@"C:\新","乙",0,5); },"未确认来源阻断公式生成");
+        mixed.Decisions[@"C:\旧\[甲.xlsx]"]=true;mixed.Decisions[@"C:\公共\[参数.xlsx]"]=false;
+        rewritten=mixed.Render(@"C:\新","乙",0,5);
+        check("公共引用及源相对地址保持原文",rewritten=="='C:\\新\\[乙.xlsx]BS'!$A$1+'C:\\公共\\[参数.xlsx]BS'!B2+F1",rewritten);
+        rejects(delegate {SummaryExistingFormula.Read("='C:\\[甲.xlsx]BS'!A1+UnknownName");},"已有外链仍阻断未知名称");
+        var quoted=SummaryExistingFormula.Read("='C:\\O''Brien\\[甲.xlsx]表''一'!A1");quoted.Decisions[@"C:\O'Brien\[甲.xlsx]"]=true;
+        check("已有引用单引号正确转义",quoted.Render(@"D:\O'Brien","乙",0,1)=="='D:\\O''Brien\\[乙.xlsx]表''一'!A1","quote mismatch");
+        var literalFormula=SummaryExistingFormula.Read("=IF(A1=1,\"[假.xlsx]BS!A1\",0)");
+        check("公式字符串不作为外链识别",literalFormula.Spans.TrueForAll(x=>x.Kind==RefKind.Local),"literal parsed as external");
+        var cross=SummaryExistingFormula.Read("='公共表'!A1+A1");cross.Decisions["本工作簿!公共表"]=false;
+        check("明确保留本簿跨表来源",cross.Render(@"C:\新","乙",1,2)=="='公共表'!A1+C2","cross-sheet shifted");
         var preset = new BatchPreset { Feature="summary", Name="区域测试", Context="test.xlsx", Values=new Dictionary<string,string> {
             {"mode","area-mvp"},{"templateSheet","汇总"},{"templateAreas","3,12,4,5;20,12,11,5"},{"pasteSheet","汇总"},{"pasteArea","3,17,1,1"},{"leadSheet","Lead"},{"leadAreas","3,1,2,1;3,4,2,1"},{"projectFolder",@"C:\项目"},{"checkFiles","False"} } };
         var settings=SummaryAreaSettings.Read(BatchPresetStore.Decode(BatchPresetStore.Encode(preset),"summary"));

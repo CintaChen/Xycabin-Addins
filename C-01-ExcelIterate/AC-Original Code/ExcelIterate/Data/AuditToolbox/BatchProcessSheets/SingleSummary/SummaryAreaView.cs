@@ -13,6 +13,8 @@ namespace Excel_Iterate
         private readonly List<Control> inputs = new List<Control>();
         private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
+        internal readonly ResultGrid ReferenceSources = new ResultGrid { AutoSize=false,Height=145,Dock=DockStyle.Top,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false };
+        private Control referenceBody;
         internal readonly CheckBox HeadersEnabled = new CheckBox { Text = "启用表头自动填充", AutoSize = true };
         internal readonly Label HeaderPreview = new Label { AutoSize = true, ForeColor = Ui.InkDim, MaximumSize = new Size(1000,0) };
         internal string ProjectFolder
@@ -35,7 +37,7 @@ namespace Excel_Iterate
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 60)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 40)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             parameters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 1 };
             parameters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            parameters.Controls.Add(Picker("模板区域（可 Ctrl 多选）", "template"));
+            parameters.Controls.Add(Picker("已编制区域（可 Ctrl 多选）", "template"));
             parameters.Controls.Add(Picker("粘贴起点（一个单元格）", "paste"));
             parameters.Controls.Add(Picker("Lead 公司字段（可 Ctrl 多选两列，不含表头）", "lead"));
             var folder = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
@@ -45,6 +47,14 @@ namespace Excel_Iterate
             browse.Click += delegate { string value = HostDialogService.Folder(FindForm(), "选择公司底稿所在文件夹", true); if (!string.IsNullOrEmpty(value)) Folder.Text = value; };
             Folder.TextChanged += delegate { InvalidatePlan(); }; CheckFiles.CheckedChanged += delegate { InvalidatePlan(); };
             parameters.Controls.Add(folder); parameters.Controls.Add(CheckFiles); inputs.Add(CheckFiles);
+            ReferenceSources.Columns.Add(new DataGridViewTextBoxColumn{Name="source",HeaderText="来源文件 / 工作表",ReadOnly=true,Width=280});
+            ReferenceSources.Columns.Add(new DataGridViewTextBoxColumn{Name="positions",HeaderText="涉及位置",ReadOnly=true,Width=130});
+            ReferenceSources.Columns.Add(new DataGridViewTextBoxColumn{Name="reason",HeaderText="识别说明",ReadOnly=true,AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill});
+            var decision=new DataGridViewComboBoxColumn{Name="decision",HeaderText="处理方式",Width=145};decision.Items.AddRange("待确认","参与公司替换","保留原引用");ReferenceSources.Columns.Add(decision);Ui.StyleGrid(ReferenceSources);
+            referenceBody=ReferenceSources;referenceBody.Visible=false;parameters.Controls.Add(referenceBody);
+            ReferenceSources.CurrentCellDirtyStateChanged+=delegate {if(ReferenceSources.IsCurrentCellDirty)ReferenceSources.CommitEdit(DataGridViewDataErrorContexts.Commit);};
+            ReferenceSources.CellValueChanged+=delegate {InvalidatePlan();};
+            parameters.Controls.Add(new Label {AutoSize=true,ForeColor=Ui.InkDim,Text="预检会列出外链来源；待确认项请选择参与替换或保留，再重新预检。原区域不改。"});
             var headerBody = new TableLayoutPanel { AutoSize=true,ColumnCount=1,Dock=DockStyle.Top,Visible=false };
             headerBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             var expand=Ui.Button("▶ 表头自动填充",180);parameters.Controls.Add(expand);
@@ -59,7 +69,7 @@ namespace Excel_Iterate
             var parameterScroll=new Panel { Dock=DockStyle.Fill,AutoScroll=true,BackColor=Ui.Canvas };parameterScroll.Controls.Add(card);root.Controls.Add(parameterScroll,0,0);
             root.RowStyles[0].SizeType=SizeType.Absolute;
             Action fitParameters=delegate { root.RowStyles[0].Height=Math.Min(card.GetPreferredSize(new Size(Math.Max(1,parameterScroll.ClientSize.Width-20),0)).Height+6,Math.Max(180,(int)(ClientSize.Height*.55))); };
-            SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
+            SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; referenceBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
             state.Text = "选区绑定同一工作簿；只复制选中的 Area。未选空隙不变；全程不自动保存。";
             root.Controls.Add(state, 0, 1);
             Companies.Columns.Add(new DataGridViewCheckBoxColumn { Name = "selected", HeaderText = "选用", Width = 70 });
@@ -84,6 +94,18 @@ namespace Excel_Iterate
             pick.Click += delegate { if (Pick != null) Pick(kind, true); }; read.Click += delegate { if (Pick != null) Pick(kind, false); };
             inputs.Add(pick); inputs.Add(read); return row;
         }
+        internal Dictionary<string,string> ReviewSources(IList<SummaryReferenceSource> sources)
+        {
+            var prior=new Dictionary<string,string[]>(StringComparer.OrdinalIgnoreCase);
+            foreach(DataGridViewRow row in ReferenceSources.Rows) prior[Convert.ToString(row.Cells["source"].Value)]=new[]{Convert.ToString(row.Tag),Convert.ToString(row.Cells["decision"].Value)};
+            ReferenceSources.Rows.Clear();var result=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var source in sources)
+            {
+                string[] saved;string decision=prior.TryGetValue(source.Key,out saved)&&saved[0]==source.Signature?saved[1]:source.Decision;
+                int index=ReferenceSources.Rows.Add(source.Key,source.Locations,source.Reason,decision);ReferenceSources.Rows[index].Tag=source.Signature;result[source.Key]=decision;
+            }
+            referenceBody.Visible=sources.Count>0;return result;
+        }
         internal void Address(string kind, string value) { addresses[kind].Text = value; InvalidatePlan(); }
         internal void AttachPresets(BatchPresetActions actions)
         {
@@ -96,6 +118,6 @@ namespace Excel_Iterate
         internal void InvalidatePlan() { execute.Enabled = false; if (Changed != null) Changed(); }
         internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }
         internal void SetState(bool running, bool pending, bool ready)
-        { foreach (var c in inputs) c.Enabled = !running && !pending; if (presets != null) presets.Gear.Enabled = !running && !pending; Companies.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
+        { foreach (var c in inputs) c.Enabled = !running && !pending; if (presets != null) presets.Gear.Enabled = !running && !pending; Companies.Enabled = !running && !pending; ReferenceSources.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
     }
 }
