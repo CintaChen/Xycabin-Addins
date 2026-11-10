@@ -233,13 +233,47 @@ namespace Excel_Iterate
             if (merged == null || merged == DBNull.Value || Bool(merged)) throw new InvalidOperationException(address + " 含合并或混合合并区域；MVP 请先取消合并。");
             RejectArraySpill(range,address,bag);
         }
+        // Range-level Null means a mixed result, not an affirmative spill.
+        // Recheck physical cells; merged cells share the actual write anchor.
         private void RejectArraySpill(dynamic range,string address,ComBag bag)
         {
-            object array = range.HasArray;
-            if (array == DBNull.Value || Bool(array)) throw new InvalidOperationException(address + " 含数组或混合数组公式。");
-            try { object spill = range.HasSpill; if (spill == DBNull.Value || Bool(spill)) throw new InvalidOperationException(address + " 含溢出或混合溢出公式。"); }
-            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }
-            catch (System.Runtime.InteropServices.COMException error) { if (error.HResult != unchecked((int)0x80020003) && error.HResult != unchecked((int)0x80020006)) throw; }
+            CheckFormulaFlag(range,address,false,bag);
+            CheckFormulaFlag(range,address,true,bag);
+        }
+        internal static int FormulaFlag(object value,string address,string property)
+        {
+            if(value==null||value==DBNull.Value)return -1;
+            if(value is bool)return (bool)value?1:0;
+            if(value is short||value is int)
+            {
+                int number=Convert.ToInt32(value);if(number==0)return 0;if(number==1||number==-1)return 1;
+            }
+            throw new InvalidOperationException(address+" 无法确认 "+property+" 状态；返回类型="+value.GetType().Name+"，值="+Convert.ToString(value,CultureInfo.InvariantCulture)+"。未执行写入。");
+        }
+        private void CheckFormulaFlag(dynamic range,string address,bool spill,ComBag bag)
+        {
+            string property=spill?"HasSpill":"HasArray",description=spill?"动态溢出":"数组";
+            object aggregate;
+            try { aggregate=spill?(object)range.HasSpill:(object)range.HasArray; }
+            catch(Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { if(!spill)throw; return; }
+            catch(System.Runtime.InteropServices.COMException error)
+            { if(spill&&(error.HResult==unchecked((int)0x80020003)||error.HResult==unchecked((int)0x80020006)))return;throw; }
+            // Only an unsupported aggregate property identifies an old host.
+            // A per-cell failure after an available aggregate must remain blocking.
+            int state=FormulaFlag(aggregate,address,property);
+            if(state==1)throw new InvalidOperationException(address+" 含"+description+"公式（"+property+"=True）。");
+            if(state==0)return;
+            var bounds=Coordinates(range,bag);dynamic cells=bag.Own(range.Cells);
+            for(int r=1;r<=bounds.Rows;r++)for(int c=1;c<=bounds.Columns;c++)
+            using(var one=new ComBag())
+            {
+                dynamic cell=one.Own(cells.Item(r,c)),anchor=cell;
+                if(Bool((object)cell.MergeCells)) { dynamic merge=one.Own(cell.MergeArea),mergedCells=one.Own(merge.Cells);anchor=one.Own(mergedCells.Item(1,1)); }
+                string location=address+" / "+Convert.ToString(anchor.Address);
+                int single=FormulaFlag(spill?(object)anchor.HasSpill:(object)anchor.HasArray,location,property);
+                if(single==1)throw new InvalidOperationException(location+" 含"+description+"公式（"+property+"=True）。");
+                if(single<0)throw new InvalidOperationException(location+" 单格 "+property+" 仍返回混合或空状态，无法安全确认；未执行写入。请提供该位置及 Excel/WPS 版本以便诊断。");
+            }
         }
         private void ReadCompanies(ComBag bag)
         {

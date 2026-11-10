@@ -664,6 +664,8 @@ B3-Spec Coding.md 为 B3 工程规范入口。改名需要同时修改 verify_de
 
 已编制区域的已有公式复用 FormulaRefRewriter.Scan/RefSpan，在纯逻辑 SummaryExistingFormula 中屏蔽已识别跨表前缀后调用既有白名单；任何未识别特殊引用仍阻断。来源按解码后的路径和文件分组，ReadCompanies 全名单匹配，决定与该来源涉及的原公式签名绑定，未确认不得执行；跨表只能保留。渲染时只移动本表引用，已确认公司来源重建路径文件，保留其他来源及源地址。常量不再误认作外链；含常量的 Area 只按连续公式段批写，避免 Formula 矩阵把文字重新解释成公式。原备份和撤销范围不变。
 
+合并表头的 HasSpill/HasArray 区域级 Null 只表示混合状态，不可按 True 报溢出。SummaryAreaHost 在混合时逐物理单元格检查，合并格复核 MergeArea 左上角；明确 True 才报数组/溢出，单格仍未知或异常类型则单独诊断并只读阻断。旧宿主仅忽略已知的成员不支持错误，不把其他 COM 异常当成安全状态。
+
 表头计划复用 SummaryAreaPlan：PrepareHeaders 在只读预检中读取年度单格 Text，保存公司选用顺序对应的名称与年度写入值，并逐目标检查重叠、分组及合并授权。Fingerprint 包含表头目标、年度来源的格式、实际值与显示文本；输入变化使计划失效。表头与外链共用 SummaryWriter 整表备份，写入时临时使用文本格式并恢复原格式，逐格读回；RestoreHeaders 仅恢复明确授权范围并校正原公式文本，失败保留原回滚会话。预设字段可选，旧预设关闭表头；不持久化公司或年度实际数据。
 
 区域模式复用 BatchPresetActions/BatchPresetManagerForm 与同一 summary 库，mode=area-mvp 区分新参数；候选绑定及区域校验成功后才提交，旧整列参数不猜测转换。捕获含四组基础配置及可选表头选区，不序列化公司数据、COM 或回滚状态，恢复后清空名单并失效预检。执行按 Area 使用 Formula 矩阵批写、Formula/R1C1 批读及真实公式类型核验；HostCalculation 跨批次暂停自动重算并在完成、失败及释放时恢复。Fingerprint 优先每 Area 的 Value[11] SpreadsheetML，提取 Styles/Table 并移除公式缓存 Data，另核对批注；不支持或格式不完整时保留原逐格回退。覆盖确认后仍执行最终完整状态校验。SingleSummaryLiveProbe --timing 以自建200模板格、两家公司400公式验证吞吐及空隙/撤销，不操作用户文件，速度不代表真实网络审计文件。

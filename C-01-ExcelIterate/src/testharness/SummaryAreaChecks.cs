@@ -114,6 +114,17 @@ internal static class SummaryAreaChecks
                 var flags=BindingFlags.Instance|BindingFlags.NonPublic;
                 Action<string,object> field=(name,value)=>typeof(SummaryAreaHost).GetField(name,flags).SetValue(host,value);
                 field("book",app.Book);field("bookName","test.xlsx");field("templateSheet","汇总");field("backup","备份");field("targets",SummaryAreaEngine.Targets(areas,3,17,2));
+                check("溢出空状态不等同于True",SummaryAreaHost.FormulaFlag(DBNull.Value,"test","HasSpill")==-1&&SummaryAreaHost.FormulaFlag(null,"test","HasSpill")==-1,"null misclassified");
+                check("溢出布尔及VARIANT_BOOL解析",SummaryAreaHost.FormulaFlag(false,"test","HasSpill")==0&&SummaryAreaHost.FormulaFlag(true,"test","HasSpill")==1&&SummaryAreaHost.FormulaFlag(-1,"test","HasSpill")==1,"boolean wrong");
+                rejects(delegate {SummaryAreaHost.FormulaFlag(unchecked((int)0x800A07D7),"test","HasSpill");},"溢出错误码不得强转True");
+                var guard=typeof(SummaryAreaHost).GetMethod("RejectArraySpill",flags);
+                using(var guardBag=new ComBag())
+                {
+                    guard.Invoke(host,new object[]{new SummaryArrayOnlyRange(),"legacy",guardBag});check("旧宿主缺少HasSpill成员兼容",true,"");
+                    guard.Invoke(host,new object[]{new SummaryMixedSpillRange(false,true),"merged",guardBag});check("合并区域混合状态检查左上角后通过",true,"");
+                    bool blockedSpill=false;try{guard.Invoke(host,new object[]{new SummaryMixedSpillRange(true,false),"spill",guardBag});}catch(TargetInvocationException e){blockedSpill=e.InnerException is InvalidOperationException;}check("混合区域中的真实溢出仍阻断",blockedSpill,"actual spill allowed");
+                    blockedSpill=false;try{guard.Invoke(host,new object[]{new SummaryMixedSpillRange(null,false),"unknown",guardBag});}catch(TargetInvocationException e){blockedSpill=e.InnerException is InvalidOperationException;}check("单格状态未知仍阻断且不宣称溢出",blockedSpill,"unknown state allowed");
+                }
                 var restore=typeof(SummaryAreaHost).GetMethod("Restore",flags);
                 restore.Invoke(host,new object[]{4});
                 check("生产回滚只访问四个Area",app.Book.Target.Copied.Count==4 && app.Book.Target.Copied[0]=="Q3:U6" && app.Book.Target.Copied[1]=="Q20:U30" && app.Book.Target.Copied[3]=="V20:Z30","rollback touched gaps");
@@ -160,3 +171,20 @@ public sealed class SummaryAreaFakeRange
 {
     private readonly SummaryAreaFakeSheet sheet;private readonly string address;public SummaryAreaFakeRange(SummaryAreaFakeSheet s,string a){sheet=s;address=a;}public void Clear(){if(sheet.Fail)throw new InvalidOperationException("injected restore failure");}public void Copy(object target){var r=(SummaryAreaFakeRange)target;r.sheet.Copied.Add(r.address);}
 }
+
+// Managed host fixture: a mixed aggregate and explicit per-cell states.
+public sealed class SummaryMixedSpillRange
+{
+    private readonly object spill;private readonly bool merged;private readonly bool single;
+    public SummaryMixedSpillRange(object value,bool merge):this(value,merge,false){}
+    private SummaryMixedSpillRange(object value,bool merge,bool one){spill=value;merged=merge;single=one;}
+    public object HasArray{get{return false;}} public object HasSpill{get{return single?spill:DBNull.Value;}} public bool MergeCells{get{return merged;}}
+    public int Row{get{return 2;}}public int Column{get{return 17;}}public string Address{get{return "$Q$2";}}
+    public SummarySpillCount Rows{get{return new SummarySpillCount(1);}}public SummarySpillCount Columns{get{return new SummarySpillCount(single?1:2);}}
+    public SummaryMixedSpillRange MergeArea{get{return new SummaryMixedSpillRange(spill,false,false);}}
+    public SummarySpillCells Cells{get{return new SummarySpillCells(new SummaryMixedSpillRange(spill,merged,true));}}
+}
+public sealed class SummarySpillCount{public int Count{get;private set;}public SummarySpillCount(int count){Count=count;}}
+public sealed class SummarySpillCells{private readonly object cell;public SummarySpillCells(object value){cell=value;}public object Item(int row,int column){return cell;}}
+
+public sealed class SummaryArrayOnlyRange{public bool HasArray{get{return false;}}}
