@@ -52,7 +52,7 @@ namespace Excel_Iterate
         internal SummaryAreaHost(object app, Form form, SummaryAreaView view, Action<bool> hostBusy = null, Func<bool> approveOverwrite = null)
         {
             this.app = app; this.form = form; this.view = view; this.hostBusy = hostBusy ?? delegate { };
-            this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, view.MatchHeaders.Checked?"将按预检的公司＋年度列名覆盖目标数据（含选区空白格）。现有表头、来源及未选区域不改动。确认执行？":"将覆盖预检日志中的目标 Area 和启用的表头。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
+            this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, view.MatchHeaders.Checked?"将按预检的公司＋年度列名覆盖目标数据（含选区空白格）。保留已有表头；如启用补全，仅另写预检列出的空白年度格，来源及其他区域不改动。确认执行？":"将覆盖预检日志中的目标 Area 和启用的表头。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
             view.AttachPresets(new BatchPresetActions(form, "summary", CapturePreset, ApplyPreset, delegate { return !handling && !running && !pending; }, view.Message, ContextAvailable));
             view.Pick += Pick; view.PreviewRequested += delegate { Safe(Preview); };
             view.ExecuteRequested += delegate { Safe(Start); }; view.UndoRequested += delegate { Safe(Undo); };
@@ -87,6 +87,7 @@ namespace Excel_Iterate
                 { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
             } };
             preset.Values["matchHeaders"]=view.MatchHeaders.Checked.ToString();
+            preset.Values["fillMissingYears"]=view.FillMissingYears.Checked.ToString();preset.Values["missingYearSequence"]=view.MissingYearSequence.Text;
             preset.Values["headersEnabled"] = view.HeadersEnabled.Checked.ToString();preset.Values["headersFormula"]=view.FormulaHeaders.Checked.ToString();preset.Values["headersRepeat"]=view.RepeatNames.Checked.ToString();
             var names = new[] { "companyHeader", "yearSource", "yearTarget" }; var parts = new[] { companyHeader, yearSource, yearTarget };
             for(int i=0;i<names.Length;i++) { preset.Values[names[i]] = parts[i] == null ? "" : SummaryAreaSettings.Encode(new[] { parts[i] }); preset.Values[names[i]+"Sheet"] = parts[i] == null ? "" : parts[i].Sheet; }
@@ -121,7 +122,7 @@ namespace Excel_Iterate
                 loading = true;
                 try
                 {
-                    view.MatchHeaders.Checked=settings.MatchHeaders;companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
+                    view.FillMissingYears.Checked=settings.FillMissingYears;view.MissingYearSequence.Text=settings.MissingYearSequence;view.MatchHeaders.Checked=settings.MatchHeaders;companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
                     var headerNames=new[]{"companyHeader","yearSource","yearTarget"}; var headerParts=new[]{companyHeader,yearSource,yearTarget};
                     for(int i=0;i<headerNames.Length;i++) view.Address(headerNames[i],headerParts[i]==null ? "未选择" : headerParts[i].Sheet+"!"+SummaryAreaEngine.Address(headerParts[i]));
                     view.HeaderPreview.Text="请重新预检以生成映射预览。";
@@ -414,11 +415,42 @@ namespace Excel_Iterate
                 if(company.Row==pair.Company){company.Selected=false;view.Message("已有公司，整组跳过："+company.Code+"；来源列 "+CellAddress.ColumnLetters(first)+":"+CellAddress.ColumnLetters(last));}
                 foreach(DataGridViewRow row in view.Companies.Rows)if(Convert.ToInt32(row.Cells["row"].Value)==company.Row)row.Cells["status"].Value=company.Row==pair.Company?"已编制，跳过":company.Selected?"将生成":"未勾选";
             }
+            if(view.FillMissingYears.Checked)PlanMissingYears(sheet,companyIds,periodValues,years,headers,pair,bag);
+            foreach(var company in companies.Where(c=>c.Selected))foreach(string year in pair.Years.Values)
+                if(!headers.Any(h=>h.CompanyRow==company.Row&&h.Year==year))throw new InvalidOperationException("缺少目标公司 "+company.Code+"（Lead 第 "+company.Row+" 行）的年度："+year+"；识别年度行 "+pair.YearRow+"。可启用补全缺失年度后重新预检。");
             var maps=SummaryColumnMapping.Build(companies.Where(c=>c.Selected).Select(c=>c.Row),pair.Company,pair.Years,headers);foreach(var entry in maps)fixedColumnMaps[entry.Key]=entry.Value;
             mappedWork.AddRange(SummaryColumnMapping.Work(areas,maps,new HashSet<int>{pair.NameRow,pair.YearRow}));targets=mappedWork.Select(w=>w.Target).ToList();
             fixedReadRanges.Add(new SummaryAreaPlan{Sheet=templateSheet,Row=pair.NameRow,Column=1,Rows=1,Columns=lastColumn});fixedReadRanges.Add(new SummaryAreaPlan{Sheet=templateSheet,Row=pair.YearRow,Column=1,Rows=1,Columns=lastColumn});
             view.Message("复用现有表头：公司行 "+pair.NameRow+"，年度行 "+pair.YearRow+"；数据保持原行号；名称、年度及其公式均不写入。");
             foreach(var entry in maps){var company=companies.Single(c=>c.Row==entry.Key);foreach(var col in entry.Value)view.Message(company.Code+" / "+pair.Years[col.Key]+"："+CellAddress.ColumnLetters(col.Key)+" → "+CellAddress.ColumnLetters(col.Value));}
+        }
+        private void PlanMissingYears(dynamic sheet,int[] ids,object values,IList<FixedPeriod> years,IList<SummaryColumnHeader> headers,FixedHeaderPair pair,ComBag bag)
+        {
+            var sequence=SummaryColumnMapping.YearSequence(view.MissingYearSequence.Text,years.Select(y=>y.Key));
+            view.Message("缺失年度补全序列："+string.Join("、",sequence.ToArray())+"；仅勾选目标公司，来源公司不补全。");
+            foreach(var company in companies.Where(c=>c.Selected&&c.Row!=pair.Company))
+            {
+                var columns=Enumerable.Range(1,ids.Length).Where(c=>ids[c-1]==company.Row).ToList();
+                if(columns.Count!=sequence.Count||columns.Last()-columns.First()+1!=columns.Count)throw new InvalidOperationException("公司 "+company.Code+" 的表头分组不连续或列数与年度不符，无法补全。");
+                var existing=new List<string>();
+                foreach(int column in columns)
+                {
+                    object raw=SummaryArrays.Pick(values,0,1,column-1,ids.Length);
+                    string text=FixedYear(raw,sheet,pair.YearRow,column,years,bag);
+                    if(text.Length==0&&SummaryArrays.HasContent(raw))throw new InvalidOperationException("年度表头不是有效年度："+CellAddress.Name(pair.YearRow,column)+"；内容="+FixedText(raw));
+                    existing.Add(text);
+                }
+                var missing=SummaryColumnMapping.MissingYears(sequence,existing);
+                foreach(var entry in missing)using(var one=new ComBag())
+                {
+                    int column=columns[entry.Key];var part=new SummaryAreaPlan{Sheet=templateSheet,Row=pair.YearRow,Column=column,Rows=1,Columns=1};dynamic cell=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);
+                    RejectSpecial(cell,"年度补全目标",one);
+                    if(Bool((object)cell.HasFormula)||SummaryArrays.HasContent((object)cell.Value2))throw new InvalidOperationException("年度补全仅允许无公式空白格："+SummaryAreaEngine.Address(part));
+                    if(areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||(leadSheet==templateSheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("年度补全与来源选区冲突："+SummaryAreaEngine.Address(part));
+                    headerTargets.Add(part);headerValues.Add(entry.Value);headers.Add(new SummaryColumnHeader{CompanyRow=company.Row,Column=column,Year=entry.Value});
+                    view.Message("计划补全 "+company.Code+" / "+templateSheet+"!"+SummaryAreaEngine.Address(part)+" → "+entry.Value+"（执行前保持空白，支持撤销）");
+                }
+            }
         }
         private SummaryCompany CompanyForStep(int index,IList<SummaryCompany> picked)
         {return mappedWork.Count>0?companies.Single(c=>c.Row==mappedWork[index].CompanyRow):picked[index/areas.Count];}
@@ -436,7 +468,7 @@ namespace Excel_Iterate
                 dynamic sheet = Sheet(templateSheet, bag);
                 if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("目标工作表受保护。");
                 ReadCompanies(bag);mappedWork.Clear();fixedReadRanges.Clear();fixedColumnMaps.Clear();
-                if(view.MatchHeaders.Checked)PrepareColumnMatches(sheet,bag);
+                if(view.MatchHeaders.Checked){headerTargets.Clear();headerValues.Clear();headerExpressions.Clear();headerFormats.Clear();oldHeaderArrays.Clear();yearHeaderArrays.Clear();PrepareColumnMatches(sheet,bag);}
                 var picked = companies.Where(c => c.Selected).ToList();
                 if(!view.MatchHeaders.Checked)targets=SummaryAreaEngine.Targets(areas,paste.Row,paste.Column,picked.Count);
                 var scanAreas=view.MatchHeaders.Checked?SummaryColumnMapping.DataAreas(areas,new HashSet<int>{fixedNameRow,fixedYearRow}):areas;
@@ -506,7 +538,7 @@ namespace Excel_Iterate
             }
         }
         private string SelectionKey()
-        { return view.MatchHeaders.Checked+"|"+view.FormulaHeaders.Checked+"|"+view.RepeatNames.Checked+"|"+view.ReplaceHeaderArrays.Checked+"|"+string.Join(";",view.ReferenceSources.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToString(r.Cells["source"].Value)+":"+Convert.ToString(r.Cells["decision"].Value)).ToArray()) + "|" + view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
+        { return view.FillMissingYears.Checked+"|"+view.MissingYearSequence.Text+"|"+view.MatchHeaders.Checked+"|"+view.FormulaHeaders.Checked+"|"+view.RepeatNames.Checked+"|"+view.ReplaceHeaderArrays.Checked+"|"+string.Join(";",view.ReferenceSources.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToString(r.Cells["source"].Value)+":"+Convert.ToString(r.Cells["decision"].Value)).ToArray()) + "|" + view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
         private string Fingerprint()
         {
             CheckBook(); var clock = System.Diagnostics.Stopwatch.StartNew(); var text = new StringBuilder(bookName); int xmlAreas = 0, fallbackAreas = 0;
@@ -741,8 +773,8 @@ namespace Excel_Iterate
         private static string HeaderKey(SummaryAreaPlan part){return part.Row+":"+part.Column;}
         private void PrepareHeaders(ComBag bag, IList<SummaryCompany> picked)
         {
+            if(view.MatchHeaders.Checked){view.HeaderPreview.Text="保留已有表头；计划补全空白年度 "+headerTargets.Count+" 格。";return;}
             headerTargets.Clear();headerValues.Clear();headerExpressions.Clear();headerFormats.Clear();oldHeaderArrays.Clear();yearHeaderArrays.Clear();view.HeaderPreview.Text="";
-            if(view.MatchHeaders.Checked){view.HeaderPreview.Text="复用现有表头，名称和年度不写入。";return;}
             if(!view.HeadersEnabled.Checked)return;
             if(companyHeader==null||yearSource==null||yearTarget==null)throw new InvalidOperationException("启用表头后，请完成名称目标、年度来源和年度目标。");
             if(companyHeader.Sheet!=templateSheet||yearTarget.Sheet!=templateSheet)throw new InvalidOperationException("表头目标必须与已编制区域同表。");

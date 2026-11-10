@@ -348,6 +348,8 @@ RequirementsForm使用Requirements.txt UTF-8原子保存并查外部修改；介
 
 # 二. Excel-Iterate 专属开发经验
 
+年度缺失补全复用 SummaryAreaHost 的 headerTargets/WriteHeaders/RestoreHeaders，不直接在预检修改表格。SummaryColumnMapping 先校验自定义年度集合与 Lead 一致，并按组内位置验证部分已填年度；完整已填分组保留实际顺序。目标需为真正空白且没有公式、合并、数组或溢出，新增年度参与同一指纹、备份和撤销。不能将公式返回空字符串当作空白覆盖，也不能猜测不连续或宽度不足的公司分组。
+
 ## 1. 单元格、选区与公式
 
 ### (1). 引用/从属追踪与高亮

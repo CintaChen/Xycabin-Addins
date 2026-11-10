@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using System.Windows.Forms;
 using Excel_Iterate;
 
@@ -9,6 +10,16 @@ internal static class SummaryAreaChecks
     internal static void Run(Action<string, bool, string> check)
     {
         Action<Action, string> rejects = delegate(Action action, string name) { bool rejected = false; try { action(); } catch (InvalidOperationException) { rejected = true; } check(name, rejected, "invalid input accepted"); };
+        var fillPeriods=new[]{"2027年度","2026年度","2025年度"};
+        check("补全默认复用Lead序列",string.Join(",",SummaryColumnMapping.YearSequence("",fillPeriods).ToArray())==string.Join(",",fillPeriods),"");
+        check("自定义年度顺序保留",SummaryColumnMapping.YearSequence("2025年度、2026年度、2027年度",fillPeriods)[0]=="2025年度","");
+        rejects(delegate{SummaryColumnMapping.YearSequence("2025年度、2025年度、2027年度",fillPeriods);},"补全重复年度阻断");
+        rejects(delegate{SummaryColumnMapping.YearSequence("2024年度、2026年度、2027年度",fillPeriods);},"补全年份范围不同阻断");
+        check("全空年度补全计划",SummaryColumnMapping.MissingYears(fillPeriods,new[]{"","",""}).Count==3,"");
+        check("部分年度只补空格",SummaryColumnMapping.MissingYears(fillPeriods,new[]{"2027年度","","2025年度"}).Count==1,"");
+        check("完整倒序不重写",SummaryColumnMapping.MissingYears(fillPeriods,new[]{"2025年度","2026年度","2027年度"}).Count==0,"");
+        rejects(delegate{SummaryColumnMapping.MissingYears(fillPeriods,new[]{"2025年度","","2027年度"});},"部分年度与补全顺序冲突阻断");
+        rejects(delegate{SummaryColumnMapping.MissingYears(fillPeriods,new[]{"",""});},"补全分组宽度不足阻断");
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };

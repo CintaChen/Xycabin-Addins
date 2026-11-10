@@ -107,6 +107,17 @@ internal static class SingleSummaryLiveProbe
                     var preset=host.CapturePreset();host.ApplyPreset(preset);Check(view.MatchHeaders.Checked&&!(bool)Get(host,"ready"),"column mode preset accepts absent paste/header inputs and invalidates plan");
                     Call(host,"Preview");dynamic changed=bag.Own(target.Range["L7"]);changed.Value2="2024年度";bool stopped=false;try{Call(host,"Start");}catch(InvalidOperationException){stopped=true;}Check(stopped,"header value edit invalidates the preflight");
                     stopped=false;try{Call(host,"Preview");}catch(InvalidOperationException){stopped=true;}Check(stopped,"duplicate or missing company-year labels block execution");changed.Value2="2023年度";
+                    reverse.ClearContents();view.FillMissingYears.Checked=true;view.MissingYearSequence.Text="2023年度、2024年度、2025年度、2026年度、2027年度";
+                    Call(host,"Preview");Check((bool)Get(host,"ready")&&((List<SummaryAreaPlan>)Get(host,"headerTargets")).Count==5&&string.IsNullOrEmpty((string)Convert.ToString(changed.Value2)),"missing years preflight plans five blanks without writing; ready="+Get(host,"ready")+"; count="+((List<SummaryAreaPlan>)Get(host,"headerTargets")).Count+"; L7="+Convert.ToString(changed.Value2));
+                    Call(host,"Start");count=((List<SummaryAreaPlan>)Get(host,"targets")).Count;for(int i=0;i<count;i++)Call(host,"Tick",null,EventArgs.Empty);
+                    Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending")&&Convert.ToString(changed.Value2)=="2023年度"&&Convert.ToString(((dynamic)bag.Own(target.Range["P7"])).Value2)=="2027年度","custom reversed years filled and verified");
+                    Check(Convert.ToString(p3.Formula).Contains("!$A$1")&&Convert.ToString(l3.Formula).Contains("!$A$5")&&Convert.ToString(((dynamic)bag.Own(target.Range["G2"])).Formula)==nameBefore&&Convert.ToString(((dynamic)bag.Own(target.Range["G7"])).Formula)==yearBefore,"new year plan drives correct links and preserves existing arrays");
+                    Call(host,"Undo");Check(string.IsNullOrEmpty((string)Convert.ToString(changed.Value2))&&string.IsNullOrEmpty((string)Convert.ToString(((dynamic)bag.Own(target.Range["P7"])).Value2))&&Convert.ToString(old.Value2)=="原值","undo restores missing headers and data together");
+                    preset=host.CapturePreset();host.ApplyPreset(preset);Check(view.FillMissingYears.Checked&&view.MissingYearSequence.Text.StartsWith("2023年度"),"missing year settings persist and restore");
+                    changed.Value2="2027年度";stopped=false;try{Call(host,"Preview");}catch(InvalidOperationException){stopped=true;}Check(stopped,"partial existing year conflicts are blocked before writing");
+                    changed.Formula="=\"\"";stopped=false;try{Call(host,"Preview");}catch(InvalidOperationException){stopped=true;}Check(stopped,"blank formula cannot be overwritten by missing year fill");changed.ClearContents();
+                    dynamic merged=bag.Own(target.Range["L7:M7"]);merged.Merge();stopped=false;try{Call(host,"Preview");}catch(InvalidOperationException){stopped=true;}Check(stopped,"merged missing year cells block execution");merged.UnMerge();
+                    view.FillMissingYears.Checked=false;stopped=false;try{Call(host,"Preview");}catch(InvalidOperationException){stopped=true;}Check(stopped,"disabled year fill retains missing header protection");
                     Check(Convert.ToString(book.Path)=="","fixed mapping never saves workbook");
                 }
             }
@@ -137,6 +148,7 @@ internal static class SingleSummaryLiveProbe
                         using(var refs=new ComBag()) { dynamic sheets=refs.Own(source.Worksheets), sheet=refs.Own(sheets.Item(1));sheet.Name="BS";dynamic cell=refs.Own(sheet.Range["A1"]);cell.Value2=25; }
                         source.SaveAs(session.Output(name+".xlsx"),51);source.Close(false);closed=true;
                     }
+                    if(Array.IndexOf(args,"--fixed-only")>=0){FixedHeaders((object)app,session);Console.WriteLine("PASS: "+checks+" fixed header checks");return session.Finish(0);}
                     dynamic book=books.Add();session.Own((object)book,delegate{book.Close(false);});
                     dynamic worksheets=bag.Own(book.Worksheets), target=bag.Own(worksheets.Item(1));target.Name="汇总";
                     dynamic lead=bag.Own(worksheets.Add());lead.Name="Lead";

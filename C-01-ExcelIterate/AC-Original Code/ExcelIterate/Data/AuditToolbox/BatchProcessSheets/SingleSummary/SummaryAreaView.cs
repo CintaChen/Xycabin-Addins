@@ -15,7 +15,9 @@ namespace Excel_Iterate
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
         internal readonly ResultGrid ReferenceSources = new ResultGrid { AutoSize=false,Height=145,Dock=DockStyle.Top,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false };
         private Control referenceBody;
-        internal readonly CheckBox MatchHeaders = new CheckBox { Text="按现有公司＋年度列名定位（表头只读）",AutoSize=true,Checked=true };
+        internal readonly CheckBox MatchHeaders = new CheckBox { Text="按现有公司＋年度列名定位（保留已有表头）",AutoSize=true,Checked=true };
+        internal readonly CheckBox FillMissingYears = new CheckBox {Text="补全缺失年度（仅空白格）",AutoSize=true};
+        internal readonly TextBox MissingYearSequence = new TextBox {Dock=DockStyle.Fill,Name="summaryMissingYears",AccessibleDescription="留空读取Lead年度；可输入年度序列，用顿号或逗号分隔。"};
         internal readonly CheckBox FormulaHeaders = new CheckBox {Text="使用公式关联 Lead（单列年度自动转置）",AutoSize=true,Checked=true};
         internal readonly CheckBox RepeatNames = new CheckBox {Text="每个年度列都填写公司名称",AutoSize=true,Checked=true};
         internal readonly CheckBox ReplaceHeaderArrays = new CheckBox {Text="允许整体重写既有表头数组（预检列出完整范围）",AutoSize=true};
@@ -42,6 +44,12 @@ namespace Excel_Iterate
             parameters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 1 };
             parameters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             parameters.Controls.Add(MatchHeaders);inputs.Add(MatchHeaders);
+            var missing=new TableLayoutPanel{Dock=DockStyle.Top,AutoSize=true,ColumnCount=2};
+            missing.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));missing.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            missing.Controls.Add(FillMissingYears,0,0);missing.Controls.Add(MissingYearSequence,1,0);
+            missing.Controls.Add(new Label{AutoSize=true,ForeColor=Ui.InkDim,Text="年度序列：留空使用 Lead；自定义用顿号或逗号分隔。仅执行时补全，支持撤销。"},0,1);missing.SetColumnSpan(missing.GetControlFromPosition(0,1),2);
+            parameters.Controls.Add(missing);inputs.Add(FillMissingYears);inputs.Add(MissingYearSequence);
+            FillMissingYears.CheckedChanged+=delegate{InvalidatePlan();};MissingYearSequence.TextChanged+=delegate{InvalidatePlan();};
             parameters.Controls.Add(Picker("已编制区域（可 Ctrl 多选）", "template"));
             var pastePicker=Picker("粘贴起点（一个单元格）", "paste");parameters.Controls.Add(pastePicker);
             parameters.Controls.Add(Picker("Lead 公司字段（可 Ctrl 多选两列，不含表头）", "lead"));
@@ -71,7 +79,7 @@ namespace Excel_Iterate
             headerBody.Controls.Add(Picker("年度来源区域（单列或单行）", "yearSource"));
             headerBody.Controls.Add(Picker("年度写入起点", "yearTarget"));headerBody.Controls.Add(new Label { AutoSize=true,Text="名称取公司字段的编码简称列（例如 Lead 的 O 列）；年度可选 N 列区域。公式模式不依赖抵消表计数。",ForeColor=Ui.InkDim });headerBody.Controls.Add(HeaderPreview);parameters.Controls.Add(headerBody);
             HeadersEnabled.CheckedChanged+=delegate { InvalidatePlan(); };
-            Action mode=delegate {state.Text=MatchHeaders.Checked?"复用现有列名，数据保持原行，表头只读，已有公司跳过。":"旧模式：按起点横向复制；表头写入按独立配置。";pastePicker.Visible=!MatchHeaders.Checked;expand.Visible=!MatchHeaders.Checked;if(MatchHeaders.Checked)headerBody.Visible=false;InvalidatePlan();};MatchHeaders.CheckedChanged+=delegate{mode();};mode();
+            Action mode=delegate {state.Text=MatchHeaders.Checked?"复用现有列名，数据保持原行，保留已有表头，按选项补全空白年度，已有公司跳过。":"旧模式：按起点横向复制；表头写入按独立配置。";missing.Visible=MatchHeaders.Checked;pastePicker.Visible=!MatchHeaders.Checked;expand.Visible=!MatchHeaders.Checked;if(MatchHeaders.Checked)headerBody.Visible=false;InvalidatePlan();};MatchHeaders.CheckedChanged+=delegate{mode();};mode();
 
 
             var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters);

@@ -16,6 +16,8 @@ namespace Excel_Iterate
         internal string Folder;
         internal bool CheckFiles, HeadersEnabled, FormulaHeaders, RepeatNames;
         internal bool MatchHeaders=true;
+        internal bool FillMissingYears;
+        internal string MissingYearSequence="";
         internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget;
         internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
         { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
@@ -55,6 +57,8 @@ namespace Excel_Iterate
                 var paste=Decode(values["pasteArea"],values["pasteSheet"]);
                 if(paste.Count!=1||paste[0].Rows!=1||paste[0].Columns!=1||values["pasteSheet"]!=values["templateSheet"])throw new InvalidOperationException("预设粘贴起点须为同表的单元格。");result.Paste=paste[0];
             }
+            if(values.ContainsKey("fillMissingYears")&&!bool.TryParse(values["fillMissingYears"],out result.FillMissingYears))throw new InvalidOperationException("年度补全开关无效。");
+            if(values.ContainsKey("missingYearSequence"))result.MissingYearSequence=values["missingYearSequence"]??"";
             if(result.MatchHeaders){SummaryAreaEngine.ValidateAreas(result.Template);SummaryAreaEngine.LeadRows(result.Lead);return result;}
             if (values.ContainsKey("headersEnabled") && !bool.TryParse(values["headersEnabled"], out result.HeadersEnabled)) throw new InvalidOperationException("表头开关无效。");
             if(values.ContainsKey("headersFormula")&&!bool.TryParse(values["headersFormula"],out result.FormulaHeaders))throw new InvalidOperationException("表头公式选项无效。");
@@ -79,6 +83,20 @@ namespace Excel_Iterate
     }
     internal static class SummaryColumnMapping
     {
+        internal static List<string> YearSequence(string custom,IEnumerable<string> defaults)
+        {
+            var expected=defaults.ToList();var result=string.IsNullOrWhiteSpace(custom)?expected:custom.Split(new[]{'、',',','，',';','；','\r','\n'},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).ToList();
+            if(result.Count!=expected.Count||result.Any(string.IsNullOrWhiteSpace)||result.Distinct(StringComparer.Ordinal).Count()!=result.Count||!new HashSet<string>(expected,StringComparer.Ordinal).SetEquals(result))throw new InvalidOperationException("自定义年度须与 Lead 年度数量、文字一致且不重复；可以调整顺序。");
+            return result;
+        }
+        internal static Dictionary<int,string> MissingYears(IList<string> sequence,IList<string> existing)
+        {
+            if(sequence.Count!=existing.Count)throw new InvalidOperationException("公司分组列数与年度数量不一致，无法安全补全。");
+            var result=new Dictionary<int,string>();if(existing.All(x=>!string.IsNullOrEmpty(x)))return result;
+            for(int i=0;i<sequence.Count;i++)
+            {if(string.IsNullOrEmpty(existing[i]))result.Add(i,sequence[i]);else if(existing[i]!=sequence[i])throw new InvalidOperationException("已有年度与补全序列冲突，组内第 "+(i+1)+" 列："+existing[i]+"；预期 "+sequence[i]);}
+            return result;
+        }
         private static string Key(int company,string year)
         {if(string.IsNullOrWhiteSpace(year))throw new InvalidOperationException("公司/年度列名为空。");return company+"|"+year.Trim();}
         internal static Dictionary<int,Dictionary<int,int>> Build(IEnumerable<int> selected,int sourceCompany,IDictionary<int,string> sourceYears,IList<SummaryColumnHeader> headers)
