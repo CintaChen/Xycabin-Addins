@@ -97,6 +97,50 @@ internal static class SingleSummaryLiveProbe
                             Call(host,"Preview");dynamic formatCell=bag.Own(target.Range["L3"]),formatFont=bag.Own(formatCell.Font);object priorColor=formatFont.Color;formatFont.Color=12345;failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"native block fingerprint rejects a font-only change before execution");formatFont.Color=priorColor;
                             dynamic priorNote=bag.Own(formatCell.AddComment("状态校验批注"));Call(host,"Preview");priorNote.Text("预检后修改批注");failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"native block fingerprint rejects comment-only change before execution");priorNote.Text("状态校验批注");
                             dynamic computedName=bag.Own(lead.Range["D7"]),nameSource=bag.Own(lead.Range["Z7"]);nameSource.Value2="！01-示例（集团）";computedName.Formula="=Z7";computedName.Calculate();Call(host,"Preview");nameSource.Value2="！02-示例乙";computedName.Calculate();failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"computed Lead company name change invalidates plan even with unchanged formula text");computedName.Value2="！01-示例（集团）";nameSource.Clear();
+                            Check(!view.HeadersEnabled.Checked,"headers default off");
+                            dynamic yearSource=bag.Own(lead.Range["G1:H1"]);yearSource.Value2=new object[,]{{46388,"2026年度"}};
+                            dynamic dated=bag.Own(lead.Range["G1"]);dated.NumberFormat="yyyy年";string displayedYear=Convert.ToString(dated.Text);
+                            dynamic firstName=bag.Own(target.Range["Q2:R2"]),secondName=bag.Own(target.Range["S2:T2"]);firstName.Merge();secondName.Merge();
+                            dynamic firstNameCell=bag.Own(target.Range["Q2"]);firstNameCell.Formula="='汇总'!A10+12";string nameBefore=Convert.ToString(firstNameCell.Formula);
+                            dynamic oldYears=bag.Own(target.Range["Q5:T5"]);oldYears.Value2="旧年度";oldYears.NumberFormat="0.00";
+                            target.Activate();firstName.Select();Call(host,"Pick","companyHeader",false);Check(((SummaryAreaPlan)Get(host,"companyHeader")).Columns==1,"merged selection normalizes to name anchor");
+                            lead.Activate();yearSource.Select();Call(host,"Pick","yearSource",false);target.Activate();dynamic yearAnchor=bag.Own(target.Range["Q5"]);yearAnchor.Select();Call(host,"Pick","yearTarget",false);view.HeadersEnabled.Checked=true;
+                            Call(host,"Preview");Check((bool)Get(host,"ready")&&((List<SummaryAreaPlan>)Get(host,"headerTargets")).Count==6,"merged names and years pass read-only preflight");Check(Convert.ToString(firstNameCell.Formula)==nameBefore,"header preflight leaves formula untouched");
+                            string expectedName1=Convert.ToString(view.Companies.Rows[0].Cells["code"].Value),expectedName2=Convert.ToString(view.Companies.Rows[1].Cells["code"].Value);
+                            var headerPreset=host.CapturePreset();host.ApplyPreset(headerPreset);Check(view.HeadersEnabled.Checked&&Get(host,"yearSource")!=null,"header presets round-trip");
+                            Call(host,"Preview");Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            Check((bool)Get(host,"pending")&&!(bool)Get(host,"failed"),"header batch reaches pending");
+                            Check(Convert.ToString(firstNameCell.Value2)==expectedName1&&Convert.ToString(((dynamic)bag.Own(target.Range["S2"])).Value2)==expectedName2,"Lead first column maps to company groups");
+                            Check(Convert.ToString(yearAnchor.Value2)==displayedYear&&Convert.ToString(((dynamic)bag.Own(target.Range["S5"])).Value2)==displayedYear,"date source repeats display text instead of serial");
+                            Check(Convert.ToString(((dynamic)bag.Own(target.Range["R5"])).Value2)=="2026年度"&&Convert.ToString(((dynamic)bag.Own(target.Range["T5"])).Value2)=="2026年度","year source order repeats");
+                            Check(Convert.ToBoolean(firstName.MergeCells)&&Convert.ToString(gap.Value2)=="未选空隙","legal merges and unselected gaps unchanged");
+                            Call(host,"Undo");Check(Convert.ToString(firstNameCell.Formula)==nameBefore&&Convert.ToString(yearAnchor.Value2)=="旧年度"&&Convert.ToString(yearAnchor.NumberFormat)=="0.00","undo restores header formula values and format");
+                            Check(Convert.ToString(q3.Formula).Contains(".xlsx]BS"),"header undo restores prior link batch");
+                            Call(host,"Preview");dated.NumberFormat="yyyy";failedApply=false;try{Call(host,"Start");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"year display change invalidates preflight");dated.NumberFormat="yyyy年";
+                            Set(host,"yearSource",new SummaryAreaPlan{Sheet="Lead",Row=1,Column=7,Rows=1,Columns=1});failedApply=false;try{Call(host,"Preview");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"year count mismatch blocked");Set(host,"yearSource",new SummaryAreaPlan{Sheet="Lead",Row=1,Column=7,Rows=1,Columns=2});
+                            Set(host,"yearTarget",new SummaryAreaPlan{Sheet="汇总",Row=3,Column=17,Rows=1,Columns=1});failedApply=false;try{Call(host,"Preview");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"header and copy conflict blocked");Set(host,"yearTarget",new SummaryAreaPlan{Sheet="汇总",Row=5,Column=17,Rows=1,Columns=1});
+                            firstName.UnMerge();secondName.UnMerge();dynamic illegal=bag.Own(target.Range["Q2:S2"]);illegal.Merge();failedApply=false;try{Call(host,"Preview");}catch(InvalidOperationException){failedApply=true;}Check(failedApply,"cross-company merged name blocked");illegal.UnMerge();
+                            host.ApplyPreset(saved);Check(!view.HeadersEnabled.Checked&&Get(host,"companyHeader")==null,"old preset disables optional headers");Call(host,"Preview");Check((bool)Get(host,"ready"),"V1 remains usable after header validation failures");
+                            // Three companies, width five, two disjoint Areas; selected gaps stay untouched.
+                            areas.Clear();areas.Add(new SummaryAreaPlan{Sheet="汇总",Row=10,Column=12,Rows=1,Columns=5});areas.Add(new SummaryAreaPlan{Sheet="汇总",Row=14,Column=12,Rows=1,Columns=5});
+                            dynamic fiveTemplate=bag.Own(target.Range["L10:P10,L14:P14"]);fiveTemplate.Value2="BS!$A$1";
+                            dynamic threeLead=bag.Own(lead.Range["A20:B22"]);threeLead.Value2=new object[,]{{"甲简称","！01-示例（集团）"},{"乙简称","！02-示例乙"},{"丙简称","第三家公司"}};
+                            ((List<SummaryAreaPlan>)Get(host,"leadAreas")).Clear();Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=20,Column=1,Rows=3,Columns=2});view.Companies.Rows.Clear();Set(host,"paste",new SummaryAreaPlan{Row=10,Column=17,Rows=1,Columns=1});
+                            dynamic fiveYears=bag.Own(lead.Range["G2:K2"]);fiveYears.Value2=new object[,]{{"2027年度","2026年度","2025年度","2024年度","2023年度"}};
+                            Set(host,"companyHeader",new SummaryAreaPlan{Sheet="汇总",Row=9,Column=17,Rows=1,Columns=1});Set(host,"yearSource",new SummaryAreaPlan{Sheet="Lead",Row=2,Column=7,Rows=1,Columns=5});Set(host,"yearTarget",new SummaryAreaPlan{Sheet="汇总",Row=12,Column=17,Rows=1,Columns=1});view.HeadersEnabled.Checked=true;
+                            dynamic untouched=bag.Own(target.Range["R11"]);untouched.Value2="未授权间隙";
+                            Call(host,"Preview");Check(((List<SummaryAreaPlan>)Get(host,"headerTargets")).Count==18,"three companies width five plan has eighteen header tasks");Call(host,"Start");for(int i=0;i<6;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending"),"three-company five-column multi-Area execution succeeds");
+                            bool mapping=true;for(int i=0;i<3;i++){dynamic name=bag.Own(target.Cells[9,17+i*5]);mapping &= Convert.ToString(name.Value2)==new[]{"甲简称","乙简称","丙简称"}[i];for(int c=0;c<5;c++){dynamic year=bag.Own(target.Cells[12,17+i*5+c]);mapping &= Convert.ToString(year.Value2)==(2027-c)+"年度";}}
+                            Check(mapping,"Q V AA company names and all fifteen years map correctly");Check(Convert.ToString(untouched.Value2)=="未授权间隙","three-company unselected gap remains untouched");
+                            Call(host,"Undo");Check(((dynamic)bag.Own(target.Range["Q9"])).Value2==null&&((dynamic)bag.Own(target.Range["Q12"])).Value2==null&&((dynamic)bag.Own(target.Range["Q10"])).Value2==null,"three-company rollback restores blank headers and link targets");
+                            Call(host,"Preview");Call(host,"Start");Call(host,"Tick",null,EventArgs.Empty);typeof(SummaryAreaHost).GetMethod("WriteHeaders",Flags).Invoke(host,new object[]{target,bag});
+                            target.Protect();for(int i=0;i<2;i++)Call(host,"Tick",null,EventArgs.Empty);target.Unprotect();Call(host,"Undo");Check(((dynamic)bag.Own(target.Range["Q9"])).Value2==null&&((dynamic)bag.Own(target.Range["Q12"])).Value2==null,"failed batch retry undo includes headers already touched");
+                            view.Companies.Rows[1].Cells["selected"].Value=false;Call(host,"Preview");Check(((List<SummaryAreaPlan>)Get(host,"headerTargets")).Count==12,"company filtering rebuilds header plan with two groups");Call(host,"Start");for(int i=0;i<4;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            Check(Convert.ToString(((dynamic)bag.Own(target.Range["V9"])).Value2)=="丙简称"&&((dynamic)bag.Own(target.Range["AA9"])).Value2==null,"unchecked middle company does not shift name and link pairing");Call(host,"Undo");
+
+
+
                         }
                     }
                 }

@@ -64,6 +64,12 @@ internal static class SummaryAreaChecks
         var settings=SummaryAreaSettings.Read(BatchPresetStore.Decode(BatchPresetStore.Encode(preset),"summary"));
         check("区域预设完整保存Ctrl模板与Lead字段",settings.Template.Count==2&&settings.Lead.Count==2&&settings.Paste.Column==17&&settings.Template[1].RowOffset==17,"preset lost area metadata");
         check("预设保留路径及默认文件检查选项",settings.Folder==@"C:\项目"&&!settings.CheckFiles,"preset changed options");
+        check("旧区域预设表头默认关闭",!settings.HeadersEnabled&&settings.CompanyHeader==null,"old preset enabled headers");
+        preset.Values["headersEnabled"]="True"; rejects(delegate { SummaryAreaSettings.Read(preset); },"启用表头预设缺少选区阻断");
+        preset.Values["companyHeader"]="2,17,1,1";preset.Values["companyHeaderSheet"]="汇总";preset.Values["yearSource"]="1,7,1,5";preset.Values["yearSourceSheet"]="Lead";preset.Values["yearTarget"]="7,17,1,1";preset.Values["yearTargetSheet"]="汇总";
+        settings=SummaryAreaSettings.Read(preset);check("表头三组选区与开关可保存",settings.HeadersEnabled&&settings.YearSource.Columns==5&&settings.CompanyHeader.Row==2,"header preset lost");
+        preset.Values["yearSource"]="1,7,2,5";rejects(delegate { SummaryAreaSettings.Read(preset); },"年度来源预设多行阻断");preset.Values["yearSource"]="1,7,1,5";
+        preset.Values["yearTargetSheet"]="其他";rejects(delegate { SummaryAreaSettings.Read(preset); },"表头目标预设跨表阻断");preset.Values["yearTargetSheet"]="汇总";
         preset.Values.Remove("mode");rejects(delegate { SummaryAreaSettings.Read(preset); },"旧整列预设不猜测转换为区域预设");preset.Values["mode"]="area-mvp";
         preset.Values["pasteArea"]="3,12,1,1";rejects(delegate { SummaryAreaSettings.Read(preset); },"预设重叠模板在应用前阻断");preset.Values["pasteArea"]="3,17,1,1";
         preset.Values["leadAreas"]="3,1,2,1;3,4,1,1";rejects(delegate { SummaryAreaSettings.Read(preset); },"预设Lead同行缺失阻断");

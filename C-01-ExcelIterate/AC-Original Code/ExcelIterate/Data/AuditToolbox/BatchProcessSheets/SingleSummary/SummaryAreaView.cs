@@ -13,6 +13,8 @@ namespace Excel_Iterate
         private readonly List<Control> inputs = new List<Control>();
         private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
+        internal readonly CheckBox HeadersEnabled = new CheckBox { Text = "启用表头自动填充", AutoSize = true };
+        internal readonly Label HeaderPreview = new Label { AutoSize = true, ForeColor = Ui.InkDim, MaximumSize = new Size(1000,0) };
         internal string ProjectFolder
         {
             get { string value = Folder.Text.Trim(); return value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"' ? value.Substring(1, value.Length - 2) : value; }
@@ -43,7 +45,21 @@ namespace Excel_Iterate
             browse.Click += delegate { string value = HostDialogService.Folder(FindForm(), "选择公司底稿所在文件夹", true); if (!string.IsNullOrEmpty(value)) Folder.Text = value; };
             Folder.TextChanged += delegate { InvalidatePlan(); }; CheckFiles.CheckedChanged += delegate { InvalidatePlan(); };
             parameters.Controls.Add(folder); parameters.Controls.Add(CheckFiles); inputs.Add(CheckFiles);
-            var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters); root.Controls.Add(card, 0, 0);
+            var headerBody = new TableLayoutPanel { AutoSize=true,ColumnCount=1,Dock=DockStyle.Top,Visible=false };
+            headerBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            var expand=Ui.Button("▶ 表头自动填充",180);parameters.Controls.Add(expand);
+            expand.Click+=delegate { headerBody.Visible=!headerBody.Visible;expand.Text=(headerBody.Visible?"▼":"▶")+" 表头自动填充"; };
+            headerBody.Controls.Add(HeadersEnabled);inputs.Add(HeadersEnabled);
+            headerBody.Controls.Add(Picker("公司名称写入位置", "companyHeader"));
+            headerBody.Controls.Add(Picker("年度来源区域（一行）", "yearSource"));
+            headerBody.Controls.Add(Picker("年度写入起点", "yearTarget"));headerBody.Controls.Add(new Label { AutoSize=true,Text="名称取 Lead 第一列；年度按显示文字从左向右重复。仅写指定位置，冲突须重新选择。",ForeColor=Ui.InkDim });headerBody.Controls.Add(HeaderPreview);parameters.Controls.Add(headerBody);
+            HeadersEnabled.CheckedChanged+=delegate { InvalidatePlan(); };
+
+            var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters);
+            var parameterScroll=new Panel { Dock=DockStyle.Fill,AutoScroll=true,BackColor=Ui.Canvas };parameterScroll.Controls.Add(card);root.Controls.Add(parameterScroll,0,0);
+            root.RowStyles[0].SizeType=SizeType.Absolute;
+            Action fitParameters=delegate { root.RowStyles[0].Height=Math.Min(card.GetPreferredSize(new Size(Math.Max(1,parameterScroll.ClientSize.Width-20),0)).Height+6,Math.Max(180,(int)(ClientSize.Height*.55))); };
+            SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
             state.Text = "选区绑定同一工作簿；只复制选中的 Area。未选空隙不变；全程不自动保存。";
             root.Controls.Add(state, 0, 1);
             Companies.Columns.Add(new DataGridViewCheckBoxColumn { Name = "selected", HeaderText = "选用", Width = 70 });

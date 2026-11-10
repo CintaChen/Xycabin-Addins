@@ -14,7 +14,8 @@ namespace Excel_Iterate
         internal readonly List<SummaryAreaPlan> Template = new List<SummaryAreaPlan>(), Lead = new List<SummaryAreaPlan>();
         internal SummaryAreaPlan Paste;
         internal string Folder;
-        internal bool CheckFiles;
+        internal bool CheckFiles, HeadersEnabled;
+        internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget;
         internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
         { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
         private static List<SummaryAreaPlan> Decode(string text, string sheet)
@@ -31,6 +32,14 @@ namespace Excel_Iterate
             }
             return result;
         }
+        private static SummaryAreaPlan OptionalHeader(Dictionary<string,string> values, string key)
+        {
+            if (!values.ContainsKey(key) || string.IsNullOrEmpty(values[key])) return null;
+            if (!values.ContainsKey(key + "Sheet")) throw new InvalidOperationException("表头预设缺少工作表：" + key);
+            var parts = Decode(values[key], values[key + "Sheet"]);
+            if(parts.Count != 1) throw new InvalidOperationException("表头预设只接受一个连续区域。");
+            return parts[0];
+        }
         internal static SummaryAreaSettings Read(BatchPreset preset)
         {
             BatchPresetStore.Validate(preset, "summary"); var values = preset.Values;
@@ -41,6 +50,10 @@ namespace Excel_Iterate
             result.Template.AddRange(Decode(values["templateAreas"], values["templateSheet"])); result.Lead.AddRange(Decode(values["leadAreas"], values["leadSheet"]));
             var paste = Decode(values["pasteArea"], values["pasteSheet"]);
             if (paste.Count != 1 || paste[0].Rows != 1 || paste[0].Columns != 1 || values["pasteSheet"] != values["templateSheet"]) throw new InvalidOperationException("预设粘贴起点须为模板同表的一个单元格。");
+            if (values.ContainsKey("headersEnabled") && !bool.TryParse(values["headersEnabled"], out result.HeadersEnabled)) throw new InvalidOperationException("表头开关无效。");
+            result.CompanyHeader = OptionalHeader(values, "companyHeader"); result.YearSource = OptionalHeader(values, "yearSource"); result.YearTarget = OptionalHeader(values, "yearTarget");
+            if (result.HeadersEnabled && (result.CompanyHeader == null || result.YearSource == null || result.YearTarget == null)) throw new InvalidOperationException("启用表头的预设缺少选区。");
+            if ((result.CompanyHeader != null && (result.CompanyHeader.Rows != 1 || result.CompanyHeader.Columns != 1 || result.CompanyHeader.Sheet != values["templateSheet"])) || (result.YearTarget != null && (result.YearTarget.Rows != 1 || result.YearTarget.Columns != 1 || result.YearTarget.Sheet != values["templateSheet"])) || (result.YearSource != null && result.YearSource.Rows != 1)) throw new InvalidOperationException("表头预设的目标或年度来源形状无效。");
             result.Paste = paste[0]; SummaryAreaEngine.LeadRows(result.Lead); SummaryAreaEngine.Targets(result.Template, result.Paste.Row, result.Paste.Column, 1);
             int row = result.Template.Min(p => p.Row), column = result.Template.Min(p => p.Column); foreach (var part in result.Template) { part.RowOffset = part.Row - row; part.ColumnOffset = part.Column - column; }
             return result;

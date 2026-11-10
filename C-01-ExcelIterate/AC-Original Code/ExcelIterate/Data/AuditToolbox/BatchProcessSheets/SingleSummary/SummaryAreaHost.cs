@@ -20,6 +20,11 @@ namespace Excel_Iterate
         private SummaryWorkbookBinding presetBinding;
         private readonly System.Diagnostics.Stopwatch executionClock = new System.Diagnostics.Stopwatch();
         private int bulkWrites;
+        private SummaryAreaPlan companyHeader, yearSource, yearTarget;
+        private readonly List<SummaryAreaPlan> headerTargets = new List<SummaryAreaPlan>();
+        private readonly List<string> headerValues = new List<string>();
+        private bool headersTouched;
+
         private readonly ComBag references = new ComBag();
         private readonly Timer timer = new Timer { Interval = 40 };
         private object book;
@@ -38,7 +43,7 @@ namespace Excel_Iterate
         internal SummaryAreaHost(object app, Form form, SummaryAreaView view, Action<bool> hostBusy = null, Func<bool> approveOverwrite = null)
         {
             this.app = app; this.form = form; this.view = view; this.hostBusy = hostBusy ?? delegate { };
-            this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, "将覆盖预检日志中列出的全部目标 Area（包括所选空白格）。中间未选区域不变。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
+            this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, "将覆盖预检日志中列出的全部目标 Area 和启用的名称、年度表头（包括所选空白格）。中间未选区域不变。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
             view.AttachPresets(new BatchPresetActions(form, "summary", CapturePreset, ApplyPreset, delegate { return !handling && !running && !pending; }, view.Message, ContextAvailable));
             view.Pick += Pick; view.PreviewRequested += delegate { Safe(Preview); };
             view.ExecuteRequested += delegate { Safe(Start); }; view.UndoRequested += delegate { Safe(Undo); };
@@ -67,11 +72,15 @@ namespace Excel_Iterate
         }
         internal BatchPreset CapturePreset()
         {
-            return new BatchPreset { Feature = "summary", Name = "区域链接", Context = book == null ? "" : bookName, Values = new Dictionary<string, string> {
+            var preset = new BatchPreset { Feature = "summary", Name = "区域链接", Context = book == null ? "" : bookName, Values = new Dictionary<string, string> {
                 { "mode", "area-mvp" }, { "templateSheet", templateSheet ?? "" }, { "templateAreas", SummaryAreaSettings.Encode(areas) },
                 { "pasteSheet", pasteSheet ?? "" }, { "pasteArea", paste == null ? "" : SummaryAreaSettings.Encode(new[] { paste }) },
                 { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
             } };
+            preset.Values["headersEnabled"] = view.HeadersEnabled.Checked.ToString();
+            var names = new[] { "companyHeader", "yearSource", "yearTarget" }; var parts = new[] { companyHeader, yearSource, yearTarget };
+            for(int i=0;i<names.Length;i++) { preset.Values[names[i]] = parts[i] == null ? "" : SummaryAreaSettings.Encode(new[] { parts[i] }); preset.Values[names[i]+"Sheet"] = parts[i] == null ? "" : parts[i].Sheet; }
+            return preset;
         }
         internal void ApplyPreset(BatchPreset preset)
         {
@@ -88,6 +97,12 @@ namespace Excel_Iterate
                     foreach (var part in settings.Template.Concat(settings.Lead).Concat(new[] { settings.Paste }))
                     { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); RejectSpecial(range, part.Address, bag); }
                 }
+                using (var bag = new ComBag())
+                {
+                    dynamic sheets = bag.Own(((dynamic)selectedBook).Worksheets);
+                    foreach(var part in new[]{settings.CompanyHeader,settings.YearSource,settings.YearTarget}.Where(p=>p!=null))
+                    { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); if(part==settings.CompanyHeader) RejectArraySpill(range,"公司名称",bag); else RejectSpecial(range,"表头选区",bag); }
+                }
                 var oldBinding = presetBinding;
                 book = selectedBook; bookName = Convert.ToString(((dynamic)book).FullName); presetBinding = candidate;
                 templateSheet = settings.Template[0].Sheet; pasteSheet = settings.Paste.Sheet; leadSheet = settings.Lead[0].Sheet;
@@ -95,6 +110,10 @@ namespace Excel_Iterate
                 loading = true;
                 try
                 {
+                    companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;
+                    var headerNames=new[]{"companyHeader","yearSource","yearTarget"}; var headerParts=new[]{companyHeader,yearSource,yearTarget};
+                    for(int i=0;i<headerNames.Length;i++) view.Address(headerNames[i],headerParts[i]==null ? "未选择" : headerParts[i].Sheet+"!"+SummaryAreaEngine.Address(headerParts[i]));
+                    view.HeaderPreview.Text="请重新预检以生成映射预览。";
                     view.Folder.Text = settings.Folder; view.CheckFiles.Checked = settings.CheckFiles; view.Companies.Rows.Clear();
                     view.Address("template", templateSheet + "!" + string.Join("; ", areas.Select(a => a.Address).ToArray()));
                     view.Address("paste", pasteSheet + "!" + paste.Address); view.Address("lead", leadSheet + "!" + string.Join("; ", leadAreas.Select(a => a.Address).ToArray()));
@@ -161,7 +180,7 @@ namespace Excel_Iterate
                     object chosen = null;
                     try
                     {
-                        if (native) { if (kind == "lead") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "template" ? "选择模板区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择编码和全称两列的数据行，可 Ctrl 多选分段或不相邻两列；同一行需配对，不含表头。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
+                        if (native) { if (kind == "lead") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "template" ? "选择模板区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择编码和全称两列的数据行，可 Ctrl 多选分段或不相邻两列；同一行需配对，不含表头。" : kind == "yearSource" ? "选择单行连续年度来源，数量应等于模板横向跨度；保留显示文字和顺序。" : kind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : kind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
                         else chosen = ((dynamic)app).Selection;
                         if (chosen == null || chosen is bool) return;
                         dynamic range = bag.Own(chosen), sheet = bag.Own(range.Parent);
@@ -170,7 +189,7 @@ namespace Excel_Iterate
                         else { bag.Own(selectedBook); if (!WorksheetIdentity.SameObject(book, selectedBook)) throw new InvalidOperationException("三组选区必须来自同一个工作簿。"); }
                         CheckBook(); string sheetName = Convert.ToString(sheet.Name);
                         dynamic selectedAreas = bag.Own(range.Areas); int count = Convert.ToInt32(selectedAreas.Count);
-                        if (kind == "paste" && count != 1) throw new InvalidOperationException("此参数只接受一个连续区域。");
+                        if (kind != "template" && kind != "lead" && count != 1) throw new InvalidOperationException("此参数只接受一个连续区域。");
                         var values = new List<SummaryAreaPlan>();
                         for (int i = 1; i <= count; i++)
                         {
@@ -185,7 +204,20 @@ namespace Excel_Iterate
                         }
                         if (kind == "paste" && (values[0].Rows != 1 || values[0].Columns != 1)) throw new InvalidOperationException("粘贴起点必须是一个单元格。");
                         if (kind == "lead") SummaryAreaEngine.LeadRows(values);
-                        if (kind == "template") { int minRow = values.Min(a => a.Row), minColumn = values.Min(a => a.Column); foreach (var a in values) { a.RowOffset = a.Row - minRow; a.ColumnOffset = a.Column - minColumn; } areas.Clear(); areas.AddRange(values); templateSheet = sheetName; }
+                        if(kind=="companyHeader" && (values[0].Rows!=1 || values[0].Columns!=1))
+                        {
+                            dynamic first=bag.Own(sheet.Range[CellAddress.Name(values[0].Row,values[0].Column)]);
+                            if(!Bool((object)first.MergeCells)) throw new InvalidOperationException("请选择一个公司名称单元格或一个既有合并区域。");
+                            dynamic merged=bag.Own(first.MergeArea); var bound=Coordinates(merged,bag); var chosenPart=values[0];
+                            if(chosenPart.Row<bound.Row||chosenPart.Column<bound.Column||(long)chosenPart.Row+chosenPart.Rows>bound.Row+bound.Rows||(long)chosenPart.Column+chosenPart.Columns>bound.Column+bound.Columns)throw new InvalidOperationException("公司名称选区必须位于同一个既有合并区域内。");
+                            values[0]=new SummaryAreaPlan{Sheet=sheetName,Row=bound.Row,Column=bound.Column,Rows=1,Columns=1,Address=CellAddress.Name(bound.Row,bound.Column)};
+                        }
+                        if (kind == "yearTarget" && (values[0].Rows!=1||values[0].Columns!=1))throw new InvalidOperationException("年度起点请选择一个单元格。");
+                        if (kind == "yearSource" && values[0].Rows!=1)throw new InvalidOperationException("年度来源只接受单行连续区域。");
+                        if (kind == "companyHeader") companyHeader=values[0];
+                        else if (kind == "yearSource") yearSource=values[0];
+                        else if (kind == "yearTarget") yearTarget=values[0];
+                        else if (kind == "template") { int minRow = values.Min(a => a.Row), minColumn = values.Min(a => a.Column); foreach (var a in values) { a.RowOffset = a.Row - minRow; a.ColumnOffset = a.Column - minColumn; } areas.Clear(); areas.AddRange(values); templateSheet = sheetName; }
                         else if (kind == "paste") { paste = values[0]; pasteSheet = sheetName; }
                         else { lead = values[0]; leadAreas.Clear(); leadAreas.AddRange(values); leadSheet = sheetName; loading = true; try { view.Companies.Rows.Clear(); } finally { loading = false; } }
                         view.Address(kind, "[" + ((dynamic)book).Name + "]" + sheetName + "!" + string.Join("; ", values.Select(a => a.Address).ToArray()));
@@ -199,6 +231,10 @@ namespace Excel_Iterate
         {
             object merged = range.MergeCells;
             if (merged == null || merged == DBNull.Value || Bool(merged)) throw new InvalidOperationException(address + " 含合并或混合合并区域；MVP 请先取消合并。");
+            RejectArraySpill(range,address,bag);
+        }
+        private void RejectArraySpill(dynamic range,string address,ComBag bag)
+        {
             object array = range.HasArray;
             if (array == DBNull.Value || Bool(array)) throw new InvalidOperationException(address + " 含数组或混合数组公式。");
             try { object spill = range.HasSpill; if (spill == DBNull.Value || Bool(spill)) throw new InvalidOperationException(address + " 含溢出或混合溢出公式。"); }
@@ -300,35 +336,37 @@ namespace Excel_Iterate
                 }
                 foreach (string error in errors) view.Message("阻断：" + error);
                 if (errors.Count > 0) throw new InvalidOperationException("预检有 " + errors.Count + " 个阻断项；未修改任何工作表。");
+                PrepareHeaders(bag, picked);
                 stamp = Fingerprint(); selectedKey = SelectionKey();
                 if (watch != null) watch.Dispose(); watch = new SourceChangeWatch(app, true); watch.WatchBook(book);
                 if (!watch.Available) view.Message("宿主不支持变化事件；执行前将重新读取内容和格式指纹。");
                 ready = true; view.SetState(false, false, true);
-                view.Message("预检通过：" + picked.Count + " 家公司，" + targets.Count + " 个目标 Area；已有内容 " + occupied + " 格。执行前再次确认覆盖；未保存。");
+                view.Message("预检通过：" + picked.Count + " 家公司，" + targets.Count + " 个目标 Area，表头写入 "+headerTargets.Count+" 项，阻断异常 0；复制区域已有内容 " + occupied + " 格。执行前再次确认覆盖；未保存。");
             }
         }
         private string SelectionKey()
-        { return view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
+        { return view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
         private string Fingerprint()
         {
             CheckBook(); var clock = System.Diagnostics.Stopwatch.StartNew(); var text = new StringBuilder(bookName); int xmlAreas = 0, fallbackAreas = 0;
             using (var bag = new ComBag())
             {
                 var leadParts = LeadSelections();
-                foreach (var part in areas.Concat(targets).Concat(leadParts))
+                foreach (var part in areas.Concat(targets).Concat(leadParts).Concat(headerTargets).Concat(view.HeadersEnabled.Checked && yearSource!=null ? new[]{yearSource} : new SummaryAreaPlan[0]))
                 {
-                    dynamic sheet = Sheet(leadParts.Contains(part) ? leadSheet : templateSheet, bag);
+                    dynamic sheet = Sheet(leadParts.Contains(part) ? leadSheet : part.Sheet ?? templateSheet, bag);
                     if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("工作表保护状态变化。");
                     using (var snapshot = new ComBag())
                     {
                         dynamic range = snapshot.Own(sheet.Range[SummaryAreaEngine.Address(part)]); string xml = null;
                         // Company names may themselves be formulas. Their evaluated
                         // values determine filenames and must invalidate the plan.
-                        if (leadParts.Contains(part))
+                        if (leadParts.Contains(part) || (view.HeadersEnabled.Checked && part==yearSource))
                         {
                             object values = range.Value2;
                             for (int r = 0; r < part.Rows; r++) for (int c = 0; c < part.Columns; c++) Append(text, SummaryArrays.Pick(values, r, part.Rows, c, part.Columns));
                         }
+                        if(view.HeadersEnabled.Checked && part==yearSource) for(int c=0;c<part.Columns;c++) { dynamic displayed=snapshot.Own(sheet.Range[CellAddress.Name(part.Row,part.Column+c)]); Append(text,displayed.Text); }
                         try { xml = SummaryAreaEngine.XmlState(Convert.ToString(range.Value[11])); }
                         catch (Exception error) { UiDiagnostics.Record("summary-xml-fallback", error); }
                         if (xml != null) { Append(text, "xml"); Append(text, xml); AppendComments(sheet, part, text); xmlAreas++; continue; }
@@ -379,7 +417,7 @@ namespace Excel_Iterate
                 try { calculation = new HostCalculation(app); backup = SummaryWriter.Backup(app, book, Sheet(templateSheet, bag)); ((dynamic)Sheet(templateSheet, bag)).Activate(); }
                 catch { EndCalculation(); throw; }
             }
-            pending = true; running = true; ready = failed = false; step = formulaCount = touched = bulkWrites = 0; view.SetState(true, true, false);
+            pending = true; running = true; headersTouched=false; ready = failed = false; step = formulaCount = touched = bulkWrites = 0; view.SetState(true, true, false);
             view.Message("已建立原始模板及目标备份：" + backup + "。逐 Area 执行，不复制外接矩形。"); timer.Start();
         }
         private void Tick(object sender, EventArgs e)
@@ -409,6 +447,7 @@ namespace Excel_Iterate
                     step++; view.Message("已完成 " + step + "/" + targets.Count + "：" + company.Name + " → " + SummaryAreaEngine.Address(targetArea));
                     if (step == targets.Count)
                     {
+                        WriteHeaders(sheet, bag);
                         int errors = 0;
                         foreach (var area in targets)
                         {
@@ -470,6 +509,7 @@ namespace Excel_Iterate
             CheckBook(); using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var recalc = new HostCalculation(app)) using (var bag = new ComBag())
             {
                 dynamic sheet = Sheet(templateSheet, bag), original = Sheet(backup, bag);
+                RestoreHeaders(sheet, original, bag);
                 for (int i = 0; i < count; i++)
                 {
                     string address = SummaryAreaEngine.Address(targets[i]); dynamic source = bag.Own(original.Range[address]), target = bag.Own(sheet.Range[address]);
@@ -490,12 +530,76 @@ namespace Excel_Iterate
             }
         }
         private void Undo()
-        { if (!pending || running) return; Restore(touched); pending = ready = false; view.SetState(false, false, false); view.Message("已撤销全部受影响目标 Area，未选中间区域未修改；备份保留，未保存。"); }
+        { if (!pending || running) return; Restore(touched); pending = ready = false; view.SetState(false, false, false); view.Message("已撤销全部受影响目标 Area 和已写入表头，未选中间区域未修改；备份保留，未保存。"); }
         private void Confirm()
         {
             if (!pending || running) return;
             if (failed || step != targets.Count) throw new InvalidOperationException("失败批次只能撤销，不能确认。");
             pending = ready = false; view.SetState(false, false, false); view.Message("已确认并结束本批回滚会话；未保存工作簿。备份仍保留：" + backup);
+        }
+        private void PrepareHeaders(ComBag bag, IList<SummaryCompany> picked)
+        {
+            headerTargets.Clear();headerValues.Clear();view.HeaderPreview.Text="";
+            if(!view.HeadersEnabled.Checked)return;
+            if(companyHeader==null||yearSource==null||yearTarget==null)throw new InvalidOperationException("启用表头填充后，三个新增选区必须完整。");
+            if(companyHeader.Sheet!=templateSheet||yearTarget.Sheet!=templateSheet)throw new InvalidOperationException("表头目标必须与模板、粘贴起点同表。");
+            int width=areas.Max(a=>a.Column+a.Columns)-areas.Min(a=>a.Column);
+            if(yearSource.Rows!=1||yearSource.Columns!=width)throw new InvalidOperationException("年度来源有 "+yearSource.Columns+" 格，模板横向跨度为 "+width+" 列，必须相等。");
+            dynamic years=Sheet(yearSource.Sheet,bag), sheet=Sheet(templateSheet,bag);
+            var values=new List<string>();
+            for(int c=0;c<width;c++)using(var one=new ComBag()) { dynamic cell=one.Own(years.Range[CellAddress.Name(yearSource.Row,yearSource.Column+c)]);RejectSpecial(cell,"年度来源",one); string text=Convert.ToString(cell.Text);if(string.IsNullOrWhiteSpace(text)||text.Trim('#').Length==0||SummaryAreaEngine.IsError((object)cell.Value2))throw new InvalidOperationException("年度显示值为空、错误或列宽不足，请检查来源。"); values.Add(text); }
+            view.Message("表头预检：公司 "+picked.Count+" 家；模板跨度 "+width+"；年度 "+yearSource.Sheet+"!"+SummaryAreaEngine.Address(yearSource)+"："+string.Join("、",values.ToArray()));
+            for(int i=0;i<picked.Count;i++)
+            {
+                long nameColumn=(long)companyHeader.Column+i*width, yearColumn=(long)yearTarget.Column+i*width;
+                if(nameColumn>16384||yearColumn+width-1>16384)throw new InvalidOperationException("表头映射超出 Excel 列边界。");
+                using(var one=new ComBag())
+                {
+                    dynamic cell=one.Own(sheet.Range[CellAddress.Name(companyHeader.Row,(int)nameColumn)]);
+                    var name=new SummaryAreaPlan{Sheet=templateSheet,Row=companyHeader.Row,Column=(int)nameColumn,Rows=1,Columns=1};
+                    if(Bool((object)cell.MergeCells)) {dynamic merge=one.Own(cell.MergeArea);name=Coordinates(merge,one);name.Sheet=templateSheet;}
+                    dynamic nameRange=one.Own(sheet.Range[SummaryAreaEngine.Address(name)]); RejectArraySpill(nameRange,"公司名称目标",one);
+                    int groupStart=paste.Column+i*width;
+                    if(name.Column<groupStart||(long)name.Column+name.Columns>groupStart+width)throw new InvalidOperationException("公司名称合并区域跨越公司分组或授权边界："+SummaryAreaEngine.Address(name));
+                    AddHeader(name,picked[i].Code);
+                    for(int c=0;c<width;c++)
+                    {
+                        var year=new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=(int)yearColumn+c,Rows=1,Columns=1};dynamic y=one.Own(sheet.Range[CellAddress.Name(year.Row,year.Column)]);RejectSpecial(y,"年度目标",one);AddHeader(year,values[c]);
+                    }
+                    view.Message((i+1)+". "+picked[i].Code+" → 名称 "+SummaryAreaEngine.Address(name)+"；年度 "+CellAddress.Name(yearTarget.Row,(int)yearColumn)+":"+CellAddress.Name(yearTarget.Row,(int)yearColumn+width-1));
+                }
+            }
+            view.HeaderPreview.Text=picked.Count+" 家公司，名称 "+picked.Count+" 处，年度 "+(picked.Count*width)+" 格："+string.Join("、",values.ToArray());
+            foreach(var part in headerTargets)
+            {
+                dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]);view.Message("表头授权覆盖 "+SummaryAreaEngine.Address(part)+"；合并="+Convert.ToString(range.MergeCells)+"；原内容="+Convert.ToString(((dynamic)bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)])).Formula));
+                dynamic first=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);if(Bool((object)first.HasFormula))originalTargetFormulas.Add(new SummaryAreaCell{Row=part.Row,Column=part.Column,Text=Convert.ToString(first.Formula)});
+            }
+        }
+        private void AddHeader(SummaryAreaPlan part,string value)
+        {
+            if(areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||targets.Any(a=>SummaryAreaEngine.Intersects(a,part))||headerTargets.Any(a=>SummaryAreaEngine.Intersects(a,part))||(yearSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(yearSource,part))||(leadSheet==part.Sheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("表头目标与模板、复制目标、其他表头或来源选区冲突："+SummaryAreaEngine.Address(part));
+            headerTargets.Add(part);headerValues.Add(value);
+        }
+        private void WriteHeaders(dynamic sheet,ComBag bag)
+        {
+            headersTouched=headerTargets.Count>0;
+            for(int i=0;i<headerTargets.Count;i++)
+            {
+                var part=headerTargets[i];dynamic cell=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);object format=cell.NumberFormat;
+                try{cell.NumberFormat="@";cell.Value2=headerValues[i];}finally{cell.NumberFormat=format;}
+                if(Bool((object)cell.HasFormula)||Convert.ToString(cell.Value2)!=headerValues[i])throw new InvalidOperationException("表头文字读回校验失败："+SummaryAreaEngine.Address(part));
+            }
+            if(headerTargets.Count>0)view.Message("公司名称与年度表头写入、读回校验成功 "+headerTargets.Count+" 项。");
+        }
+        private void RestoreHeaders(dynamic sheet,dynamic original,ComBag bag)
+        {
+            if(!headersTouched)return;
+            foreach(var part in headerTargets)
+            {
+                string address=SummaryAreaEngine.Address(part);dynamic source=bag.Own(original.Range[address]),destination=bag.Own(sheet.Range[address]);source.Copy(destination);
+                foreach(var prior in originalTargetFormulas.Where(p=>p.Row>=part.Row&&p.Row<part.Row+part.Rows&&p.Column>=part.Column&&p.Column<part.Column+part.Columns)){dynamic cell=bag.Own(sheet.Range[CellAddress.Name(prior.Row,prior.Column)]);cell.Formula=prior.Text;if(Convert.ToString(cell.Formula)!=prior.Text)throw new InvalidOperationException("表头原公式恢复失败。");}
+            }
         }
         public void Dispose()
         {
