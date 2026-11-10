@@ -30,7 +30,7 @@ internal static class SingleSummaryLiveProbe
                 dynamic oldNames=bag.Own(sheet.Range["L2:"+CellAddress.Name(2,12+oldGroups*width-1)]);oldNames.FormulaArray="=INDEX('"+sample.sheet+"'!$O$"+first+":$O$"+(first+oldGroups-1)+",INT((COLUMN("+"L2:"+CellAddress.Name(2,12+oldGroups*width-1)+")-COLUMN(L2))/"+width+")+1)";oldNames.Calculate();string oldFormula=Convert.ToString(((dynamic)bag.Own(sheet.Range["L2"])).Formula);
                 using(var form=new SingleSummaryForm(true))
                 {
-                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=true;view.RepeatNames.Checked=true;view.ReplaceHeaderArrays.Checked=true;
+                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.MatchHeaders.Checked=false;view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=true;view.RepeatNames.Checked=true;view.ReplaceHeaderArrays.Checked=true;
                     using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;}))
                     {
                         Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet",sample.sheet);
@@ -41,8 +41,76 @@ internal static class SingleSummaryLiveProbe
                         Check(correct,"provided sample "+number+" company order repetition and transposed years");Call(host,"Undo");Check(Convert.ToBoolean(oldNames.HasArray)&&Convert.ToString(((dynamic)bag.Own(sheet.Range["L2"])).Formula)==oldFormula,"provided sample "+number+" original array rollback");Check(Convert.ToString(book.Path)=="","provided sample "+number+" isolated workbook never saved");
                     }
                 }
+                // Exercise the new read-only column mode with the same supplied fields.
+                oldNames.ClearContents();dynamic periodTitle=bag.Own(source.Range["N1"]);periodTitle.Value2="期间";
+                int endColumn=7+sample.companies.Count*width-1;dynamic fixedNames=bag.Own(sheet.Range["G2:"+CellAddress.Name(2,endColumn)]);var nameRefs=new List<string>();foreach(var item in sample.companies)nameRefs.Add("'"+sample.sheet+"'!$O$"+item.row);
+                fixedNames.FormulaArray="=CHOOSE(INT((COLUMN(G2:"+CellAddress.Name(2,endColumn)+")-COLUMN(G2))/"+width+")+1,"+string.Join(",",nameRefs.ToArray())+")";fixedNames.Calculate();string fixedBefore=Convert.ToString(((dynamic)bag.Own(sheet.Range["G2"])).Formula);
+                for(int group=0;group<sample.companies.Count;group++)
+                {
+                    dynamic yearCells=bag.Own(sheet.Range[CellAddress.Name(7,7+group*width)+":"+CellAddress.Name(7,7+(group+1)*width-1)]);var row=new object[1,width];for(int c=0;c<width;c++)row[0,c]=sample.years[group%2==0?c:width-1-c].text;yearCells.Value2=row;
+                    string filename=sample.companies[group].name+".xlsx",file=System.IO.Path.Combine(session.DirectoryPath,filename);if(!System.IO.File.Exists(file))System.IO.File.Copy(System.IO.Path.Combine(session.DirectoryPath,"！01-示例（集团）.xlsx"),session.Output(filename));
+                }
+                for(int c=0;c<width;c++){dynamic cell=bag.Own(sheet.Range[CellAddress.Name(10,7+c)]);cell.Value2="BS!$A$"+(c+1);}
+                using(var form=new SingleSummaryForm(true))
+                {
+                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.MatchHeaders.Checked=true;
+                    using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;}))
+                    {
+                        Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"leadSheet",sample.sheet);Set(host,"lead",new SummaryAreaPlan{Sheet=sample.sheet,Row=first,Column=15,Rows=last-first+1,Columns=2});((List<SummaryAreaPlan>)Get(host,"areas")).Add(new SummaryAreaPlan{Sheet="汇总",Row=10,Column=7,Rows=1,Columns=width});
+                        if(sample.companies.Count==1)
+                        {bool rejected=false;try{Call(host,"Preview");}catch(InvalidOperationException){rejected=true;}Check(rejected,"provided fixed sample "+number+" skips sole already-compiled company");}
+                        else
+                        {
+                            Call(host,"Preview");Check((bool)Get(host,"ready"),"provided fixed sample "+number+" existing header discovery");Call(host,"Start");int tasks=((List<SummaryAreaPlan>)Get(host,"targets")).Count;for(int i=0;i<tasks;i++)Call(host,"Tick",null,EventArgs.Empty);
+                            bool good=!(bool)Get(host,"failed");for(int group=1;group<sample.companies.Count;group++)for(int c=0;c<width;c++){dynamic cell=bag.Own(sheet.Range[CellAddress.Name(10,7+group*width+c)]);string formula=Convert.ToString(cell.Formula);int index=group%2==0?c:width-1-c;good &= formula.Contains("["+sample.companies[group].name+".xlsx]BS")&&formula.EndsWith("!$A$"+(index+1),StringComparison.Ordinal);}
+                            Check(good,"provided fixed sample "+number+" exact company and year column links");Call(host,"Undo");Check(Convert.ToBoolean(fixedNames.HasArray)&&Convert.ToString(((dynamic)bag.Own(sheet.Range["G2"])).Formula)==fixedBefore,"provided fixed sample "+number+" data undo preserves header declaration");
+                        }
+                    }
+                }
                 book.Close(false);closed=true;
             }
+        }
+    }
+    private static void FixedHeaders(object application,ProbeSession session)
+    {
+        using(var bag=new ComBag())
+        {
+            dynamic app=application,books=bag.Own(app.Workbooks),book=books.Add();bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+            dynamic sheets=bag.Own(book.Worksheets),target=bag.Own(sheets.Item(1));target.Name="列名汇总";dynamic lead=bag.Own(sheets.Add());lead.Name="Lead";
+            dynamic leadNames=bag.Own(lead.Range["O3:P5"]);leadNames.Value2=new object[,]{{"甲简称","！01-示例（集团）"},{"乙简称","！02-示例乙"},{"丙简称","第三家公司"}};
+            dynamic heading=bag.Own(lead.Range["N1"]);heading.Value2="期间";dynamic dates=bag.Own(lead.Range["N2:N6"]);dates.Value2=new object[,]{{"2027年度"},{"2026年度"},{"2025年度"},{"2024年度"},{"2023年度"}};
+            dynamic names=bag.Own(target.Range["G2:U2"]);names.FormulaArray="=INDEX(Lead!$O$3:$O$5,INT((COLUMN(G2:U2)-COLUMN(G2))/5)+1)";names.Calculate();string nameBefore=Convert.ToString(((dynamic)bag.Own(target.Range["G2"])).Formula);
+            foreach(string address in new[]{"G7:K7","Q7:U7"}){dynamic year=bag.Own(target.Range[address]);year.FormulaArray="=TRANSPOSE(Lead!$N$2:$N$6)";year.Calculate();}
+            dynamic reverse=bag.Own(target.Range["L7:P7"]);reverse.Value2=new object[,]{{"2023年度","2024年度","2025年度","2026年度","2027年度"}};
+            string yearBefore=Convert.ToString(((dynamic)bag.Own(target.Range["G7"])).Formula);
+            for(int c=0;c<5;c++)foreach(int r in new[]{3,4,8,9,10,11,12}){dynamic cell=bag.Own(target.Range[CellAddress.Name(r,7+c)]);cell.Value2="BS!$A$"+(c+1);}
+            dynamic native=bag.Own(target.Range["G8"]);native.Formula="=ROUND(G9-G10,2)";dynamic old=bag.Own(target.Range["P3"]);old.Value2="原值";
+            dynamic gap=bag.Own(target.Range["L5"]);gap.Value2="未选空隙";bag.Own(gap.AddComment("原批注"));
+            using(var form=new SingleSummaryForm(true))
+            {
+                var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.MatchHeaders.Checked=true;
+                using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;}))
+                {
+                    Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","列名汇总");Set(host,"leadSheet","Lead");
+                    var selected=(List<SummaryAreaPlan>)Get(host,"areas");selected.Add(new SummaryAreaPlan{Sheet="列名汇总",Row=2,Column=7,Rows=3,Columns=5});selected.Add(new SummaryAreaPlan{Sheet="列名汇总",Row=7,Column=7,Rows=6,Columns=5});Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=3,Column=15,Rows=3,Columns=2});
+                    int before=Convert.ToInt32(sheets.Count);Call(host,"Preview");Check((bool)Get(host,"ready")&&Convert.ToInt32(sheets.Count)==before,"fixed header preflight is read-only and requires no paste/header inputs");
+                    Check(((List<SummaryCompany>)Get(host,"companies")).Find(c=>c.Row==3).Selected==false&&Convert.ToString(view.Companies.Rows[0].Cells["status"].Value)=="已编制，跳过","existing source company is skipped with explicit status");
+                    var work=(List<SummaryMappedWork>)Get(host,"mappedWork");Check(work.TrueForAll(w=>w.Target.Row!=2&&w.Target.Row!=7),"company and year header rows excluded from all writes");
+                    Call(host,"Start");int count=((List<SummaryAreaPlan>)Get(host,"targets")).Count;for(int i=0;i<count;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending"),"fixed column execution completes with reused array headers");
+                    dynamic p3=bag.Own(target.Range["P3"]),l3=bag.Own(target.Range["L3"]),p8=bag.Own(target.Range["P8"]),q3=bag.Own(target.Range["Q3"]);
+                    Check(Convert.ToString(p3.Formula).Contains("[！02-示例乙.xlsx]BS'!$A$1")&&Convert.ToString(l3.Formula).Contains("!$A$5"),"links follow 2027/2023 labels when target years are reversed");
+                    Check(Convert.ToString(p8.Formula)=="=ROUND(P9-P10,2)","native same-year calculation follows matched target column");
+                    Check(Convert.ToString(q3.Formula).Contains("[第三家公司.xlsx]BS'!$A$1"),"next company follows its own existing header group");
+                    Check(Convert.ToString(((dynamic)bag.Own(target.Range["G2"])).Formula)==nameBefore&&Convert.ToString(((dynamic)bag.Own(target.Range["G7"])).Formula)==yearBefore&&Convert.ToBoolean(names.HasArray),"original company and year array declarations remain unchanged");
+                    Check(Convert.ToString(gap.Value2)=="未选空隙"&&Convert.ToString(((dynamic)bag.Own(gap.Comment)).Text())=="原批注","Ctrl gaps retain value and note");
+                    Call(host,"Undo");Check(Convert.ToString(old.Value2)=="原值"&&Convert.ToString(((dynamic)bag.Own(target.Range["G2"])).Formula)==nameBefore,"undo restores data without rewriting headers");
+                    var preset=host.CapturePreset();host.ApplyPreset(preset);Check(view.MatchHeaders.Checked&&!(bool)Get(host,"ready"),"column mode preset accepts absent paste/header inputs and invalidates plan");
+                    Call(host,"Preview");dynamic changed=bag.Own(target.Range["L7"]);changed.Value2="2024年度";bool stopped=false;try{Call(host,"Start");}catch(InvalidOperationException){stopped=true;}Check(stopped,"header value edit invalidates the preflight");
+                    stopped=false;try{Call(host,"Preview");}catch(InvalidOperationException){stopped=true;}Check(stopped,"duplicate or missing company-year labels block execution");changed.Value2="2023年度";
+                    Check(Convert.ToString(book.Path)=="","fixed mapping never saves workbook");
+                }
+            }
+            book.Close(false);closed=true;
         }
     }
     [STAThread] private static int Main(string[] args)
@@ -83,7 +151,7 @@ internal static class SingleSummaryLiveProbe
                     int before=Convert.ToInt32(worksheets.Count);
                     using(var form=new SingleSummaryForm(true))
                     {
-                        var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.FormulaHeaders.Checked=false;view.RepeatNames.Checked=false;
+                        var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.MatchHeaders.Checked=false;view.FormulaHeaders.Checked=false;view.RepeatNames.Checked=false;
                         using(var host=new SummaryAreaHost((object)app,form,view,null,delegate{return true;}))
                         {
                             Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet","Lead");
@@ -220,6 +288,7 @@ internal static class SingleSummaryLiveProbe
                     }
                 }
                 if(args.Length==2&&args[0]=="--provided-header-vectors")ProvidedHeaders((object)app,session,args[1]);
+                FixedHeaders((object)app,session);
                 Console.WriteLine("PASS: "+checks+" Excel self-owned sample checks; no user workbook or real button interaction");return session.Finish(0);
             }
             catch(Exception e){Console.WriteLine(e);return session.Finish(1);}

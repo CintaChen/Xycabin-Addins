@@ -666,6 +666,8 @@ B3-Spec Coding.md 为 B3 工程规范入口。改名需要同时修改 verify_de
 
 合并表头的 HasSpill/HasArray 区域级 Null 只表示混合状态，不可按 True 报溢出。SummaryAreaHost 在混合时逐物理单元格检查，合并格复核 MergeArea 左上角；明确 True 才报数组/溢出，单格仍未知或异常类型则单独诊断并只读阻断。旧宿主仅忽略已知的成员不支持错误，不把其他 COM 异常当成安全状态。
 
+列名定位由 SummaryColumnMapping 建立公司实际Lead行号＋年度显示文本的唯一键，并生成 Source/Target/CompanyRow 工作项。Host只读识别现有表头，N列期间非空连续块限定年度，源公司从列名识别并标记跳过；读取窗口为顶部及源区域附近的有界窗口，候选不唯一阻断。按年度键映射列，数据保持原行，工作项排除公司及年度行。FixedReadRanges同时哈希表头实际值、显示文本及格式，另记录UsedRange边界，禁止预检后改列名。已有LET/TRANSPOSE不写入。原生本表引用使用列映射，无法保持连续语义的跨列范围阻断；外链源地址仍固定。旧起点模式保留，预设记录模式；列名模式允许缺失旧粘贴参数。
+
 表头公式模式复用 LeadRows 的实际行号和编码简称列建立直接引用，年度单列由 TRANSPOSE 的 FormulaArray 整块写入，兼容旧 Excel；无 LET/SEQUENCE 和抵消表计数依赖。NumberFormat 取来源，读回校验显示文字及真实公式；旧预设的文字模式保留。预检只读枚举 CurrentArray 或 SpillParent/SpillingToRange 的完整旧数组，许可后才计划整体清理；目标外输出必须能唯一映射回 Lead，空值保留，错误/歧义及来源冲突阻断。备份仍整表，执行前清理完整旧数组，撤销先在自有备份中重算并核对原数组边界，防止来源计数变化扩大恢复范围，再移除新年度数组，整块恢复旧数组及原公式并核验边界。数组许可仅本会话，不写入预设。
 
 区域模式复用 BatchPresetActions/BatchPresetManagerForm 与同一 summary 库，mode=area-mvp 区分新参数；候选绑定及区域校验成功后才提交，旧整列参数不猜测转换。捕获含四组基础配置及可选表头选区，不序列化公司数据、COM 或回滚状态，恢复后清空名单并失效预检。执行按 Area 使用 Formula 矩阵批写、Formula/R1C1 批读及真实公式类型核验；HostCalculation 跨批次暂停自动重算并在完成、失败及释放时恢复。Fingerprint 优先每 Area 的 Value[11] SpreadsheetML，提取 Styles/Table 并移除公式缓存 Data，另核对批注；不支持或格式不完整时保留原逐格回退。覆盖确认后仍执行最终完整状态校验。SingleSummaryLiveProbe --timing 以自建200模板格、两家公司400公式验证吞吐及空隙/撤销，不操作用户文件，速度不代表真实网络审计文件。
