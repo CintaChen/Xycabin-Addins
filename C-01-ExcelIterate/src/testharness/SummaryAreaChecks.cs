@@ -35,6 +35,15 @@ internal static class SummaryAreaChecks
         }
         var friendly=typeof(SummaryAreaHost).GetMethod("Explain",BindingFlags.Static|BindingFlags.NonPublic);
         check("合并跨组提示提供处理方法",((string)friendly.Invoke(null,new object[]{"公司名称合并区域跨组：G2:I2"})).Contains("请缩小合并范围"),"");
+        check("数据General使用千分位",!SummaryAreaHost.PreserveNumberFormat("General"),"");
+        check("日期格式保留",SummaryAreaHost.PreserveNumberFormat("yyyy.m.d"),"");
+        check("百分比格式保留",SummaryAreaHost.PreserveNumberFormat("0.00%"),"");
+        check("前导零序号格式保留",SummaryAreaHost.PreserveNumberFormat("0000"),"");
+        check("颜色标记不误判为日期",!SummaryAreaHost.PreserveNumberFormat("0.00;[Red]-0.00"),"");
+        using(var formatForm=new SingleSummaryForm(true)){
+            var ui=(SummaryAreaView)formatForm.Controls[0];check("表头默认启用且没有可见开关",ui.HeadersEnabled.Checked&&ui.HeadersEnabled.Parent==null,"");
+            var controls=new Queue<Control>();controls.Enqueue(ui);bool hasRead=false;while(controls.Count>0){var current=controls.Dequeue();if(current.Text=="读取当前选区")hasRead=true;foreach(Control child in current.Controls)controls.Enqueue(child);}check("所有选区只保留原生选择按钮",!hasRead,"");
+        }
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };

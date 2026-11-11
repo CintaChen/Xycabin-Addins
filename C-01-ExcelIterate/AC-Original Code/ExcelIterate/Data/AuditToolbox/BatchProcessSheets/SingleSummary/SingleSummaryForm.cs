@@ -244,10 +244,7 @@ namespace Excel_Iterate
         private Control SelectionParameter(Control field, string title, string kind)
         {
             var panel = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
-            var button = Ui.Button("读取当前选区", 120); button.Name = "summaryPick_" + kind;
-            button.Click += delegate { if (!busy && !canUndo && SelectionRequested != null) SelectionRequested(kind); };
-            selectionButtons.Add(button);
-            panel.Controls.Add(Ui.Grip(field, title)); panel.Controls.Add(button);
+            panel.Controls.Add(Ui.Grip(field, title));
             var pick = Ui.Button("在表中选择…", 116); pick.Name = "summaryRange_" + kind;
             pick.Click += delegate { if (!busy && !canUndo && RangeRequested != null) RangeRequested(kind); };
             selectionButtons.Add(pick); panel.Controls.Add(pick);

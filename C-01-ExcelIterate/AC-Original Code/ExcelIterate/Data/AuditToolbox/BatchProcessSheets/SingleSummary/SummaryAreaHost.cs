@@ -25,6 +25,7 @@ namespace Excel_Iterate
         private readonly List<SummaryAreaPlan> headerTargets = new List<SummaryAreaPlan>();
         private readonly List<string> headerValues = new List<string>();
         private bool headersTouched;
+        private readonly Dictionary<int,double> outputWidths=new Dictionary<int,double>();
         private readonly Dictionary<string,object> variableRawValues=new Dictionary<string,object>();
         private readonly Dictionary<string,string> headerExpressions=new Dictionary<string,string>(),headerFormats=new Dictionary<string,string>();
         private readonly List<SummaryHeaderArray> oldHeaderArrays=new List<SummaryHeaderArray>(),yearHeaderArrays=new List<SummaryHeaderArray>();
@@ -134,7 +135,7 @@ namespace Excel_Iterate
                 loading = true;
                 try
                 {
-                    view.VariableHeaders.Checked=settings.VariableHeaders;repeatSource=settings.RepeatSource;repeatTarget=settings.RepeatTarget;companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
+                    view.VariableHeaders.Checked=true;repeatSource=settings.RepeatSource;repeatTarget=settings.RepeatTarget;companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
                     var headerNames=new[]{"companyHeader","yearSource","yearTarget","repeatSource","repeatTarget"}; var headerParts=new[]{companyHeader,yearSource,yearTarget,repeatSource,repeatTarget};
                     for(int i=0;i<headerNames.Length;i++) view.Address(headerNames[i],headerParts[i]==null ? "未选择" : headerParts[i].Sheet+"!"+SummaryAreaEngine.Address(headerParts[i]));
                     view.ClearGroups();extraInputs.Clear();if(!string.IsNullOrEmpty(groupText))foreach(string key in groupText.Split(';'))view.AddGroup(key.StartsWith("repeat_")?"repeat":"year",key);
@@ -207,7 +208,7 @@ namespace Excel_Iterate
                     try
                     {
                         string promptKind=kind.StartsWith("repeat_")?(kind.EndsWith("Source")?"repeatSource":"repeatTarget"):kind.StartsWith("year_")?(kind.EndsWith("Source")?"yearSource":"yearTarget"):kind;
-                        if (native) { if (kind == "lead" || kind == "yearSource" || kind=="repeatSource" || kind.EndsWith("Source")) ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, promptKind == "repeatSource" ? "选择Lead连续字段列，不含标题；每一行需对应已选公司来源行。" : promptKind == "repeatTarget" ? "选择汇总表同一列连续单元格，每个来源字段对应一个目标行。" : promptKind == "template" ? "选择已编制区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : promptKind == "lead" ? "选择公司名称一列，不含表头；可Ctrl选择分段。" : promptKind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : promptKind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : promptKind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "合并批量链接", Type.Missing); }
+                        if (native) { if (kind == "lead" || kind == "yearSource" || kind=="repeatSource" || kind.EndsWith("Source")) ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, promptKind == "repeatSource" ? "选择Lead连续字段列，不含标题；每一行需对应已选公司来源行。" : promptKind == "repeatTarget" ? "选择汇总表同一列连续单元格，每个来源字段对应一个目标行。" : promptKind == "template" ? "选择已编制区域，可按 Ctrl 多选；按住Ctrl可选择多个区域。" : promptKind == "lead" ? "选择公司名称一列，不含表头；可Ctrl选择分段。" : promptKind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : promptKind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : promptKind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "合并批量链接", Type.Missing); }
                         else chosen = ((dynamic)app).Selection;
                         if (chosen == null || chosen is bool) return;
                         dynamic range = bag.Own(chosen), sheet = bag.Own(range.Parent);
@@ -481,7 +482,7 @@ namespace Excel_Iterate
             if (watch != null) watch.Validate();
             using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var bag = new ComBag())
             {
-                executionClock.Restart();
+                executionClock.Restart(); CaptureOutputWidths(bag);
                 try { calculation = new HostCalculation(app); backup = SummaryWriter.Backup(app, book, Sheet(templateSheet, bag)); ((dynamic)Sheet(templateSheet, bag)).Activate(); }
                 catch { EndCalculation(); throw; }
             }
@@ -529,14 +530,19 @@ namespace Excel_Iterate
                     {
                         WriteHeaders(sheet, bag);
                         int errors = 0;
-                        foreach (var area in targets)
+                        for(int areaIndex=0;areaIndex<targets.Count;areaIndex++)
                         {
+                            var area=targets[areaIndex];
                             dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(area)]);
                             try { Recalculate((object)range); } catch (Exception error) { view.Message("重新计算失败：" + error.Message); }
                             object values = range.Value2;
                             for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++)
-                                if (SummaryAreaEngine.IsError(SummaryArrays.Pick(values, r, area.Rows, c, area.Columns))) errors++;
+                                if (SummaryAreaEngine.IsError(SummaryArrays.Pick(values, r, area.Rows, c, area.Columns))) {
+                                    errors++;using(var fault=new ComBag()){dynamic cell=fault.Own(sheet.Range[CellAddress.Name(area.Row+r,area.Column+c)]);var owner=picked[areaIndex/areas.Count];
+                                    view.Message("数据异常｜"+owner.Name+"｜"+templateSheet+"!"+CellAddress.Name(area.Row+r,area.Column+c)+"｜"+Convert.ToString(cell.Text));}
+                                }
                         }
+                        FormatAndFitOutput(sheet,bag);
                         EndCalculation();
                         view.Message("批量公式提交 " + bulkWrites + " 次；备份及执行耗时 " + executionClock.Elapsed.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture) + " 秒。");
                         view.Message("公式写入核验成功 " + formulaCount + " 格；已尝试重新计算。数值异常 " + errors + " 格。链接未强制更新：源文件关闭或访问策略可能保留缓存，请在 Excel 检查链接状态。未保存，请确认或撤销。"); running = false; view.SetState(false, true, false);
@@ -589,7 +595,7 @@ namespace Excel_Iterate
             CheckBook(); using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var recalc = new HostCalculation(app)) using (var bag = new ComBag())
             {
                 dynamic sheet = Sheet(templateSheet, bag), original = Sheet(backup, bag);
-                RestoreHeaders(sheet, original, bag);
+                RestoreOutputWidths(sheet,bag);RestoreHeaders(sheet, original, bag);
                 for (int i = 0; i < count; i++)
                 {
                     string address = SummaryAreaEngine.Address(targets[i]); dynamic source = bag.Own(original.Range[address]), target = bag.Own(sheet.Range[address]);
@@ -811,6 +817,46 @@ namespace Excel_Iterate
             dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]),anchor=bag.Own(sheet.Range[CellAddress.Name(array.Area.Row,array.Area.Column)]);
             if(array.Dynamic)anchor.ClearContents();else range.ClearContents();
         }
+        internal static bool PreserveNumberFormat(string format)
+        {
+            string f=System.Text.RegularExpressions.Regex.Replace(format??"",@"""[^""]*""|\\.","").ToLowerInvariant();
+            f=System.Text.RegularExpressions.Regex.Replace(f,@"\[(?![hms]+\])[^\]]*\]","");
+            return f.IndexOf('%')>=0||System.Text.RegularExpressions.Regex.IsMatch(f,@"[ymdhs]|\[[hms]\]")||System.Text.RegularExpressions.Regex.IsMatch(f,@"^0{2,}(?:;|$)");
+        }
+        private void CaptureOutputWidths(ComBag bag)
+        {
+            outputWidths.Clear();dynamic sheet=Sheet(templateSheet,bag);
+            foreach(int c in targets.Concat(headerTargets).SelectMany(a=>Enumerable.Range(a.Column,a.Columns)).Distinct())using(var one=new ComBag()){
+                dynamic cell=one.Own(sheet.Range[CellAddress.Name(1,c)]),column=one.Own(cell.EntireColumn);if(Bool((object)column.Hidden))continue;
+                double width=Convert.ToDouble(column.ColumnWidth);if(width<=0||double.IsNaN(width))throw new InvalidOperationException("无法读取原列宽，请检查工作表保护状态。");outputWidths[c]=width;
+            }
+        }
+        private void RestoreOutputWidths(dynamic sheet,ComBag bag)
+        {foreach(var entry in outputWidths)using(var one=new ComBag()){dynamic cell=one.Own(sheet.Range[CellAddress.Name(1,entry.Key)]),column=one.Own(cell.EntireColumn);column.ColumnWidth=entry.Value;}}
+        private void FormatAndFitOutput(dynamic sheet,ComBag bag)
+        {
+            foreach(var part in targets)using(var one=new ComBag()){
+                dynamic range=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);object format=range.NumberFormat;
+                if(format!=null&&format!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(format)))range.NumberFormat="#,##0.00";}
+                else {object values=range.Value2;for(int r=0;r<part.Rows;r++)using(var rowBag=new ComBag()){
+                    dynamic rowRange=rowBag.Own(sheet.Range[CellAddress.Name(part.Row+r,part.Column)+":"+CellAddress.Name(part.Row+r,part.Column+part.Columns-1)]);object rowFormat=rowRange.NumberFormat;
+                    if(rowFormat!=null&&rowFormat!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(rowFormat)))rowRange.NumberFormat="#,##0.00";continue;}
+                    for(int c=0;c<part.Columns;c++){
+
+                    object value=SummaryArrays.Pick(values,r,part.Rows,c,part.Columns);if(!(value is double||value is int||value is decimal)||SummaryAreaEngine.IsError(value))continue;
+                    using(var cellBag=new ComBag()){dynamic cell=cellBag.Own(sheet.Range[CellAddress.Name(part.Row+r,part.Column+c)]);if(!PreserveNumberFormat(Convert.ToString(cell.NumberFormat)))cell.NumberFormat="#,##0.00";}
+                }}}
+            }
+            // Like LinkAssistant: measure after final number formats. Fit only
+            // selected output rows, without FitOutput's row-1 styling side effects.
+            var widths=new Dictionary<int,double>();
+            foreach(var part in targets.Concat(headerTargets))for(int c=part.Column;c<part.Column+part.Columns;c++){
+                if(!outputWidths.ContainsKey(c))continue;
+                using(var one=new ComBag()){dynamic range=one.Own(sheet.Range[CellAddress.Name(part.Row,c)+":"+CellAddress.Name(part.Row+part.Rows-1,c)]),columns=one.Own(range.Columns);columns.AutoFit();double width=Convert.ToDouble(range.ColumnWidth);if(width<=0||double.IsNaN(width))throw new InvalidOperationException("列宽适配失败，已停止并准备撤销。");double prior;widths[c]=Math.Max(width,widths.TryGetValue(c,out prior)?prior:0);}
+            }
+            foreach(var entry in widths)using(var one=new ComBag()){dynamic cell=one.Own(sheet.Range[CellAddress.Name(1,entry.Key)]),column=one.Own(cell.EntireColumn);column.ColumnWidth=Math.Min(255,entry.Value);}
+            view.Message("数据区已设置千分位及两位小数；日期、百分比、序号和关联表头保留原格式。已自适应 "+widths.Count+" 列，撤销会恢复原列宽。");
+        }
         private void Recalculate(object range)
         {
             try{((dynamic)range).Calculate();return;}catch(Exception error){view.Message("区域重算不可用，尝试工作表重算："+error.Message);}
@@ -837,7 +883,7 @@ namespace Excel_Iterate
                 if(view.VariableHeaders.Checked&&variableRawValues.ContainsKey(key))
                 {
                     if(!Bool((object)cell.HasFormula)||!object.Equals((object)cell.Value2,variableRawValues[key])||Convert.ToString(cell.NumberFormat)!=headerFormats[key])throw new InvalidOperationException("变量表头公式值或格式核验失败："+SummaryAreaEngine.Address(part));
-                    string display=Convert.ToString(cell.Text);if(!string.IsNullOrEmpty(display)&&display.Trim('#').Length==0)view.Message("提示："+SummaryAreaEngine.Address(part)+" 日期列宽不足，实际值及来源格式已核验；请手动调整列宽。");
+                    string display=Convert.ToString(cell.Text);if(!string.IsNullOrEmpty(display)&&display.Trim('#').Length==0)view.Message("提示："+SummaryAreaEngine.Address(part)+" 日期值和格式已核验，稍后将自动调整列宽。");
                     continue;
                 }
                 string actual=formula?Convert.ToString(cell.Text):Convert.ToString(cell.Value2);

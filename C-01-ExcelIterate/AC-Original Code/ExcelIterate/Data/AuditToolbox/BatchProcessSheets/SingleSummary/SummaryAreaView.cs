@@ -41,7 +41,7 @@ namespace Excel_Iterate
         internal readonly CheckBox FormulaHeaders = new CheckBox {Text="使用公式关联 Lead（单列年度自动转置）",AutoSize=true,Checked=true};
         internal readonly CheckBox RepeatNames = new CheckBox {Text="每个年度列都填写公司名称",AutoSize=true,Checked=true};
         internal readonly CheckBox ReplaceHeaderArrays = new CheckBox {Text="允许整体重写既有表头数组（预检列出完整范围）",AutoSize=true};
-        internal readonly CheckBox HeadersEnabled = new CheckBox { Text = "启用表头自动填充", AutoSize = true };
+        internal readonly CheckBox HeadersEnabled = new CheckBox { AutoSize = true, Checked=true };
         internal readonly Label HeaderPreview = new Label { AutoSize = true, ForeColor = Ui.InkDim, MaximumSize = new Size(1000,0) };
         internal string ProjectFolder
         {
@@ -80,11 +80,11 @@ namespace Excel_Iterate
             referenceBody=ReferenceSources;referenceBody.Visible=false;parameters.Controls.Add(referenceBody);
             ReferenceSources.CurrentCellDirtyStateChanged+=delegate {if(ReferenceSources.IsCurrentCellDirty)ReferenceSources.CommitEdit(DataGridViewDataErrorContexts.Commit);};
             ReferenceSources.CellValueChanged+=delegate {InvalidatePlan();};
-            var headerBody = new TableLayoutPanel { AutoSize=true,ColumnCount=1,Dock=DockStyle.Top,Visible=false };
+            var headerBody = new TableLayoutPanel { AutoSize=true,ColumnCount=1,Dock=DockStyle.Top,Visible=true };
             headerBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-            var expand=Ui.Button("▶ 表头自动填充",180);parameters.Controls.Add(expand);
+            var expand=Ui.Button("▼ 表头自动填充",180);parameters.Controls.Add(expand);
             expand.Click+=delegate { headerBody.Visible=!headerBody.Visible;expand.Text=(headerBody.Visible?"▼":"▶")+" 表头自动填充"; };
-            headerBody.Controls.Add(HeadersEnabled);inputs.Add(HeadersEnabled);
+            inputs.Add(HeadersEnabled);
             inputs.Add(VariableHeaders);VariableHeaders.CheckedChanged+=delegate{InvalidatePlan();};
             headerBody.Controls.Add(Picker("重复变量来源","repeatSource"));
             headerBody.Controls.Add(Picker("变量写入位置","repeatTarget"));
@@ -101,7 +101,7 @@ namespace Excel_Iterate
             var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters);
             var parameterScroll=new Panel { Dock=DockStyle.Fill,AutoScroll=true,BackColor=Ui.Canvas };parameterScroll.Controls.Add(card);root.Controls.Add(parameterScroll,0,0);
             root.RowStyles[0].SizeType=SizeType.Absolute;
-            Action fitParameters=delegate { root.RowStyles[0].Height=Math.Min(card.GetPreferredSize(new Size(Math.Max(1,parameterScroll.ClientSize.Width-20),0)).Height+6,Math.Max(180,(int)(ClientSize.Height*.55))); };
+            bool fittingParameters=false;Action fitParameters=delegate { if(fittingParameters)return;fittingParameters=true;try{float height=Math.Min(card.GetPreferredSize(new Size(Math.Max(1,parameterScroll.ClientSize.Width-20),0)).Height+6,Math.Max(180,(int)(ClientSize.Height*.55)));if(Math.Abs(root.RowStyles[0].Height-height)>1)root.RowStyles[0].Height=height;}finally{fittingParameters=false;} };
             extraBody.SizeChanged+=delegate{fitParameters();};SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; referenceBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
             state.Text = "选区绑定同一工作簿；只复制选中的 Area。未选空隙不变；全程不自动保存。";
             state.Text = "";
@@ -119,13 +119,13 @@ namespace Excel_Iterate
         }
         private Control Picker(string title, string kind)
         {
-            var row = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 0, 0, 6) };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            var row = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3, Margin = new Padding(0, 0, 0, 6) };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             row.Controls.Add(new Label { Text = title, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
             var text = new TextBox { ReadOnly = true, Dock = DockStyle.Fill, Name = "summaryArea_" + kind }; addresses.Add(kind, text); row.Controls.Add(text, 1, 0);
-            var pick = Ui.Button("在 Excel 中选择…", 150); var read = Ui.Button("读取当前选区", 120); row.Controls.Add(pick, 2, 0); row.Controls.Add(read, 3, 0);
-            pick.Click += delegate { if (Pick != null) Pick(kind, true); }; read.Click += delegate { if (Pick != null) Pick(kind, false); };
-            inputs.Add(pick); inputs.Add(read); return row;
+            var pick = Ui.Button("在 Excel 中选择…", 150); row.Controls.Add(pick, 2, 0);
+            pick.Click += delegate { if (Pick != null) Pick(kind, true); };
+            inputs.Add(pick); return row;
         }
         internal Dictionary<string,string> ReviewSources(IList<SummaryReferenceSource> sources)
         {
