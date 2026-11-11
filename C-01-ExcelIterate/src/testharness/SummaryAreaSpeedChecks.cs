@@ -30,7 +30,7 @@ internal static class SummaryAreaSpeedChecks
                 dynamic a=bag.Own(target.Range["L3:P22"]),b=bag.Own(target.Range["L25:P44"]),old=bag.Own(target.Range["Q3:Z44"]);a.Value2=b.Value2="BS!$A$1";old.Value2="old";
                 using(var form=new SingleSummaryForm(true))
                 {
-                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.MatchHeaders.Checked=false;
+                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;
                     using(var host=new SummaryAreaHost((object)app,form,view,null,delegate{return true;}))
                     {
                         Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet","Lead");

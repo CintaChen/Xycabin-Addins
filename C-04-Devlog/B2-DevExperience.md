@@ -348,8 +348,6 @@ RequirementsForm使用Requirements.txt UTF-8原子保存并查外部修改；介
 
 # 二. Excel-Iterate 专属开发经验
 
-年度缺失补全复用 SummaryAreaHost 的 headerTargets/WriteHeaders/RestoreHeaders，不直接在预检修改表格。SummaryColumnMapping 先校验自定义年度集合与 Lead 一致，并按组内位置验证部分已填年度；完整已填分组保留实际顺序。目标需为真正空白且没有公式、合并、数组或溢出，新增年度参与同一指纹、备份和撤销。不能将公式返回空字符串当作空白覆盖，也不能猜测不连续或宽度不足的公司分组。
-
 ## 1. 单元格、选区与公式
 
 ### (1). 引用/从属追踪与高亮
@@ -667,8 +665,6 @@ B3-Spec Coding.md 为 B3 工程规范入口。改名需要同时修改 verify_de
 已编制区域的已有公式复用 FormulaRefRewriter.Scan/RefSpan，在纯逻辑 SummaryExistingFormula 中屏蔽已识别跨表前缀后调用既有白名单；任何未识别特殊引用仍阻断。来源按解码后的路径和文件分组，ReadCompanies 全名单匹配，决定与该来源涉及的原公式签名绑定，未确认不得执行；跨表只能保留。渲染时只移动本表引用，已确认公司来源重建路径文件，保留其他来源及源地址。常量不再误认作外链；含常量的 Area 只按连续公式段批写，避免 Formula 矩阵把文字重新解释成公式。原备份和撤销范围不变。
 
 合并表头的 HasSpill/HasArray 区域级 Null 只表示混合状态，不可按 True 报溢出。SummaryAreaHost 在混合时逐物理单元格检查，合并格复核 MergeArea 左上角；明确 True 才报数组/溢出，单格仍未知或异常类型则单独诊断并只读阻断。旧宿主仅忽略已知的成员不支持错误，不把其他 COM 异常当成安全状态。
-
-列名定位由 SummaryColumnMapping 建立公司实际Lead行号＋年度显示文本的唯一键，并生成 Source/Target/CompanyRow 工作项。Host只读识别现有表头，N列期间非空连续块限定年度，源公司从列名识别并标记跳过；读取窗口为顶部及源区域附近的有界窗口，候选不唯一阻断。按年度键映射列，数据保持原行，工作项排除公司及年度行。FixedReadRanges同时哈希表头实际值、显示文本及格式，另记录UsedRange边界，禁止预检后改列名。已有LET/TRANSPOSE不写入。原生本表引用使用列映射，无法保持连续语义的跨列范围阻断；外链源地址仍固定。旧起点模式保留，预设记录模式；列名模式允许缺失旧粘贴参数。
 
 表头公式模式复用 LeadRows 的实际行号和编码简称列建立直接引用，年度单列由 TRANSPOSE 的 FormulaArray 整块写入，兼容旧 Excel；无 LET/SEQUENCE 和抵消表计数依赖。NumberFormat 取来源，读回校验显示文字及真实公式；旧预设的文字模式保留。预检只读枚举 CurrentArray 或 SpillParent/SpillingToRange 的完整旧数组，许可后才计划整体清理；目标外输出必须能唯一映射回 Lead，空值保留，错误/歧义及来源冲突阻断。备份仍整表，执行前清理完整旧数组，撤销先在自有备份中重算并核对原数组边界，防止来源计数变化扩大恢复范围，再移除新年度数组，整块恢复旧数组及原公式并核验边界。数组许可仅本会话，不写入预设。
 

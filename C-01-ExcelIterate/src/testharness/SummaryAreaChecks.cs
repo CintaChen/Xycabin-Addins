@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Linq;
 using System.Windows.Forms;
 using Excel_Iterate;
 
@@ -10,16 +9,6 @@ internal static class SummaryAreaChecks
     internal static void Run(Action<string, bool, string> check)
     {
         Action<Action, string> rejects = delegate(Action action, string name) { bool rejected = false; try { action(); } catch (InvalidOperationException) { rejected = true; } check(name, rejected, "invalid input accepted"); };
-        var fillPeriods=new[]{"2027年度","2026年度","2025年度"};
-        check("补全默认复用Lead序列",string.Join(",",SummaryColumnMapping.YearSequence("",fillPeriods).ToArray())==string.Join(",",fillPeriods),"");
-        check("自定义年度顺序保留",SummaryColumnMapping.YearSequence("2025年度、2026年度、2027年度",fillPeriods)[0]=="2025年度","");
-        rejects(delegate{SummaryColumnMapping.YearSequence("2025年度、2025年度、2027年度",fillPeriods);},"补全重复年度阻断");
-        rejects(delegate{SummaryColumnMapping.YearSequence("2024年度、2026年度、2027年度",fillPeriods);},"补全年份范围不同阻断");
-        check("全空年度补全计划",SummaryColumnMapping.MissingYears(fillPeriods,new[]{"","",""}).Count==3,"");
-        check("部分年度只补空格",SummaryColumnMapping.MissingYears(fillPeriods,new[]{"2027年度","","2025年度"}).Count==1,"");
-        check("完整倒序不重写",SummaryColumnMapping.MissingYears(fillPeriods,new[]{"2025年度","2026年度","2027年度"}).Count==0,"");
-        rejects(delegate{SummaryColumnMapping.MissingYears(fillPeriods,new[]{"2025年度","","2027年度"});},"部分年度与补全顺序冲突阻断");
-        rejects(delegate{SummaryColumnMapping.MissingYears(fillPeriods,new[]{"",""});},"补全分组宽度不足阻断");
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };
@@ -89,18 +78,8 @@ internal static class SummaryAreaChecks
         check("竖向年度直接转置",SummaryHeaderFormula.Years(new SummaryAreaPlan{Sheet="Lead",Row=2,Column=14,Rows=5,Columns=1})=="=TRANSPOSE('Lead'!$N$2:$N$6)","transpose mismatch");
         check("公司公式直接关联编码简称列",SummaryHeaderFormula.Cell("Lead",3,15)=="='Lead'!$O$3","company link mismatch");
         check("表名引号正确转义",SummaryHeaderFormula.Cell("公'司",3,15)=="='公''司'!$O$3","quote mismatch");
-        var labels=new List<SummaryColumnHeader>{new SummaryColumnHeader{CompanyRow=20,Column=12,Year="2026年度"},new SummaryColumnHeader{CompanyRow=20,Column=13,Year="2027年度"}};
-        var periods=new Dictionary<int,string>{{7,"2027年度"},{8,"2026年度"}};var maps=SummaryColumnMapping.Build(new[]{10,20},10,periods,labels);
-        check("已有公司跳过且按年度列名定位",maps.Count==1&&maps[20][7]==13&&maps[20][8]==12,"mapped by index instead of header");
-        var mappedWork=SummaryColumnMapping.Work(new[]{new SummaryAreaPlan{Sheet="汇总",Row=2,Column=7,Rows=8,Columns=2}},maps,new HashSet<int>{2,7});
-        check("重排年度分列且不触碰表头",mappedWork.Count==4&&mappedWork.TrueForAll(w=>w.Target.Row!=2&&w.Target.Row!=7&&w.Target.Columns==1),"header or wrong year overwritten");
-        labels.Add(new SummaryColumnHeader{CompanyRow=20,Column=14,Year="2027年度"});rejects(delegate{SummaryColumnMapping.Build(new[]{20},10,periods,labels);},"重复公司年度列名阻断");labels.RemoveAt(2);
-        labels.RemoveAt(0);rejects(delegate{SummaryColumnMapping.Build(new[]{20},10,periods,labels);},"缺少年度列名阻断");
-        var mappedFormula=SummaryExistingFormula.Read("=ROUND(G76-G121,2)");check("本年计算公式跟随年度列",mappedFormula.Render(@"C:\资料","甲",0,6,maps[20])=="=ROUND(M76-M121,2)","native formula mapped to wrong year");
-        var unsafeRange=SummaryExistingFormula.Read("=SUM(G8:H8)");rejects(delegate{unsafeRange.Render(@"C:\资料","甲",0,6,maps[20]);},"年度重排跨列范围不猜测重写");
         var preset = new BatchPreset { Feature="summary", Name="区域测试", Context="test.xlsx", Values=new Dictionary<string,string> {
             {"mode","area-mvp"},{"templateSheet","汇总"},{"templateAreas","3,12,4,5;20,12,11,5"},{"pasteSheet","汇总"},{"pasteArea","3,17,1,1"},{"leadSheet","Lead"},{"leadAreas","3,1,2,1;3,4,2,1"},{"projectFolder",@"C:\项目"},{"checkFiles","False"} } };
-        preset.Values["matchHeaders"]="False";
         var settings=SummaryAreaSettings.Read(BatchPresetStore.Decode(BatchPresetStore.Encode(preset),"summary"));
         check("区域预设完整保存Ctrl模板与Lead字段",settings.Template.Count==2&&settings.Lead.Count==2&&settings.Paste.Column==17&&settings.Template[1].RowOffset==17,"preset lost area metadata");
         check("预设保留路径及默认文件检查选项",settings.Folder==@"C:\项目"&&!settings.CheckFiles,"preset changed options");
@@ -127,7 +106,7 @@ internal static class SummaryAreaChecks
         using (var form = new SingleSummaryForm(true))
         {
             check("Ribbon MVP使用四组参数视图", form.Controls.Count==1 && form.Controls[0] is SummaryAreaView, "view missing");
-            var view=(SummaryAreaView)form.Controls[0]; check("新窗口默认按只读列名定位",view.MatchHeaders.Checked,"default mode wrong");view.MatchHeaders.Checked=false; check("来源文件检查默认关闭",!view.CheckFiles.Checked,"default checked");
+            var view=(SummaryAreaView)form.Controls[0]; check("来源文件检查默认关闭",!view.CheckFiles.Checked,"default checked");
             check("项目文件夹允许手动输入粘贴",!view.Folder.ReadOnly&&view.Folder.ShortcutsEnabled&&view.Folder.Enabled,"folder locked");
             view.Folder.Text="  \"C:\\项目文件夹\"  ";check("手动粘贴路径支持外层引号",view.ProjectFolder==@"C:\项目文件夹","quoted folder not normalized");
             int changes=0;view.Changed+=delegate { changes++; };view.Folder.Text=@"C:\另一文件夹";check("修改文件夹触发预检失效",changes==1,"path edit kept previous preview");

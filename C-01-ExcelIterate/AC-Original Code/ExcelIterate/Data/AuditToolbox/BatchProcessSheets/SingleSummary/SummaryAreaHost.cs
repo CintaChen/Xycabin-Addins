@@ -20,12 +20,6 @@ namespace Excel_Iterate
         private SummaryWorkbookBinding presetBinding;
         private readonly System.Diagnostics.Stopwatch executionClock = new System.Diagnostics.Stopwatch();
         private int bulkWrites;
-        private readonly List<SummaryMappedWork> mappedWork=new List<SummaryMappedWork>();
-        private readonly List<SummaryAreaPlan> fixedReadRanges=new List<SummaryAreaPlan>();
-        private readonly Dictionary<int,Dictionary<int,int>> fixedColumnMaps=new Dictionary<int,Dictionary<int,int>>();
-        private int fixedNameRow,fixedYearRow;
-        private readonly Dictionary<string,string> fixedYearCache=new Dictionary<string,string>();
-
         private SummaryAreaPlan companyHeader, yearSource, yearTarget;
         private readonly List<SummaryAreaPlan> headerTargets = new List<SummaryAreaPlan>();
         private readonly List<string> headerValues = new List<string>();
@@ -52,7 +46,7 @@ namespace Excel_Iterate
         internal SummaryAreaHost(object app, Form form, SummaryAreaView view, Action<bool> hostBusy = null, Func<bool> approveOverwrite = null)
         {
             this.app = app; this.form = form; this.view = view; this.hostBusy = hostBusy ?? delegate { };
-            this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, view.MatchHeaders.Checked?"将按预检的公司＋年度列名覆盖目标数据（含选区空白格）。保留已有表头；如启用补全，仅另写预检列出的空白年度格，来源及其他区域不改动。确认执行？":"将覆盖预检日志中的目标 Area 和启用的表头。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
+            this.approveOverwrite = approveOverwrite ?? delegate { return UiDialog.Show(form, "将覆盖预检日志中列出的全部目标 Area 和启用的名称、年度表头（包括所选空白格）。中间未选区域不变。确认执行？", "确认覆盖", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.OK; };
             view.AttachPresets(new BatchPresetActions(form, "summary", CapturePreset, ApplyPreset, delegate { return !handling && !running && !pending; }, view.Message, ContextAvailable));
             view.Pick += Pick; view.PreviewRequested += delegate { Safe(Preview); };
             view.ExecuteRequested += delegate { Safe(Start); }; view.UndoRequested += delegate { Safe(Undo); };
@@ -86,8 +80,6 @@ namespace Excel_Iterate
                 { "pasteSheet", pasteSheet ?? "" }, { "pasteArea", paste == null ? "" : SummaryAreaSettings.Encode(new[] { paste }) },
                 { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
             } };
-            preset.Values["matchHeaders"]=view.MatchHeaders.Checked.ToString();
-            preset.Values["fillMissingYears"]=view.FillMissingYears.Checked.ToString();preset.Values["missingYearSequence"]=view.MissingYearSequence.Text;
             preset.Values["headersEnabled"] = view.HeadersEnabled.Checked.ToString();preset.Values["headersFormula"]=view.FormulaHeaders.Checked.ToString();preset.Values["headersRepeat"]=view.RepeatNames.Checked.ToString();
             var names = new[] { "companyHeader", "yearSource", "yearTarget" }; var parts = new[] { companyHeader, yearSource, yearTarget };
             for(int i=0;i<names.Length;i++) { preset.Values[names[i]] = parts[i] == null ? "" : SummaryAreaSettings.Encode(new[] { parts[i] }); preset.Values[names[i]+"Sheet"] = parts[i] == null ? "" : parts[i].Sheet; }
@@ -105,33 +97,33 @@ namespace Excel_Iterate
                 using (var bag = new ComBag())
                 {
                     dynamic sheets = bag.Own(((dynamic)selectedBook).Worksheets);
-                    foreach (var part in settings.Template.Concat(settings.Lead).Concat(settings.Paste==null?new SummaryAreaPlan[0]:new[] { settings.Paste }))
-                    { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); if(!settings.MatchHeaders||settings.Lead.Contains(part))RejectSpecial(range, part.Address, bag); }
+                    foreach (var part in settings.Template.Concat(settings.Lead).Concat(new[] { settings.Paste }))
+                    { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); RejectSpecial(range, part.Address, bag); }
                 }
                 using (var bag = new ComBag())
                 {
                     dynamic sheets = bag.Own(((dynamic)selectedBook).Worksheets);
-                    foreach(var part in new[]{settings.CompanyHeader,settings.YearSource,settings.YearTarget}.Where(p=>p!=null&&!settings.MatchHeaders))
+                    foreach(var part in new[]{settings.CompanyHeader,settings.YearSource,settings.YearTarget}.Where(p=>p!=null))
                     { dynamic sheet = bag.Own(sheets.Item(part.Sheet)); dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(part)]); if(!settings.FormulaHeaders){if(part==settings.CompanyHeader)RejectArraySpill(range,"公司名称",bag);else RejectSpecial(range,"表头选区",bag);}
                         else if(part!=settings.CompanyHeader){object merged=range.MergeCells;if(merged==null||merged==DBNull.Value||Bool(merged))throw new InvalidOperationException("年度选区不能包含合并格。");} }
                 }
                 var oldBinding = presetBinding;
                 book = selectedBook; bookName = Convert.ToString(((dynamic)book).FullName); presetBinding = candidate;
-                templateSheet = settings.Template[0].Sheet; pasteSheet = settings.Paste==null?templateSheet:settings.Paste.Sheet; leadSheet = settings.Lead[0].Sheet;
+                templateSheet = settings.Template[0].Sheet; pasteSheet = settings.Paste.Sheet; leadSheet = settings.Lead[0].Sheet;
                 areas.Clear(); areas.AddRange(settings.Template); paste = settings.Paste; leadAreas.Clear(); leadAreas.AddRange(settings.Lead); lead = leadAreas[0];
                 loading = true;
                 try
                 {
-                    view.FillMissingYears.Checked=settings.FillMissingYears;view.MissingYearSequence.Text=settings.MissingYearSequence;view.MatchHeaders.Checked=settings.MatchHeaders;companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
+                    companyHeader=settings.CompanyHeader; yearSource=settings.YearSource; yearTarget=settings.YearTarget; view.HeadersEnabled.Checked=settings.HeadersEnabled;view.FormulaHeaders.Checked=settings.FormulaHeaders;view.RepeatNames.Checked=settings.RepeatNames;view.ReplaceHeaderArrays.Checked=false;
                     var headerNames=new[]{"companyHeader","yearSource","yearTarget"}; var headerParts=new[]{companyHeader,yearSource,yearTarget};
                     for(int i=0;i<headerNames.Length;i++) view.Address(headerNames[i],headerParts[i]==null ? "未选择" : headerParts[i].Sheet+"!"+SummaryAreaEngine.Address(headerParts[i]));
                     view.HeaderPreview.Text="请重新预检以生成映射预览。";
                     view.Folder.Text = settings.Folder; view.CheckFiles.Checked = settings.CheckFiles; view.Companies.Rows.Clear(); view.ReferenceSources.Rows.Clear();
                     view.Address("template", templateSheet + "!" + string.Join("; ", areas.Select(a => a.Address).ToArray()));
-                    view.Address("paste", paste==null?"按列名自动定位":pasteSheet + "!" + paste.Address); view.Address("lead", leadSheet + "!" + string.Join("; ", leadAreas.Select(a => a.Address).ToArray()));
+                    view.Address("paste", pasteSheet + "!" + paste.Address); view.Address("lead", leadSheet + "!" + string.Join("; ", leadAreas.Select(a => a.Address).ToArray()));
                 }
                 finally { loading = false; }
-                ready = false; companies.Clear(); cells.Clear(); targets.Clear();mappedWork.Clear();fixedReadRanges.Clear();fixedColumnMaps.Clear(); committed = true;
+                ready = false; companies.Clear(); cells.Clear(); targets.Clear(); committed = true;
                 if (watch != null) { watch.Dispose(); watch = null; }
                 if (oldBinding != null) oldBinding.Dispose();
                 view.Message("已恢复区域预设；公司名单不从预设读取，请重新读取 Lead 并预检。未修改、未保存工作表。");
@@ -309,172 +301,27 @@ namespace Excel_Iterate
                     if (code.Length == 0 && name.Length == 0) continue;
                     if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行两列必须同时填写。");
                     var company = new SummaryCompany { Row = binding.Row, Code = code, Name = name, Selected = !selected.ContainsKey(binding.Row) || selected[binding.Row] };
-                    companies.Add(company); view.Companies.Rows.Add(company.Selected, company.Row, code, name,company.Selected?"待预检":"未勾选");
+                    companies.Add(company); view.Companies.Rows.Add(company.Selected, company.Row, code, name);
                 }
             }
             finally { loading = false; }
         }
-        private sealed class FixedPeriod { internal string Key;internal object Value;internal int Row; }
-        private sealed class FixedScanLine { internal int Row;internal object Values; }
-        private sealed class FixedHeaderPair
-        {
-            internal int NameRow,YearRow,Company;
-            internal long Score;
-            internal Dictionary<int,string> Years;
-        }
-        private static string FixedText(object value){return Convert.ToString(value,CultureInfo.InvariantCulture).Trim();}
-        private Dictionary<string,List<int>> CompanyLookup()
-        {
-            var lookup=new Dictionary<string,List<int>>(StringComparer.OrdinalIgnoreCase);
-            foreach(var company in companies)foreach(string raw in new[]{company.Code,company.Name})
-            {
-                string text=FixedText(raw);if(text.Length==0)continue;if(!lookup.ContainsKey(text))lookup[text]=new List<int>();if(!lookup[text].Contains(company.Row))lookup[text].Add(company.Row);
-            }
-            return lookup;
-        }
-        private static int[] FixedNames(object values,int columns,int years,IDictionary<string,List<int>> lookup)
-        {
-            var result=new int[columns];int current=0,start=0;
-            for(int c=0;c<columns;c++)
-            {
-                object raw=SummaryArrays.Pick(values,0,1,c,columns);string text=FixedText(raw);
-                if(text.Length>0)
-                {
-                    List<int> rows;int found=raw is string&&lookup.TryGetValue(text,out rows)&&rows.Count==1?rows[0]:0;
-                    if(found==0){current=0;start=c;}else {if(found!=current||c-start>=years)start=c;current=found;}
-                }
-                else if(c-start>=years)current=0;
-                result[c]=current;
-            }
-            return result;
-        }
-        private List<FixedPeriod> ReadFixedPeriods(ComBag bag)
-        {
-            dynamic sheet=Sheet(leadSheet,bag),used=bag.Own(sheet.UsedRange);int last=Math.Min(10000,Convert.ToInt32(used.Row)+Convert.ToInt32(((dynamic)bag.Own(used.Rows)).Count)-1);
-            dynamic range=bag.Own(sheet.Range["N1:N"+Math.Max(1,last)]);object values=range.Value2;int heading=0;
-            var titles=new HashSet<string>(new[]{"期间","年度","年份","时间","Period","Year"},StringComparer.OrdinalIgnoreCase);
-            for(int r=1;r<=last;r++)if(titles.Contains(FixedText(SummaryArrays.Pick(values,r-1,last,0,1)))){heading=r;break;}
-            if(heading==0)throw new InvalidOperationException("公司来源表 N 列未找到期间/年度表头；请检查现有年度配置，未修改单元格。");
-            var result=new List<FixedPeriod>();
-            for(int r=heading+1;r<=last&&result.Count<=100;r++)
-            {
-                object value=SummaryArrays.Pick(values,r-1,last,0,1);if(!SummaryArrays.HasContent(value))break;
-                dynamic cell=bag.Own(sheet.Range["N"+r]);string key=FixedText(cell.Text);
-                if(SummaryAreaEngine.IsError(value)||key.Length==0||key.Trim('#').Length==0)throw new InvalidOperationException("年度来源显示错误或列宽不足："+leadSheet+"!N"+r);
-                result.Add(new FixedPeriod{Key=key,Value=value,Row=r});
-            }
-            if(result.Count==0||result.Count>100||result.Select(y=>y.Key).Distinct(StringComparer.Ordinal).Count()!=result.Count)throw new InvalidOperationException("N 列期间为空、过长或重复，无法唯一匹配年度列名。");
-            fixedReadRanges.Add(new SummaryAreaPlan{Sheet=leadSheet,Row=heading,Column=14,Rows=result.Count+1,Columns=1});return result;
-        }
-        private string FixedYear(object value,dynamic sheet,int row,int column,IList<FixedPeriod> years,ComBag bag)
-        {
-            if(SummaryAreaEngine.IsError(value))return "";
-            if(value is string){string raw=FixedText(value);return years.Any(y=>y.Key==raw)?raw:"";}
-            if(!SummaryArrays.HasContent(value))return "";
-            string address=row+":"+column,display;if(!fixedYearCache.TryGetValue(address,out display))
-            {using(var one=new ComBag()){dynamic cell=one.Own(sheet.Range[CellAddress.Name(row,column)]);display=FixedText(cell.Text);}fixedYearCache[address]=display;}
-            return years.Any(y=>y.Key==display)?display:"";
-        }
-        private void PrepareColumnMatches(dynamic sheet,ComBag bag)
-        {
-            fixedYearCache.Clear();SummaryAreaEngine.ValidateAreas(areas);if(areas.Any(a=>a.Sheet!=templateSheet))throw new InvalidOperationException("已编制区域不能跨工作表。");
-            var years=ReadFixedPeriods(bag);var lookup=CompanyLookup();int first=areas.Min(a=>a.Column),last=areas.Max(a=>a.Column+a.Columns-1),top=areas.Min(a=>a.Row);
-            if(last-first+1>years.Count)throw new InvalidOperationException("请选择一家公司已编制的数据列；来源跨度 "+(last-first+1)+"，期间数 "+years.Count+"。");
-            var selectedColumns=areas.SelectMany(a=>Enumerable.Range(a.Column,a.Columns)).Distinct().ToList();
-            dynamic used=bag.Own(sheet.UsedRange);int lastRow=Convert.ToInt32(used.Row)+Convert.ToInt32(((dynamic)bag.Own(used.Rows)).Count)-1,lastColumn=Convert.ToInt32(used.Column)+Convert.ToInt32(((dynamic)bag.Own(used.Columns)).Count)-1;
-            int scanFirst=Math.Max(1,first-years.Count+1),scanLast=Math.Min(16384,last+years.Count-1),columns=scanLast-scanFirst+1;
-            var lines=new Dictionary<int,FixedScanLine>();var bands=new[]{new[]{1,Math.Min(lastRow,128)},new[]{Math.Max(1,top-64),Math.Min(lastRow,top+64)}};
-            foreach(var band in bands)
-            {
-                if(band[1]<band[0])continue;int rows=band[1]-band[0]+1;dynamic range=bag.Own(sheet.Range[CellAddress.Name(band[0],scanFirst)+":"+CellAddress.Name(band[1],scanLast)]);object data=range.Value2;
-                for(int r=0;r<rows;r++){var values=new object[1,columns];for(int c=0;c<columns;c++)values[0,c]=SummaryArrays.Pick(data,r,rows,c,columns);lines[band[0]+r]=new FixedScanLine{Row=band[0]+r,Values=values};}
-            }
-            var candidates=new List<FixedHeaderPair>();
-            foreach(var name in lines.Values)
-            {
-                int[] ids=FixedNames(name.Values,columns,years.Count,lookup);int owner=ids[first-scanFirst];if(owner==0||selectedColumns.Any(c=>ids[c-scanFirst]!=owner))continue;
-                int left=first-scanFirst,right=last-scanFirst;while(left>0&&ids[left-1]==owner)left--;while(right+1<columns&&ids[right+1]==owner)right++;
-                foreach(var year in lines.Values.Where(y=>y.Row>name.Row))
-                {
-                    var sourceYears=new Dictionary<int,string>();for(int c=left;c<=right;c++){string key=FixedYear(SummaryArrays.Pick(year.Values,0,1,c,columns),sheet,year.Row,scanFirst+c,years,bag);if(key.Length>0)sourceYears[scanFirst+c]=key;}
-                    if(sourceYears.Count!=years.Count||sourceYears.Values.Distinct(StringComparer.Ordinal).Count()!=years.Count||selectedColumns.Any(c=>!sourceYears.ContainsKey(c)))continue;
-                    candidates.Add(new FixedHeaderPair{NameRow=name.Row,YearRow=year.Row,Company=owner,Years=sourceYears,Score=Math.Abs((long)year.Row-top)*2048+year.Row-name.Row});
-                }
-            }
-            if(candidates.Count==0)throw new InvalidOperationException("未识别有效的公司/年度列名；请检查现有 LET 结果、N 列期间和所选数据列。表头若有 #REF! 须先修复，本模式不重建表头。");
-            var pair=candidates.OrderBy(c=>c.Score).First();if(candidates.Count(c=>c.Score==pair.Score)>1)throw new InvalidOperationException("识别到多个同等候选表头，无法安全定位；请把实际表头一同纳入已编制区域后重新预检。");
-            fixedNameRow=pair.NameRow;fixedYearRow=pair.YearRow;
-            dynamic names=bag.Own(sheet.Range["A"+pair.NameRow+":"+CellAddress.Name(pair.NameRow,lastColumn)]),periods=bag.Own(sheet.Range["A"+pair.YearRow+":"+CellAddress.Name(pair.YearRow,lastColumn)]);
-            object nameValues=names.Value2,periodValues=periods.Value2;int[] companyIds=FixedNames(nameValues,lastColumn,years.Count,lookup);var headers=new List<SummaryColumnHeader>();
-            for(int c=1;c<=lastColumn;c++)
-            {
-                if(companyIds[c-1]==0)continue;string key=FixedYear(SummaryArrays.Pick(periodValues,0,1,c-1,lastColumn),sheet,pair.YearRow,c,years,bag);if(key.Length>0)headers.Add(new SummaryColumnHeader{CompanyRow=companyIds[c-1],Column=c,Year=key});
-            }
-            foreach(var company in companies)
-            {
-                if(company.Row==pair.Company){company.Selected=false;view.Message("已有公司，整组跳过："+company.Code+"；来源列 "+CellAddress.ColumnLetters(first)+":"+CellAddress.ColumnLetters(last));}
-                foreach(DataGridViewRow row in view.Companies.Rows)if(Convert.ToInt32(row.Cells["row"].Value)==company.Row)row.Cells["status"].Value=company.Row==pair.Company?"已编制，跳过":company.Selected?"将生成":"未勾选";
-            }
-            if(view.FillMissingYears.Checked)PlanMissingYears(sheet,companyIds,periodValues,years,headers,pair,bag);
-            foreach(var company in companies.Where(c=>c.Selected))foreach(string year in pair.Years.Values)
-                if(!headers.Any(h=>h.CompanyRow==company.Row&&h.Year==year))throw new InvalidOperationException("缺少目标公司 "+company.Code+"（Lead 第 "+company.Row+" 行）的年度："+year+"；识别年度行 "+pair.YearRow+"。可启用补全缺失年度后重新预检。");
-            var maps=SummaryColumnMapping.Build(companies.Where(c=>c.Selected).Select(c=>c.Row),pair.Company,pair.Years,headers);foreach(var entry in maps)fixedColumnMaps[entry.Key]=entry.Value;
-            mappedWork.AddRange(SummaryColumnMapping.Work(areas,maps,new HashSet<int>{pair.NameRow,pair.YearRow}));targets=mappedWork.Select(w=>w.Target).ToList();
-            fixedReadRanges.Add(new SummaryAreaPlan{Sheet=templateSheet,Row=pair.NameRow,Column=1,Rows=1,Columns=lastColumn});fixedReadRanges.Add(new SummaryAreaPlan{Sheet=templateSheet,Row=pair.YearRow,Column=1,Rows=1,Columns=lastColumn});
-            view.Message("复用现有表头：公司行 "+pair.NameRow+"，年度行 "+pair.YearRow+"；数据保持原行号；名称、年度及其公式均不写入。");
-            foreach(var entry in maps){var company=companies.Single(c=>c.Row==entry.Key);foreach(var col in entry.Value)view.Message(company.Code+" / "+pair.Years[col.Key]+"："+CellAddress.ColumnLetters(col.Key)+" → "+CellAddress.ColumnLetters(col.Value));}
-        }
-        private void PlanMissingYears(dynamic sheet,int[] ids,object values,IList<FixedPeriod> years,IList<SummaryColumnHeader> headers,FixedHeaderPair pair,ComBag bag)
-        {
-            var sequence=SummaryColumnMapping.YearSequence(view.MissingYearSequence.Text,years.Select(y=>y.Key));
-            view.Message("缺失年度补全序列："+string.Join("、",sequence.ToArray())+"；仅勾选目标公司，来源公司不补全。");
-            foreach(var company in companies.Where(c=>c.Selected&&c.Row!=pair.Company))
-            {
-                var columns=Enumerable.Range(1,ids.Length).Where(c=>ids[c-1]==company.Row).ToList();
-                if(columns.Count!=sequence.Count||columns.Last()-columns.First()+1!=columns.Count)throw new InvalidOperationException("公司 "+company.Code+" 的表头分组不连续或列数与年度不符，无法补全。");
-                var existing=new List<string>();
-                foreach(int column in columns)
-                {
-                    object raw=SummaryArrays.Pick(values,0,1,column-1,ids.Length);
-                    string text=FixedYear(raw,sheet,pair.YearRow,column,years,bag);
-                    if(text.Length==0&&SummaryArrays.HasContent(raw))throw new InvalidOperationException("年度表头不是有效年度："+CellAddress.Name(pair.YearRow,column)+"；内容="+FixedText(raw));
-                    existing.Add(text);
-                }
-                var missing=SummaryColumnMapping.MissingYears(sequence,existing);
-                foreach(var entry in missing)using(var one=new ComBag())
-                {
-                    int column=columns[entry.Key];var part=new SummaryAreaPlan{Sheet=templateSheet,Row=pair.YearRow,Column=column,Rows=1,Columns=1};dynamic cell=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);
-                    RejectSpecial(cell,"年度补全目标",one);
-                    if(Bool((object)cell.HasFormula)||SummaryArrays.HasContent((object)cell.Value2))throw new InvalidOperationException("年度补全仅允许无公式空白格："+SummaryAreaEngine.Address(part));
-                    if(areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||(leadSheet==templateSheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("年度补全与来源选区冲突："+SummaryAreaEngine.Address(part));
-                    headerTargets.Add(part);headerValues.Add(entry.Value);headers.Add(new SummaryColumnHeader{CompanyRow=company.Row,Column=column,Year=entry.Value});
-                    view.Message("计划补全 "+company.Code+" / "+templateSheet+"!"+SummaryAreaEngine.Address(part)+" → "+entry.Value+"（执行前保持空白，支持撤销）");
-                }
-            }
-        }
-        private SummaryCompany CompanyForStep(int index,IList<SummaryCompany> picked)
-        {return mappedWork.Count>0?companies.Single(c=>c.Row==mappedWork[index].CompanyRow):picked[index/areas.Count];}
-        private IDictionary<int,int> ColumnMap(int company)
-        {Dictionary<int,int> map;return view.MatchHeaders.Checked&&fixedColumnMaps.TryGetValue(company,out map)?map:null;}
         private void Preview()
         {
             if (running || pending) return; ready = false; CheckBook();
-            if (areas.Count == 0 || (!view.MatchHeaders.Checked&&paste == null) || lead == null) throw new InvalidOperationException("请完成三组选区。");
-            if (!view.MatchHeaders.Checked&&templateSheet != pasteSheet) throw new InvalidOperationException("已编制区域和粘贴起点必须属于同一工作表。");
+            if (areas.Count == 0 || paste == null || lead == null) throw new InvalidOperationException("请完成三组选区。");
+            if (templateSheet != pasteSheet) throw new InvalidOperationException("已编制区域和粘贴起点必须属于同一工作表。");
             if (!Directory.Exists(view.ProjectFolder)) throw new InvalidOperationException("项目文件夹不存在。");
             using (var bag = new ComBag())
             {
                 if (Bool(((dynamic)book).ReadOnly) || Bool(((dynamic)book).ProtectStructure)) throw new InvalidOperationException("工作簿只读或结构受保护，不能执行及备份。");
                 dynamic sheet = Sheet(templateSheet, bag);
                 if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("目标工作表受保护。");
-                ReadCompanies(bag);mappedWork.Clear();fixedReadRanges.Clear();fixedColumnMaps.Clear();
-                if(view.MatchHeaders.Checked){headerTargets.Clear();headerValues.Clear();headerExpressions.Clear();headerFormats.Clear();oldHeaderArrays.Clear();yearHeaderArrays.Clear();PrepareColumnMatches(sheet,bag);}
-                var picked = companies.Where(c => c.Selected).ToList();
-                if(!view.MatchHeaders.Checked)targets=SummaryAreaEngine.Targets(areas,paste.Row,paste.Column,picked.Count);
-                var scanAreas=view.MatchHeaders.Checked?SummaryColumnMapping.DataAreas(areas,new HashSet<int>{fixedNameRow,fixedYearRow}):areas;
+                ReadCompanies(bag); var picked = companies.Where(c => c.Selected).ToList();
+                targets = SummaryAreaEngine.Targets(areas, paste.Row, paste.Column, picked.Count);
                 if (leadSheet == templateSheet && targets.Any(t => LeadSelections().Any(part => SummaryAreaEngine.Intersects(t, part)))) throw new InvalidOperationException("目标不能覆盖 Lead 公司字段。");
                 cells.Clear(); var errors = new List<string>();
-                foreach (var area in scanAreas)
+                foreach (var area in areas)
                 {
                     dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(area)]); RejectSpecial(range, area.Address, bag);
                     for (int row = area.Row; row < area.Row + area.Rows; row++) for (int column = area.Column; column < area.Column + area.Columns; column++)
@@ -487,7 +334,7 @@ namespace Excel_Iterate
                             try
                             {
                                 SummaryExistingFormula existing=null;bool literal=!formula && (!(value is string)||text.StartsWith("=",StringComparison.Ordinal)||!System.Text.RegularExpressions.Regex.IsMatch(text,@"!\$?[A-Za-z]{1,3}\$?[0-9]"));
-                                if (formula) { existing=SummaryExistingFormula.Read(text); if(!view.MatchHeaders.Checked&&!existing.Spans.Any(x=>x.Kind!=RefKind.Local))existing=null; }
+                                if (formula) { existing=SummaryExistingFormula.Read(text); if(!existing.Spans.Any(x=>x.Kind!=RefKind.Local))existing=null; }
                                 else if(!literal) foreach (var company in picked) SummaryTextReference.External(view.ProjectFolder, company.Name, text);
                                 cells.Add(new SummaryAreaCell { Row = row, Column = column, Text = text, Formula = formula, Literal=literal,Existing=existing,R1C1 = formula ? Convert.ToString(cell.FormulaR1C1) : null });
                             }
@@ -504,9 +351,9 @@ namespace Excel_Iterate
                 }
                 for (int i = 0; i < targets.Count; i++)
                 {
-                    var source = mappedWork.Count>0?mappedWork[i].Source:areas[i % areas.Count]; var target = targets[i];
+                    var source = areas[i % areas.Count]; var target = targets[i];
                     foreach (var cell in cells.Where(c => c.Formula && c.Row >= source.Row && c.Row < source.Row + source.Rows && c.Column >= source.Column && c.Column < source.Column + source.Columns))
-                        try { if(cell.Existing==null)SummaryAreaEngine.ValidateShift(cell.Text, target.Row - source.Row, target.Column - source.Column); else cell.Existing.Render(view.ProjectFolder,CompanyForStep(i,picked).Name,target.Row-source.Row,target.Column-source.Column,ColumnMap(CompanyForStep(i,picked).Row)); }
+                        try { if(cell.Existing==null)SummaryAreaEngine.ValidateShift(cell.Text, target.Row - source.Row, target.Column - source.Column); else cell.Existing.Render(view.ProjectFolder,picked[i/areas.Count].Name,target.Row-source.Row,target.Column-source.Column); }
                         catch (Exception error) { errors.Add(CellAddress.Name(cell.Row, cell.Column) + " | " + cell.Text + " | " + error.Message); }
                 }
                 int occupied = 0; originalTargetFormulas.Clear();
@@ -538,15 +385,14 @@ namespace Excel_Iterate
             }
         }
         private string SelectionKey()
-        { return view.FillMissingYears.Checked+"|"+view.MissingYearSequence.Text+"|"+view.MatchHeaders.Checked+"|"+view.FormulaHeaders.Checked+"|"+view.RepeatNames.Checked+"|"+view.ReplaceHeaderArrays.Checked+"|"+string.Join(";",view.ReferenceSources.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToString(r.Cells["source"].Value)+":"+Convert.ToString(r.Cells["decision"].Value)).ToArray()) + "|" + view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
+        { return view.FormulaHeaders.Checked+"|"+view.RepeatNames.Checked+"|"+view.ReplaceHeaderArrays.Checked+"|"+string.Join(";",view.ReferenceSources.Rows.Cast<DataGridViewRow>().Select(r=>Convert.ToString(r.Cells["source"].Value)+":"+Convert.ToString(r.Cells["decision"].Value)).ToArray()) + "|" + view.HeadersEnabled.Checked + "|" + string.Join(";",new[]{companyHeader,yearSource,yearTarget}.Select(p=>p==null ? "" : p.Sheet+"!"+SummaryAreaSettings.Encode(new[]{p})).ToArray()) + "|" + view.Folder.Text + "|" + view.CheckFiles.Checked + "|" + string.Join(",", view.Companies.Rows.Cast<DataGridViewRow>().Select(r => Convert.ToString(r.Cells["row"].Value) + ":" + Convert.ToString(r.Cells["selected"].Value)).ToArray()); }
         private string Fingerprint()
         {
             CheckBook(); var clock = System.Diagnostics.Stopwatch.StartNew(); var text = new StringBuilder(bookName); int xmlAreas = 0, fallbackAreas = 0;
             using (var bag = new ComBag())
             {
                 var leadParts = LeadSelections();
-                if(view.MatchHeaders.Checked){dynamic table=Sheet(templateSheet,bag),used=bag.Own(table.UsedRange);Append(text,used.Row);Append(text,used.Column);Append(text,((dynamic)bag.Own(used.Rows)).Count);Append(text,((dynamic)bag.Own(used.Columns)).Count);}
-                foreach (var part in areas.Concat(targets).Concat(leadParts).Concat(headerTargets).Concat(fixedReadRanges).Concat(oldHeaderArrays.Select(a=>a.Area)).Concat(view.HeadersEnabled.Checked && yearSource!=null ? new[]{yearSource} : new SummaryAreaPlan[0]))
+                foreach (var part in areas.Concat(targets).Concat(leadParts).Concat(headerTargets).Concat(oldHeaderArrays.Select(a=>a.Area)).Concat(view.HeadersEnabled.Checked && yearSource!=null ? new[]{yearSource} : new SummaryAreaPlan[0]))
                 {
                     dynamic sheet = Sheet(leadParts.Contains(part) ? leadSheet : part.Sheet ?? templateSheet, bag);
                     if (Bool(sheet.ProtectContents)) throw new InvalidOperationException("工作表保护状态变化。");
@@ -555,12 +401,12 @@ namespace Excel_Iterate
                         dynamic range = snapshot.Own(sheet.Range[SummaryAreaEngine.Address(part)]); string xml = null;
                         // Company names may themselves be formulas. Their evaluated
                         // values determine filenames and must invalidate the plan.
-                        if (leadParts.Contains(part) || fixedReadRanges.Contains(part) || (view.HeadersEnabled.Checked && part==yearSource))
+                        if (leadParts.Contains(part) || (view.HeadersEnabled.Checked && part==yearSource))
                         {
                             object values = range.Value2;
                             for (int r = 0; r < part.Rows; r++) for (int c = 0; c < part.Columns; c++) Append(text, SummaryArrays.Pick(values, r, part.Rows, c, part.Columns));
                         }
-                        if((view.HeadersEnabled.Checked && part==yearSource)||fixedReadRanges.Contains(part)) for(int c=0;c<Math.Max(part.Rows,part.Columns);c++) { dynamic displayed=snapshot.Own(sheet.Range[CellAddress.Name(part.Row+(part.Rows>1?c:0),part.Column+(part.Rows==1?c:0))]); Append(text,displayed.Text); }
+                        if(view.HeadersEnabled.Checked && part==yearSource) for(int c=0;c<Math.Max(part.Rows,part.Columns);c++) { dynamic displayed=snapshot.Own(sheet.Range[CellAddress.Name(part.Row+(part.Rows>1?c:0),part.Column+(part.Rows==1?c:0))]); Append(text,displayed.Text); }
                         try { xml = SummaryAreaEngine.XmlState(Convert.ToString(range.Value[11])); }
                         catch (Exception error) { UiDiagnostics.Record("summary-xml-fallback", error); }
                         if (xml != null) { Append(text, "xml"); Append(text, xml); AppendComments(sheet, part, text); xmlAreas++; continue; }
@@ -624,13 +470,13 @@ namespace Excel_Iterate
                 using (var quiet = new HostQuiet(app)) using (var links = new HostLinkQuiet(app)) using (var bag = new ComBag())
                 {
                     dynamic sheet = Sheet(templateSheet, bag), original = Sheet(backup, bag);
-                    var sourceArea=mappedWork.Count>0?mappedWork[step].Source:areas[step%areas.Count];var targetArea=targets[step];var company=CompanyForStep(step,picked);
+                    var sourceArea = areas[step % areas.Count]; var targetArea = targets[step]; var company = picked[step / areas.Count];
                     dynamic source = bag.Own(original.Range[SummaryAreaEngine.Address(sourceArea)]), target = bag.Own(sheet.Range[SummaryAreaEngine.Address(targetArea)]);
                     touched = step + 1; source.Copy(target);
                     var block = cells.Where(c => c.Row >= sourceArea.Row && c.Row < sourceArea.Row + sourceArea.Rows && c.Column >= sourceArea.Column && c.Column < sourceArea.Column + sourceArea.Columns).ToList();
                     if(block.Any(c=>(!c.Formula&&!c.Literal)||c.Existing!=null))
                     {
-                        if(!block.Any(c=>c.Literal)) { target.Formula=SummaryAreaEngine.FormulaMatrix((object)target.Formula,sourceArea,block,view.ProjectFolder,company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column,ColumnMap(company.Row));bulkWrites++; }
+                        if(!block.Any(c=>c.Literal)) { target.Formula=SummaryAreaEngine.FormulaMatrix((object)target.Formula,sourceArea,block,view.ProjectFolder,company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);bulkWrites++; }
                         else foreach(var row in block.Where(c=>(!c.Formula&&!c.Literal)||c.Existing!=null).GroupBy(c=>c.Row))
                         {
                             var ordered=row.OrderBy(c=>c.Column).ToList();int first=0;
@@ -639,7 +485,7 @@ namespace Excel_Iterate
                                 int last=first;while(last+1<ordered.Count&&ordered[last+1].Column==ordered[last].Column+1)last++;
                                 var run=new SummaryAreaPlan{Row=row.Key,Column=ordered[first].Column,Rows=1,Columns=ordered[last].Column-ordered[first].Column+1};
                                 string address=CellAddress.Name(targetArea.Row+run.Row-sourceArea.Row,targetArea.Column+run.Column-sourceArea.Column)+":"+CellAddress.Name(targetArea.Row+run.Row-sourceArea.Row,targetArea.Column+run.Column-sourceArea.Column+run.Columns-1);
-                                dynamic output=bag.Own(sheet.Range[address]);output.Formula=SummaryAreaEngine.FormulaMatrix((object)output.Formula,run,ordered.GetRange(first,last-first+1),view.ProjectFolder,company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column,ColumnMap(company.Row));bulkWrites++;first=last+1;
+                                dynamic output=bag.Own(sheet.Range[address]);output.Formula=SummaryAreaEngine.FormulaMatrix((object)output.Formula,run,ordered.GetRange(first,last-first+1),view.ProjectFolder,company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);bulkWrites++;first=last+1;
                             }
                         }
                     }
@@ -647,7 +493,7 @@ namespace Excel_Iterate
                     if (block.Count > 0)
                     {
                         VerifyFormulaCells(sheet, target, sourceArea, targetArea, block);
-                        SummaryAreaEngine.VerifyMatrix((object)target.Formula, (object)target.FormulaR1C1, sourceArea, block, view.ProjectFolder, company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column,ColumnMap(company.Row));
+                        SummaryAreaEngine.VerifyMatrix((object)target.Formula, (object)target.FormulaR1C1, sourceArea, block, view.ProjectFolder, company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);
                     }
                     formulaCount += block.Count;
                     step++; view.Message("已完成 " + step + "/" + targets.Count + "：" + company.Name + " → " + SummaryAreaEngine.Address(targetArea));
@@ -773,7 +619,6 @@ namespace Excel_Iterate
         private static string HeaderKey(SummaryAreaPlan part){return part.Row+":"+part.Column;}
         private void PrepareHeaders(ComBag bag, IList<SummaryCompany> picked)
         {
-            if(view.MatchHeaders.Checked){view.HeaderPreview.Text="保留已有表头；计划补全空白年度 "+headerTargets.Count+" 格。";return;}
             headerTargets.Clear();headerValues.Clear();headerExpressions.Clear();headerFormats.Clear();oldHeaderArrays.Clear();yearHeaderArrays.Clear();view.HeaderPreview.Text="";
             if(!view.HeadersEnabled.Checked)return;
             if(companyHeader==null||yearSource==null||yearTarget==null)throw new InvalidOperationException("启用表头后，请完成名称目标、年度来源和年度目标。");

@@ -15,9 +15,6 @@ namespace Excel_Iterate
         internal SummaryAreaPlan Paste;
         internal string Folder;
         internal bool CheckFiles, HeadersEnabled, FormulaHeaders, RepeatNames;
-        internal bool MatchHeaders=true;
-        internal bool FillMissingYears;
-        internal string MissingYearSequence="";
         internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget;
         internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
         { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
@@ -49,109 +46,19 @@ namespace Excel_Iterate
             if (!values.ContainsKey("mode") || values["mode"] != "area-mvp") throw new InvalidOperationException("这是旧整列参数预设，已保留在库中；请重新指定已编制区域和粘贴起点后另存区域预设，不会覆盖旧预设。");
             foreach (string key in new[] { "templateSheet", "templateAreas", "pasteSheet", "pasteArea", "leadSheet", "leadAreas", "projectFolder", "checkFiles" }) if (!values.ContainsKey(key)) throw new InvalidOperationException("区域预设缺少参数：" + key);
             var result = new SummaryAreaSettings { Folder = values["projectFolder"] };
-            if(values.ContainsKey("matchHeaders")&&!bool.TryParse(values["matchHeaders"],out result.MatchHeaders))throw new InvalidOperationException("列名定位选项无效。");
             if (!bool.TryParse(values["checkFiles"], out result.CheckFiles)) throw new InvalidOperationException("来源文件检查选项无效。");
             result.Template.AddRange(Decode(values["templateAreas"], values["templateSheet"])); result.Lead.AddRange(Decode(values["leadAreas"], values["leadSheet"]));
-            if(!result.MatchHeaders || !string.IsNullOrEmpty(values["pasteArea"]))
-            {
-                var paste=Decode(values["pasteArea"],values["pasteSheet"]);
-                if(paste.Count!=1||paste[0].Rows!=1||paste[0].Columns!=1||values["pasteSheet"]!=values["templateSheet"])throw new InvalidOperationException("预设粘贴起点须为同表的单元格。");result.Paste=paste[0];
-            }
-            if(values.ContainsKey("fillMissingYears")&&!bool.TryParse(values["fillMissingYears"],out result.FillMissingYears))throw new InvalidOperationException("年度补全开关无效。");
-            if(values.ContainsKey("missingYearSequence"))result.MissingYearSequence=values["missingYearSequence"]??"";
-            if(result.MatchHeaders){SummaryAreaEngine.ValidateAreas(result.Template);SummaryAreaEngine.LeadRows(result.Lead);return result;}
+            var paste = Decode(values["pasteArea"], values["pasteSheet"]);
+            if (paste.Count != 1 || paste[0].Rows != 1 || paste[0].Columns != 1 || values["pasteSheet"] != values["templateSheet"]) throw new InvalidOperationException("预设粘贴起点须为已编制区域同表的一个单元格。");
             if (values.ContainsKey("headersEnabled") && !bool.TryParse(values["headersEnabled"], out result.HeadersEnabled)) throw new InvalidOperationException("表头开关无效。");
             if(values.ContainsKey("headersFormula")&&!bool.TryParse(values["headersFormula"],out result.FormulaHeaders))throw new InvalidOperationException("表头公式选项无效。");
             if(values.ContainsKey("headersRepeat")&&!bool.TryParse(values["headersRepeat"],out result.RepeatNames))throw new InvalidOperationException("名称重复选项无效。");
             result.CompanyHeader = OptionalHeader(values, "companyHeader"); result.YearSource = OptionalHeader(values, "yearSource"); result.YearTarget = OptionalHeader(values, "yearTarget");
             if (result.HeadersEnabled && (result.CompanyHeader == null || result.YearSource == null || result.YearTarget == null)) throw new InvalidOperationException("启用表头的预设缺少选区。");
             if ((result.CompanyHeader != null && (result.CompanyHeader.Rows != 1 || result.CompanyHeader.Columns != 1 || result.CompanyHeader.Sheet != values["templateSheet"])) || (result.YearTarget != null && (result.YearTarget.Rows != 1 || result.YearTarget.Columns != 1 || result.YearTarget.Sheet != values["templateSheet"])) || (result.YearSource != null && result.YearSource.Rows != 1 && result.YearSource.Columns != 1)) throw new InvalidOperationException("表头预设的目标或年度来源形状无效。");
-            SummaryAreaEngine.LeadRows(result.Lead); SummaryAreaEngine.Targets(result.Template, result.Paste.Row, result.Paste.Column, 1);
+            result.Paste = paste[0]; SummaryAreaEngine.LeadRows(result.Lead); SummaryAreaEngine.Targets(result.Template, result.Paste.Row, result.Paste.Column, 1);
             int row = result.Template.Min(p => p.Row), column = result.Template.Min(p => p.Column); foreach (var part in result.Template) { part.RowOffset = part.Row - row; part.ColumnOffset = part.Column - column; }
             return result;
-        }
-    }
-    internal sealed class SummaryColumnHeader
-    {
-        internal int CompanyRow,Column;
-        internal string Year;
-    }
-    internal sealed class SummaryMappedWork
-    {
-        internal int CompanyRow;
-        internal SummaryAreaPlan Source,Target;
-    }
-    internal static class SummaryColumnMapping
-    {
-        internal static List<string> YearSequence(string custom,IEnumerable<string> defaults)
-        {
-            var expected=defaults.ToList();var result=string.IsNullOrWhiteSpace(custom)?expected:custom.Split(new[]{'、',',','，',';','；','\r','\n'},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim()).ToList();
-            if(result.Count!=expected.Count||result.Any(string.IsNullOrWhiteSpace)||result.Distinct(StringComparer.Ordinal).Count()!=result.Count||!new HashSet<string>(expected,StringComparer.Ordinal).SetEquals(result))throw new InvalidOperationException("自定义年度须与 Lead 年度数量、文字一致且不重复；可以调整顺序。");
-            return result;
-        }
-        internal static Dictionary<int,string> MissingYears(IList<string> sequence,IList<string> existing)
-        {
-            if(sequence.Count!=existing.Count)throw new InvalidOperationException("公司分组列数与年度数量不一致，无法安全补全。");
-            var result=new Dictionary<int,string>();if(existing.All(x=>!string.IsNullOrEmpty(x)))return result;
-            for(int i=0;i<sequence.Count;i++)
-            {if(string.IsNullOrEmpty(existing[i]))result.Add(i,sequence[i]);else if(existing[i]!=sequence[i])throw new InvalidOperationException("已有年度与补全序列冲突，组内第 "+(i+1)+" 列："+existing[i]+"；预期 "+sequence[i]);}
-            return result;
-        }
-        private static string Key(int company,string year)
-        {if(string.IsNullOrWhiteSpace(year))throw new InvalidOperationException("公司/年度列名为空。");return company+"|"+year.Trim();}
-        internal static Dictionary<int,Dictionary<int,int>> Build(IEnumerable<int> selected,int sourceCompany,IDictionary<int,string> sourceYears,IList<SummaryColumnHeader> headers)
-        {
-            if(sourceYears.Count==0||sourceYears.Values.Any(string.IsNullOrWhiteSpace)||sourceYears.Values.Select(y=>y.Trim()).Distinct(StringComparer.Ordinal).Count()!=sourceYears.Count)throw new InvalidOperationException("来源年度列名为空或重复，无法唯一映射。");
-            var lookup=new Dictionary<string,List<int>>(StringComparer.Ordinal);
-            foreach(var header in headers)
-            {
-                if(header.Column<1||header.Column>16384)throw new InvalidOperationException("目标列超出边界。");string key=Key(header.CompanyRow,header.Year);
-                if(!lookup.ContainsKey(key))lookup[key]=new List<int>();lookup[key].Add(header.Column);
-            }
-            var result=new Dictionary<int,Dictionary<int,int>>();
-            foreach(int company in selected.Distinct())
-            {
-                if(company==sourceCompany)continue;var map=new Dictionary<int,int>();
-                foreach(var source in sourceYears)
-                {
-                    List<int> columns;string key=Key(company,source.Value);
-                    if(!lookup.TryGetValue(key,out columns))throw new InvalidOperationException("缺少目标公司行 "+company+" 的年度列名："+source.Value);
-                    if(columns.Count!=1)throw new InvalidOperationException("目标公司行 "+company+" 的年度列名重复："+source.Value);
-                    map[source.Key]=columns[0];
-                }
-                if(map.Values.Distinct().Count()!=map.Count)throw new InvalidOperationException("多个年度指向同一目标列。");result[company]=map;
-            }
-            if(result.Count==0)throw new InvalidOperationException("勾选公司均为已编制公司，无需重复生成。");return result;
-        }
-        internal static List<SummaryAreaPlan> DataAreas(IList<SummaryAreaPlan> areas,ISet<int> headerRows)
-        {
-            var result=new List<SummaryAreaPlan>();
-            foreach(var area in areas){int r=area.Row;while(r<area.Row+area.Rows){if(headerRows.Contains(r)){r++;continue;}int first=r;while(r<area.Row+area.Rows&&!headerRows.Contains(r))r++;result.Add(new SummaryAreaPlan{Sheet=area.Sheet,Row=first,Column=area.Column,Rows=r-first,Columns=area.Columns});}}
-            return result;
-        }
-        internal static List<SummaryMappedWork> Work(IList<SummaryAreaPlan> areas,IDictionary<int,Dictionary<int,int>> maps,ISet<int> headerRows)
-        {
-            var result=new List<SummaryMappedWork>();long count=0;
-            foreach(var company in maps)foreach(var area in areas)
-            {
-                if(area.Rows<1||area.Columns<1||area.Row<1||area.Column<1||(long)area.Row+area.Rows-1>1048576||(long)area.Column+area.Columns-1>16384)throw new InvalidOperationException("已编制区域坐标无效。");
-                int row=area.Row;
-                while(row<area.Row+area.Rows)
-                {
-                    if(headerRows.Contains(row)){row++;continue;}int firstRow=row;while(row<area.Row+area.Rows&&!headerRows.Contains(row))row++;
-                    int col=area.Column;
-                    while(col<area.Column+area.Columns)
-                    {
-                        int dest;if(!company.Value.TryGetValue(col,out dest))throw new InvalidOperationException("来源列没有公司/年度列名："+col);
-                        int first=col++;while(col<area.Column+area.Columns&&company.Value.ContainsKey(col)&&company.Value[col]==dest+col-first)col++;
-                        var source=new SummaryAreaPlan{Sheet=area.Sheet,Row=firstRow,Column=first,Rows=row-firstRow,Columns=col-first};var target=new SummaryAreaPlan{Sheet=area.Sheet,Row=firstRow,Column=dest,Rows=source.Rows,Columns=source.Columns};
-                        if(areas.Any(a=>SummaryAreaEngine.Intersects(a,target)))throw new InvalidOperationException("目标列与已编制区域重叠。");
-                        if(result.Any(w=>SummaryAreaEngine.Intersects(w.Target,target)))throw new InvalidOperationException("目标数据区域重叠。");
-                        count+=(long)target.Rows*target.Columns;if(count>SummaryAreaEngine.CellLimit)throw new InvalidOperationException("单批目标超过十万单元格。");result.Add(new SummaryMappedWork{CompanyRow=company.Key,Source=source,Target=target});
-                    }
-                }
-            }
-            if(result.Count==0)throw new InvalidOperationException("选区只有表头，没有待迁移的数据。");return result;
         }
     }
     internal sealed class SummaryHeaderArray
@@ -220,7 +127,7 @@ namespace Excel_Iterate
             }
             SummaryAreaEngine.NativeFormula(mask.ToString());return result;
         }
-        internal string Render(string folder,string company,int rows,int columns,IDictionary<int,int> columnMap=null)
+        internal string Render(string folder,string company,int rows,int columns)
         {
             var result=new System.Text.StringBuilder(Original);
             foreach(var span in Spans.OrderByDescending(x=>x.Start))
@@ -228,14 +135,8 @@ namespace Excel_Iterate
                 int start=span.Start,length=span.Length;string replacement;
                 if(span.Kind==RefKind.Local)
                 {
-                    if(columnMap!=null&&span.IsRange&&span.Column1!=span.Column2&&(!span.Column1Absolute||!span.Column2Absolute))
-                    {
-                        if(span.Column1Absolute!=span.Column2Absolute)throw new InvalidOperationException("列名映射模式下混合锁定的跨列范围须人工确认："+span.Text);
-                        int first=Math.Min(span.Column1,span.Column2),last=Math.Max(span.Column1,span.Column2),prior=0;
-                        for(int c=first;c<=last;c++){int mapped;if(!columnMap.TryGetValue(c,out mapped))mapped=c+columns;if(c>first&&mapped!=prior+1)throw new InvalidOperationException("跨列范围在年度重排后不连续，不能安全迁移："+span.Text);prior=mapped;}
-                    }
-                    replacement=Cell(span.Column1,span.Row1,span.Column1Absolute,span.Row1Absolute,span.IsWholeColumn,rows,columns,columnMap);
-                    if(span.IsRange)replacement+=":"+Cell(span.Column2,span.Row2,span.Column2Absolute,span.Row2Absolute,span.IsWholeColumn,rows,columns,columnMap);
+                    replacement=Cell(span.Column1,span.Row1,span.Column1Absolute,span.Row1Absolute,span.IsWholeColumn,rows,columns);
+                    if(span.IsRange)replacement+=":"+Cell(span.Column2,span.Row2,span.Column2Absolute,span.Row2Absolute,span.IsWholeColumn,rows,columns);
                 }
                 else
                 {
@@ -252,9 +153,9 @@ namespace Excel_Iterate
             }
             return result.ToString();
         }
-        private static string Cell(int column,int row,bool absoluteColumn,bool absoluteRow,bool wholeColumn,int rows,int columns,IDictionary<int,int> columnMap)
+        private static string Cell(int column,int row,bool absoluteColumn,bool absoluteRow,bool wholeColumn,int rows,int columns)
         {
-            int mapped;long c=absoluteColumn?column:columnMap!=null&&columnMap.TryGetValue(column,out mapped)?mapped:(long)column+columns,r=wholeColumn?1:absoluteRow?row:(long)row+rows;
+            long c=absoluteColumn?column:(long)column+columns,r=wholeColumn?1:absoluteRow?row:(long)row+rows;
             if(c<1||c>16384||r<1||r>1048576)throw new InvalidOperationException("本表公式平移后引用越界。");
             return (absoluteColumn?"$":"")+CellAddress.ColumnLetters((int)c)+(wholeColumn?"":(absoluteRow?"$":"")+r.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
@@ -296,9 +197,11 @@ namespace Excel_Iterate
         }
         internal static bool Intersects(SummaryAreaPlan a, SummaryAreaPlan b)
         { return a.Row <= (long)b.Row + b.Rows - 1 && b.Row <= (long)a.Row + a.Rows - 1 && a.Column <= (long)b.Column + b.Columns - 1 && b.Column <= (long)a.Column + a.Columns - 1; }
-        internal static long ValidateAreas(IList<SummaryAreaPlan> areas)
+        internal static List<SummaryAreaPlan> Targets(IList<SummaryAreaPlan> areas, int pasteRow, int pasteColumn, int companies)
         {
-            if(areas.Count==0)throw new InvalidOperationException("请选择已编制区域。");
+            if (areas.Count == 0 || companies < 1) throw new InvalidOperationException("请选择已编制区域和至少一家公司。");
+            int minRow = areas.Min(a => a.Row), minColumn = areas.Min(a => a.Column);
+            int width = areas.Max(a => checked(a.Column + a.Columns - 1)) - minColumn + 1;
             long count = 0;
             for (int i = 0; i < areas.Count; i++)
             {
@@ -309,15 +212,7 @@ namespace Excel_Iterate
                 count += (long)a.Rows * a.Columns;
                 for (int j = 0; j < i; j++) if (Intersects(a, areas[j])) throw new InvalidOperationException("已编制 Area 相互重叠。");
             }
-            return count;
-        }
-        internal static List<SummaryAreaPlan> Targets(IList<SummaryAreaPlan> areas, int pasteRow, int pasteColumn, int companies)
-        {
-            if (areas.Count == 0 || companies < 1) throw new InvalidOperationException("请选择已编制区域和至少一家公司。");
-            int minRow = areas.Min(a => a.Row), minColumn = areas.Min(a => a.Column);
-            int width = areas.Max(a => checked(a.Column + a.Columns - 1)) - minColumn + 1;
-            long count=ValidateAreas(areas);
-            if(count*companies>CellLimit)throw new InvalidOperationException("MVP 每批目标最多十万单元格，请缩小区域或公司数量。");
+            if (count * companies > CellLimit) throw new InvalidOperationException("MVP 每批目标最多十万单元格，请缩小区域或公司数量。");
             var result = new List<SummaryAreaPlan>();
             for (int company = 0; company < companies; company++) foreach (var area in areas)
             {
@@ -340,19 +235,19 @@ namespace Excel_Iterate
         }
         internal static string Address(SummaryAreaPlan area)
         { return CellAddress.Name(area.Row, area.Column) + ":" + CellAddress.Name(area.Row + area.Rows - 1, area.Column + area.Columns - 1); }
-        internal static object[,] FormulaMatrix(object copied, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company, int rows = 0, int columns = 0, IDictionary<int,int> columnMap = null)
+        internal static object[,] FormulaMatrix(object copied, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company, int rows = 0, int columns = 0)
         {
             var result = new object[area.Rows, area.Columns];
             for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++) result[r, c] = SummaryArrays.Pick(copied, r, area.Rows, c, area.Columns);
-            foreach (var cell in cells) if (cell.Existing != null) result[cell.Row-area.Row,cell.Column-area.Column] = cell.Existing.Render(folder,company,rows,columns,columnMap); else if (!cell.Formula && !cell.Literal) result[cell.Row - area.Row, cell.Column - area.Column] = SummaryTextReference.External(folder, company, cell.Text);
+            foreach (var cell in cells) if (cell.Existing != null) result[cell.Row-area.Row,cell.Column-area.Column] = cell.Existing.Render(folder,company,rows,columns); else if (!cell.Formula && !cell.Literal) result[cell.Row - area.Row, cell.Column - area.Column] = SummaryTextReference.External(folder, company, cell.Text);
             return result;
         }
-        internal static void VerifyMatrix(object actual, object r1c1, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company, int rows = 0, int columns = 0, IDictionary<int,int> columnMap = null)
+        internal static void VerifyMatrix(object actual, object r1c1, SummaryAreaPlan area, IList<SummaryAreaCell> cells, string folder, string company, int rows = 0, int columns = 0)
         {
             foreach (var cell in cells.Where(c=>!c.Literal))
             {
                 int r = cell.Row - area.Row, c = cell.Column - area.Column;
-                string expected = cell.Existing != null ? cell.Existing.Render(folder,company,rows,columns,columnMap) : cell.Formula ? cell.R1C1 : SummaryTextReference.External(folder, company, cell.Text);
+                string expected = cell.Existing != null ? cell.Existing.Render(folder,company,rows,columns) : cell.Formula ? cell.R1C1 : SummaryTextReference.External(folder, company, cell.Text);
                 string found = Convert.ToString(SummaryArrays.Pick(cell.Formula && cell.Existing == null ? r1c1 : actual, r, area.Rows, c, area.Columns));
                 if (!string.Equals(found, expected, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("公式批量读回核验失败，已编制区域位置：" + CellAddress.Name(cell.Row, cell.Column));
             }
