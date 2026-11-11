@@ -28,6 +28,13 @@ internal static class SummaryAreaChecks
                 region.Worksheet.Fail=true;method.Invoke(host,new object[]{region});check("工作表Calculate失败后使用应用",fakeApp.Calls==1,"");
             }
         }
+        using(var groupForm=new SingleSummaryForm(true)){
+            var ui=(SummaryAreaView)groupForm.Controls[0];ui.AddGroup("repeat","repeat_1");ui.AddGroup("repeat");ui.AddGroup("year");
+            check("恢复后添加组不会覆盖旧组",ui.ExtraGroups.Count==3&&ui.ExtraGroups[1]!="repeat_1","");
+            string removed=ui.ExtraGroups[1];ui.RemoveGroup(removed);check("删除额外组更新配置清单",ui.ExtraGroups.Count==2&&!ui.ExtraGroups.Contains(removed),"");ui.ClearGroups();check("清空分组清理全部配置",ui.ExtraGroups.Count==0,"");
+        }
+        var friendly=typeof(SummaryAreaHost).GetMethod("Explain",BindingFlags.Static|BindingFlags.NonPublic);
+        check("合并跨组提示提供处理方法",((string)friendly.Invoke(null,new object[]{"公司名称合并区域跨组：G2:I2"})).Contains("请缩小合并范围"),"");
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };

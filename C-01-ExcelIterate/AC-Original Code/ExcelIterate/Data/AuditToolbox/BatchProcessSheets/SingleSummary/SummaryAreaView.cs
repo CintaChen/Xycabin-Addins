@@ -9,6 +9,28 @@ namespace Excel_Iterate
     internal sealed class SummaryAreaView : UserControl
     {
         internal event Action<string, bool> Pick;
+        internal event Action<string> GroupRemoved;
+        internal readonly List<string> ExtraGroups=new List<string>();
+        private readonly Dictionary<string,Control> extraRows=new Dictionary<string,Control>();
+        private TableLayoutPanel extraBody;
+        private int nextGroup;
+        internal void AddGroup(string type,string restored=null)
+        {
+            string key=restored;if(key==null){do{key=type+"_"+(++nextGroup);}while(extraRows.ContainsKey(key));}if(extraRows.ContainsKey(key))return;
+            if(ExtraGroups.Count>=20)throw new InvalidOperationException("最多添加20组，请先删除不需要的配置。");
+            var row=new TableLayoutPanel{Dock=DockStyle.Top,AutoSize=true,ColumnCount=1};
+            row.Controls.Add(Picker(type=="repeat"?"变量来源":"期间来源",key+"Source"));row.Controls.Add(Picker(type=="repeat"?"变量写入位置":"期间写入起点",key+"Target"));
+            var remove=Ui.Button("删除这一组",120);row.Controls.Add(remove);inputs.Add(remove);
+            remove.Click+=delegate{RemoveGroup(key);};extraRows.Add(key,row);ExtraGroups.Add(key);extraBody.Controls.Add(row);VariableHeaders.Checked=true;InvalidatePlan();
+        }
+        internal void RemoveGroup(string key)
+        {
+            Control row;if(!extraRows.TryGetValue(key,out row))return;
+            Func<Control,bool> within=null;within=delegate(Control c){return c==row||(c.Parent!=null&&within(c.Parent));};inputs.RemoveAll(c=>within(c));
+            addresses.Remove(key+"Source");addresses.Remove(key+"Target");extraRows.Remove(key);ExtraGroups.Remove(key);extraBody.Controls.Remove(row);row.Dispose();if(GroupRemoved!=null)GroupRemoved(key);InvalidatePlan();
+        }
+        internal void ClearGroups(){foreach(string key in ExtraGroups.ToArray())RemoveGroup(key);}
+
         internal event Action PreviewRequested, ExecuteRequested, UndoRequested, ConfirmRequested, Changed;
         private readonly List<Control> inputs = new List<Control>();
         private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
@@ -71,13 +93,16 @@ namespace Excel_Iterate
             var legacyCompanyPicker=Picker("公司名称写入位置", "companyHeader");headerBody.Controls.Add(legacyCompanyPicker);legacyCompanyPicker.Visible=false;
             headerBody.Controls.Add(Picker("期间来源区域", "yearSource"));
             headerBody.Controls.Add(Picker("期间写入起点", "yearTarget"));parameters.Controls.Add(headerBody);
+            extraBody=new TableLayoutPanel{AutoSize=true,Dock=DockStyle.Top,ColumnCount=1};headerBody.Controls.Add(extraBody);
+            var addVariables=Ui.Button("＋ 添加变量",140);var addPeriods=Ui.Button("＋ 添加期间",140);var addBar=Ui.ActionBar();addBar.Controls.Add(addVariables);addBar.Controls.Add(addPeriods);headerBody.Controls.Add(addBar);inputs.Add(addVariables);inputs.Add(addPeriods);
+            addVariables.Click+=delegate{if(ExtraGroups.Count<20)AddGroup("repeat");else Message("最多添加20组，请先删除不需要的组。");};addPeriods.Click+=delegate{if(ExtraGroups.Count<20)AddGroup("year");else Message("最多添加20组，请先删除不需要的组。");};
             HeadersEnabled.CheckedChanged+=delegate { InvalidatePlan(); };
 
             var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters);
             var parameterScroll=new Panel { Dock=DockStyle.Fill,AutoScroll=true,BackColor=Ui.Canvas };parameterScroll.Controls.Add(card);root.Controls.Add(parameterScroll,0,0);
             root.RowStyles[0].SizeType=SizeType.Absolute;
             Action fitParameters=delegate { root.RowStyles[0].Height=Math.Min(card.GetPreferredSize(new Size(Math.Max(1,parameterScroll.ClientSize.Width-20),0)).Height+6,Math.Max(180,(int)(ClientSize.Height*.55))); };
-            SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; referenceBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
+            extraBody.SizeChanged+=delegate{fitParameters();};SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; referenceBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
             state.Text = "选区绑定同一工作簿；只复制选中的 Area。未选空隙不变；全程不自动保存。";
             state.Text = "";
             Companies.Columns.Add(new DataGridViewCheckBoxColumn { Name = "selected", HeaderText = "选用", Width = 70 });

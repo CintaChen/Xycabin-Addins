@@ -161,7 +161,7 @@ namespace Excel_Iterate
             DialogSizing.Prepare(this, "batch.preset.manager", "table", Ui.Blue);
             view = new PresetManagerView(this,list,detail,search,apply,rename,remove,export,
                 item => ((Entry)item).Value.Name,
-                item => { var p=((Entry)item).Value; DateTime saved; return (DateTime.TryParse(p.Saved,out saved) ? saved.ToString("MM-dd HH:mm",CultureInfo.InvariantCulture)+"　·　" : "")+(p.Feature=="company" ? "单体模板生成" : "单体汇总批量链接"); });
+                item => { var p=((Entry)item).Value; DateTime saved; return (DateTime.TryParse(p.Saved,out saved) ? saved.ToString("MM-dd HH:mm",CultureInfo.InvariantCulture)+"　·　" : "")+(p.Feature=="company" ? "单体模板生成" : "合并批量链接"); });
             var import=view.Import; var close=view.Close; status=view.Hint; status.Name="batchPresetStatus";
             detail.HandleCreated += delegate { BeginInvoke(new Action(ShowDetail)); };
             list.DoubleClick += delegate { apply.PerformClick(); };

@@ -32,7 +32,7 @@ namespace Excel_Iterate
             }
             return result;
         }
-        private static SummaryAreaPlan OptionalHeader(Dictionary<string,string> values, string key)
+        internal static SummaryAreaPlan OptionalHeader(Dictionary<string,string> values, string key)
         {
             if (!values.ContainsKey(key) || string.IsNullOrEmpty(values[key])) return null;
             if (!values.ContainsKey(key + "Sheet")) throw new InvalidOperationException("表头预设缺少工作表：" + key);

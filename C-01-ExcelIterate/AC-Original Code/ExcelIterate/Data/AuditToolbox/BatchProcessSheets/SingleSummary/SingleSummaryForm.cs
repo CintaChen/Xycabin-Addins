@@ -9,7 +9,7 @@ using System.Windows.Forms;
 namespace Excel_Iterate
 {
     // =====================================================================
-    // 单体汇总批量链接 —— 界面
+    // 合并批量链接 —— 界面
     //
     // 只做参数收集与结果呈现；COM 一律经事件抛回 Connect，在 Ribbon 宿主线程执行。
     // 沿用「执行 → 取消操作 / 确认操作」二段式：执行后保留备份表，可整段还原。
@@ -53,7 +53,7 @@ namespace Excel_Iterate
 
         internal BatchProgressSession ProgressSession;
         internal BatchProgressSession OpenProgress()
-        { if (ProgressSession != null) ProgressSession.Close(); ProgressSession = new BatchProgressSession("单体汇总批量链接"); return ProgressSession; }
+        { if (ProgressSession != null) ProgressSession.Close(); ProgressSession = new BatchProgressSession("合并批量链接"); return ProgressSession; }
         private bool busy;
         private BatchPresetActions presets;
         private bool canUndo;
@@ -75,7 +75,7 @@ namespace Excel_Iterate
 
         internal SingleSummaryForm()
         {
-            Text = "单体汇总批量链接";
+            Text = "合并批量链接";
             Disposed += delegate { if (ProgressSession != null) ProgressSession.Close(); };
             DialogSizing.Prepare(this, "summary.single", "table", Ui.Blue);
             KeyPreview = true;
@@ -228,7 +228,7 @@ namespace Excel_Iterate
         // and Excel controller are independent of the legacy column workflow.
         internal SingleSummaryForm(bool areaMvp)
         {
-            Text = "单体汇总批量链接";
+            Text = "合并批量链接";
             KeyPreview = true;
             DialogSizing.Prepare(this, "summary.single", "table", Ui.Blue);
             var areaView = new SummaryAreaView(); Controls.Add(areaView);

@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows.Forms;
 
-// 功能：Excel-Iterate → 数据 → 审计工具箱 → 批量生成过程表 → 单体汇总批量链接
+// 功能：Excel-Iterate → 数据 → 审计工具箱 → 批量生成过程表 → 合并批量链接
 // 控件：btnSingleSummary
 namespace Excel_Iterate
 {
@@ -29,8 +29,8 @@ namespace Excel_Iterate
             }
             catch (Exception ex)
             {
-                Log("单体汇总批量链接：" + ex);
-                UiDialog.Show(ex.Message, "单体汇总批量链接", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                Log("合并批量链接：" + ex);
+                UiDialog.Show(ex.Message, "合并批量链接", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
