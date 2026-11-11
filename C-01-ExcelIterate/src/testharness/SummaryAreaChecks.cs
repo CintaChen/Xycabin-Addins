@@ -18,6 +18,16 @@ internal static class SummaryAreaChecks
         rejects(delegate{SummaryPeriodOrder.Parse("not a date","未知期间",false);},"未知期间阻断");
         rejects(delegate{SummaryPeriodOrder.Parse("2027.2.30","2027.2.30",false);},"无效日期阻断");
         rejects(delegate{SummaryPeriodOrder.Descending(new[]{new DateTime(2027,1,1),new DateTime(2027,1,1)});},"重复时间阻断");
+        var singleCompanies=SummaryAreaEngine.LeadRows(new[]{new SummaryAreaPlan{Sheet="Lead",Row=3,Column=16,Rows=2,Columns=1}});
+        check("Lead单列同时用于展示与文件名",singleCompanies.Count==2&&singleCompanies[0].CodeColumn==16&&singleCompanies[0].NameColumn==16,"");
+        using(var form=new SingleSummaryForm(true)){
+            var ui=(SummaryAreaView)form.Controls[0];var fakeApp=new SummaryRecalcApp();
+            using(var host=new SummaryAreaHost(fakeApp,form,ui)){
+                var method=typeof(SummaryAreaHost).GetMethod("Recalculate",BindingFlags.Instance|BindingFlags.NonPublic);
+                var region=new SummaryRecalcRange();method.Invoke(host,new object[]{region});check("区域Calculate失败后使用工作表",region.Worksheet.Calls==1&&fakeApp.Calls==0,"");
+                region.Worksheet.Fail=true;method.Invoke(host,new object[]{region});check("工作表Calculate失败后使用应用",fakeApp.Calls==1,"");
+            }
+        }
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };
@@ -200,3 +210,7 @@ public sealed class SummarySpillCount{public int Count{get;private set;}public S
 public sealed class SummarySpillCells{private readonly object cell;public SummarySpillCells(object value){cell=value;}public object Item(int row,int column){return cell;}}
 
 public sealed class SummaryArrayOnlyRange{public bool HasArray{get{return false;}}}
+
+public sealed class SummaryRecalcRange {public readonly SummaryRecalcSheet Worksheet=new SummaryRecalcSheet();public void Calculate(){throw new InvalidOperationException("Range Calculate unavailable");}}
+public sealed class SummaryRecalcSheet {public int Calls;public bool Fail;public void Calculate(){Calls++;if(Fail)throw new InvalidOperationException("Sheet Calculate unavailable");}}
+public sealed class SummaryRecalcApp {public int Calls;public void Calculate(){Calls++;}}

@@ -30,7 +30,7 @@ internal static class SingleSummaryLiveProbe
                 dynamic oldNames=bag.Own(sheet.Range["L2:"+CellAddress.Name(2,12+oldGroups*width-1)]);oldNames.FormulaArray="=INDEX('"+sample.sheet+"'!$O$"+first+":$O$"+(first+oldGroups-1)+",INT((COLUMN("+"L2:"+CellAddress.Name(2,12+oldGroups*width-1)+")-COLUMN(L2))/"+width+")+1)";oldNames.Calculate();string oldFormula=Convert.ToString(((dynamic)bag.Own(sheet.Range["L2"])).Formula);
                 using(var form=new SingleSummaryForm(true))
                 {
-                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=true;view.RepeatNames.Checked=true;view.ReplaceHeaderArrays.Checked=true;
+                    var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.VariableHeaders.Checked=false;view.HeadersEnabled.Checked=true;view.FormulaHeaders.Checked=true;view.RepeatNames.Checked=true;view.ReplaceHeaderArrays.Checked=true;
                     using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;}))
                     {
                         Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet",sample.sheet);
@@ -57,7 +57,7 @@ internal static class SingleSummaryLiveProbe
                 var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.HeadersEnabled.Checked=true;view.VariableHeaders.Checked=true;
                 using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;})){
                     Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","变量汇总");Set(host,"pasteSheet","变量汇总");Set(host,"leadSheet","Lead");
-                    ((List<SummaryAreaPlan>)Get(host,"areas")).Add(new SummaryAreaPlan{Sheet="变量汇总",Row=10,Column=7,Rows=1,Columns=2});Set(host,"paste",new SummaryAreaPlan{Row=10,Column=17,Rows=1,Columns=1});Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=3,Column=15,Rows=2,Columns=2});
+                    ((List<SummaryAreaPlan>)Get(host,"areas")).Add(new SummaryAreaPlan{Sheet="变量汇总",Row=10,Column=7,Rows=1,Columns=2});Set(host,"paste",new SummaryAreaPlan{Row=10,Column=17,Rows=1,Columns=1});Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=3,Column=16,Rows=2,Columns=1});
                     Set(host,"repeatSource",new SummaryAreaPlan{Sheet="Lead",Row=3,Column=15,Rows=2,Columns=3});Set(host,"repeatTarget",new SummaryAreaPlan{Sheet="变量汇总",Row=2,Column=17,Rows=3,Columns=1});Set(host,"yearSource",new SummaryAreaPlan{Sheet="Lead",Row=2,Column=14,Rows=2,Columns=1});Set(host,"yearTarget",new SummaryAreaPlan{Sheet="变量汇总",Row=7,Column=17,Rows=1,Columns=1});
                     int before=Convert.ToInt32(sheets.Count);Call(host,"Preview");Check((bool)Get(host,"ready")&&Convert.ToInt32(sheets.Count)==before&&Convert.ToString(prior.Formula)=="=1+2","variable preflight is read-only");
                     Call(host,"Start");for(int i=0;i<2;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending"),"variable formula execution succeeds");
@@ -115,7 +115,7 @@ internal static class SingleSummaryLiveProbe
                     int before=Convert.ToInt32(worksheets.Count);
                     using(var form=new SingleSummaryForm(true))
                     {
-                        var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.FormulaHeaders.Checked=false;view.RepeatNames.Checked=false;
+                        var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.VariableHeaders.Checked=false;view.FormulaHeaders.Checked=false;view.RepeatNames.Checked=false;
                         using(var host=new SummaryAreaHost((object)app,form,view,null,delegate{return true;}))
                         {
                             Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","汇总");Set(host,"pasteSheet","汇总");Set(host,"leadSheet","Lead");

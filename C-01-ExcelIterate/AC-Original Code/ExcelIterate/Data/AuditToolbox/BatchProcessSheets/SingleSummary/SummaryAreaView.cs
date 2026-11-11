@@ -15,7 +15,7 @@ namespace Excel_Iterate
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
         internal readonly ResultGrid ReferenceSources = new ResultGrid { AutoSize=false,Height=145,Dock=DockStyle.Top,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false };
         private Control referenceBody;
-        internal readonly CheckBox VariableHeaders = new CheckBox {Text="Lead 变量与期间关联（期间倒序，后续只更新对应值）",AutoSize=true};
+        internal readonly CheckBox VariableHeaders = new CheckBox {Text="Lead 变量与期间关联",AutoSize=true,Checked=true};
         internal readonly CheckBox FormulaHeaders = new CheckBox {Text="使用公式关联 Lead（单列年度自动转置）",AutoSize=true,Checked=true};
         internal readonly CheckBox RepeatNames = new CheckBox {Text="每个年度列都填写公司名称",AutoSize=true,Checked=true};
         internal readonly CheckBox ReplaceHeaderArrays = new CheckBox {Text="允许整体重写既有表头数组（预检列出完整范围）",AutoSize=true};
@@ -41,9 +41,9 @@ namespace Excel_Iterate
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 60)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 40)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             parameters = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 1 };
             parameters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            parameters.Controls.Add(Picker("已编制区域（可 Ctrl 多选）", "template"));
+            parameters.Controls.Add(Picker("模板区域（可 Ctrl 多选）", "template"));
             parameters.Controls.Add(Picker("粘贴起点（一个单元格）", "paste"));
-            parameters.Controls.Add(Picker("Lead 公司字段（可 Ctrl 多选两列，不含表头）", "lead"));
+            parameters.Controls.Add(Picker("Lead 公司名称（单列，不含表头）", "lead"));
             var folder = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
             folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             folder.Controls.Add(new Label { Text = "项目文件夹（可输入）", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0); folder.Controls.Add(Folder, 1, 0);
@@ -58,21 +58,19 @@ namespace Excel_Iterate
             referenceBody=ReferenceSources;referenceBody.Visible=false;parameters.Controls.Add(referenceBody);
             ReferenceSources.CurrentCellDirtyStateChanged+=delegate {if(ReferenceSources.IsCurrentCellDirty)ReferenceSources.CommitEdit(DataGridViewDataErrorContexts.Commit);};
             ReferenceSources.CellValueChanged+=delegate {InvalidatePlan();};
-            parameters.Controls.Add(new Label {AutoSize=true,ForeColor=Ui.InkDim,Text="预检会列出外链来源；待确认项请选择参与替换或保留，再重新预检。原区域不改。"});
             var headerBody = new TableLayoutPanel { AutoSize=true,ColumnCount=1,Dock=DockStyle.Top,Visible=false };
             headerBody.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             var expand=Ui.Button("▶ 表头自动填充",180);parameters.Controls.Add(expand);
             expand.Click+=delegate { headerBody.Visible=!headerBody.Visible;expand.Text=(headerBody.Visible?"▼":"▶")+" 表头自动填充"; };
             headerBody.Controls.Add(HeadersEnabled);inputs.Add(HeadersEnabled);
-            headerBody.Controls.Add(VariableHeaders);inputs.Add(VariableHeaders);VariableHeaders.CheckedChanged+=delegate{InvalidatePlan();};
-            headerBody.Controls.Add(Picker("重复变量来源（Lead 数据列，不含标题）","repeatSource"));
-            headerBody.Controls.Add(Picker("变量写入位置（每字段一行，同一列起点）","repeatTarget"));
-            headerBody.Controls.Add(new Label{AutoSize=true,ForeColor=Ui.InkDim,MaximumSize=new Size(1000,0),Text="变量模式：来源每列对应目标选区的一行，例如 Lead!O3:P5 对应 Q2:Q3。按 Lead 原行号与勾选公司配对，每条重复期间数量次。期间沿用下面的来源和写入起点；生成时倒序，后续不重新排序。"});
-            foreach(var option in new[]{FormulaHeaders,RepeatNames,ReplaceHeaderArrays}){headerBody.Controls.Add(option);inputs.Add(option);option.CheckedChanged+=delegate{InvalidatePlan();};}
+            inputs.Add(VariableHeaders);VariableHeaders.CheckedChanged+=delegate{InvalidatePlan();};
+            headerBody.Controls.Add(Picker("重复变量来源","repeatSource"));
+            headerBody.Controls.Add(Picker("变量写入位置","repeatTarget"));
+            foreach(var option in new[]{FormulaHeaders,RepeatNames,ReplaceHeaderArrays}){inputs.Add(option);option.CheckedChanged+=delegate{InvalidatePlan();};}
 
-            headerBody.Controls.Add(Picker("公司名称写入位置", "companyHeader"));
-            headerBody.Controls.Add(Picker("年度来源区域（单列或单行）", "yearSource"));
-            headerBody.Controls.Add(Picker("年度写入起点", "yearTarget"));headerBody.Controls.Add(new Label { AutoSize=true,Text="名称取公司字段的编码简称列（例如 Lead 的 O 列）；年度可选 N 列区域。公式模式不依赖抵消表计数。",ForeColor=Ui.InkDim });headerBody.Controls.Add(HeaderPreview);parameters.Controls.Add(headerBody);
+            var legacyCompanyPicker=Picker("公司名称写入位置", "companyHeader");headerBody.Controls.Add(legacyCompanyPicker);legacyCompanyPicker.Visible=false;
+            headerBody.Controls.Add(Picker("期间来源区域", "yearSource"));
+            headerBody.Controls.Add(Picker("期间写入起点", "yearTarget"));parameters.Controls.Add(headerBody);
             HeadersEnabled.CheckedChanged+=delegate { InvalidatePlan(); };
 
             var card = new UiCard { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(12) }; card.Controls.Add(parameters);
@@ -81,11 +79,11 @@ namespace Excel_Iterate
             Action fitParameters=delegate { root.RowStyles[0].Height=Math.Min(card.GetPreferredSize(new Size(Math.Max(1,parameterScroll.ClientSize.Width-20),0)).Height+6,Math.Max(180,(int)(ClientSize.Height*.55))); };
             SizeChanged+=delegate{fitParameters();}; headerBody.VisibleChanged+=delegate{fitParameters();}; referenceBody.VisibleChanged+=delegate{fitParameters();}; HeaderPreview.TextChanged+=delegate{fitParameters();};
             state.Text = "选区绑定同一工作簿；只复制选中的 Area。未选空隙不变；全程不自动保存。";
-            root.Controls.Add(state, 0, 1);
+            state.Text = "";
             Companies.Columns.Add(new DataGridViewCheckBoxColumn { Name = "selected", HeaderText = "选用", Width = 70 });
             Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "row", HeaderText = "Lead 行", ReadOnly = true, Width = 95 });
-            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "code", HeaderText = "公司编码及简称", ReadOnly = true, Width = 230 });
-            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "company", HeaderText = "公司全称 / 文件名主体", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "code", HeaderText = "公司编码及简称", Visible=false, ReadOnly = true, Width = 230 });
+            Companies.Columns.Add(new DataGridViewTextBoxColumn { Name = "company", HeaderText = "公司名称 / 文件名", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             Ui.StyleGrid(Companies); root.Controls.Add(Companies, 0, 2); root.Controls.Add(log, 0, 3);
             Companies.CurrentCellDirtyStateChanged += delegate { if (Companies.IsCurrentCellDirty) Companies.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             Companies.CellValueChanged += delegate(object sender, DataGridViewCellEventArgs e) { if (e.ColumnIndex == 0) InvalidatePlan(); };
@@ -123,7 +121,7 @@ namespace Excel_Iterate
             var children = new List<Control>(); foreach (Control child in parameters.Controls) children.Add(child);
             parameters.RowCount++;
             foreach (var child in children) parameters.SetRow(child, parameters.GetRow(child) + 1);
-            parameters.Controls.Add(actions.Header(new Label { Text = "右侧齿轮可保存、管理预设；应用后重新预检。", AutoSize = true, ForeColor = Ui.InkDim }), 0, 0); parameters.ResumeLayout(true);
+            parameters.Controls.Add(actions.Header(new Label { Text = "", AutoSize = true }), 0, 0); parameters.ResumeLayout(true);
         }
         internal void InvalidatePlan() { execute.Enabled = false; if (Changed != null) Changed(); }
         internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }

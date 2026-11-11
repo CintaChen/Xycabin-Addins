@@ -186,7 +186,7 @@ namespace Excel_Iterate
                     object chosen = null;
                     try
                     {
-                        if (native) { if (kind == "lead" || kind == "yearSource" || kind=="repeatSource") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "repeatSource" ? "选择Lead连续字段列，不含标题；每一行需对应已选公司来源行。" : kind == "repeatTarget" ? "选择汇总表同一列连续单元格，每个来源字段对应一个目标行。" : kind == "template" ? "选择已编制区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择编码和全称两列的数据行，可 Ctrl 多选分段或不相邻两列；同一行需配对，不含表头。" : kind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : kind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : kind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
+                        if (native) { if (kind == "lead" || kind == "yearSource" || kind=="repeatSource") ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, kind == "repeatSource" ? "选择Lead连续字段列，不含标题；每一行需对应已选公司来源行。" : kind == "repeatTarget" ? "选择汇总表同一列连续单元格，每个来源字段对应一个目标行。" : kind == "template" ? "选择已编制区域，可按 Ctrl 多选；若原生框不支持，请取消后使用读取当前选区。" : kind == "lead" ? "选择公司名称一列，不含表头；可Ctrl选择分段。" : kind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : kind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : kind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "单体汇总批量链接", Type.Missing); }
                         else chosen = ((dynamic)app).Selection;
                         if (chosen == null || chosen is bool) return;
                         dynamic range = bag.Own(chosen), sheet = bag.Own(range.Parent);
@@ -288,7 +288,7 @@ namespace Excel_Iterate
         {
             var selected = new Dictionary<int, bool>();
             foreach (DataGridViewRow row in view.Companies.Rows) selected[Convert.ToInt32(row.Cells["row"].Value)] = Bool(row.Cells["selected"].Value);
-            var parts = LeadSelections(); var bindings = SummaryAreaEngine.LeadRows(parts);
+            var parts = LeadSelections(); var bindings = SummaryAreaEngine.LeadRows(parts);view.Companies.Columns["code"].Visible=bindings.Any(b=>b.CodeColumn!=b.NameColumn);
             companies.Clear(); dynamic sheet = Sheet(leadSheet, bag);
             foreach (var part in parts)
             using (var one = new ComBag()) { dynamic range = one.Own(sheet.Range[SummaryAreaEngine.Address(part)]); RejectSpecial(range, part.Address, one); }
@@ -510,7 +510,7 @@ namespace Excel_Iterate
                         foreach (var area in targets)
                         {
                             dynamic range = bag.Own(sheet.Range[SummaryAreaEngine.Address(area)]);
-                            try { range.Calculate(); } catch (Exception error) { view.Message("重新计算失败：" + error.Message); }
+                            try { Recalculate((object)range); } catch (Exception error) { view.Message("重新计算失败：" + error.Message); }
                             object values = range.Value2;
                             for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++)
                                 if (SummaryAreaEngine.IsError(SummaryArrays.Pick(values, r, area.Rows, c, area.Columns))) errors++;
@@ -774,6 +774,12 @@ namespace Excel_Iterate
             dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]),anchor=bag.Own(sheet.Range[CellAddress.Name(array.Area.Row,array.Area.Column)]);
             if(array.Dynamic)anchor.ClearContents();else range.ClearContents();
         }
+        private void Recalculate(object range)
+        {
+            try{((dynamic)range).Calculate();return;}catch(Exception error){view.Message("区域重算不可用，尝试工作表重算："+error.Message);}
+            using(var one=new ComBag())try{dynamic sheet=one.Own(((dynamic)range).Worksheet);sheet.Calculate();return;}catch(Exception error){view.Message("工作表重算不可用，尝试应用重算："+error.Message);}
+            try{((dynamic)app).Calculate();}catch(Exception error){view.Message("重算未完成："+error.Message+"；继续核对公式和值，异常将保留回滚能力。");}
+        }
         private void WriteHeaders(dynamic sheet,ComBag bag)
         {
             headersTouched=headerTargets.Count>0;
@@ -787,10 +793,10 @@ namespace Excel_Iterate
                 }
                 else {object format=cell.NumberFormat;try{cell.NumberFormat="@";cell.Value2=headerValues[i];}finally{cell.NumberFormat=format;}}
             }
-            foreach(var array in yearHeaderArrays){dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]);range.FormulaArray=array.Formula;range.Calculate();}
+            foreach(var array in yearHeaderArrays){dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]);range.FormulaArray=array.Formula;Recalculate((object)range);}
             for(int i=0;i<headerTargets.Count;i++)
             {
-                var part=headerTargets[i];dynamic cell=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);string key=HeaderKey(part);bool formula=(view.VariableHeaders.Checked||view.FormulaHeaders.Checked)&&headerExpressions.ContainsKey(key);if(formula)cell.Calculate();
+                var part=headerTargets[i];dynamic cell=bag.Own(sheet.Range[CellAddress.Name(part.Row,part.Column)]);string key=HeaderKey(part);bool formula=(view.VariableHeaders.Checked||view.FormulaHeaders.Checked)&&headerExpressions.ContainsKey(key);if(formula)Recalculate((object)cell);
                 if(view.VariableHeaders.Checked&&variableRawValues.ContainsKey(key))
                 {
                     if(!Bool((object)cell.HasFormula)||!object.Equals((object)cell.Value2,variableRawValues[key])||Convert.ToString(cell.NumberFormat)!=headerFormats[key])throw new InvalidOperationException("变量表头公式值或格式核验失败："+SummaryAreaEngine.Address(part));
@@ -821,7 +827,7 @@ namespace Excel_Iterate
             if(!headersTouched)return;
             // Recalculate only the owned backup before restoring a dynamic formula:
             // changed source counts must not expand the restored spill outside consent.
-            foreach(var array in oldHeaderArrays){dynamic source=bag.Own(original.Range[SummaryAreaEngine.Address(array.Area)]);source.Calculate();VerifyHeaderArrayBounds(original,array,bag);}
+            foreach(var array in oldHeaderArrays){dynamic source=bag.Own(original.Range[SummaryAreaEngine.Address(array.Area)]);Recalculate((object)source);VerifyHeaderArrayBounds(original,array,bag);}
             foreach(var array in yearHeaderArrays){dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]);range.ClearContents();}
             foreach(var array in oldHeaderArrays)ClearHeaderArray(sheet,array,bag);
             foreach(var part in headerTargets)

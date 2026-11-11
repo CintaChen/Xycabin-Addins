@@ -205,11 +205,11 @@ namespace Excel_Iterate
                         if (!selected.Add(c)) throw new InvalidOperationException("Lead 第 " + r + " 行有重复或重叠选区。");
                 }
             }
-            if (columns.Count != 2) throw new InvalidOperationException("Lead 需要两列：可选连续两列，也可 Ctrl 选择不相邻的两列。");
+            if (columns.Count < 1 || columns.Count > 2) throw new InvalidOperationException("请选择公司名称一列。");
             var result = new List<SummaryLeadRow>();
             foreach (int row in order)
             {
-                if (rows[row].Count != 2) throw new InvalidOperationException("Lead 第 " + row + " 行未同时选中编码和全称，请按同一行补齐两列。");
+                if (rows[row].Count != columns.Count) throw new InvalidOperationException("Lead 第 " + row + " 行未同时选中编码和全称，请按同一行补齐两列。");
                 result.Add(new SummaryLeadRow { Row = row, CodeColumn = columns.Min, NameColumn = columns.Max });
             }
             return result;
