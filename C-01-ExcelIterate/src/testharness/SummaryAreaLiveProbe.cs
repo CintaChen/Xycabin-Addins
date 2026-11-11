@@ -45,6 +45,37 @@ internal static class SingleSummaryLiveProbe
             }
         }
     }
+    private static void VariableHeaders(object application,ProbeSession session)
+    {
+        using(var bag=new ComBag()){
+            dynamic app=application,books=bag.Own(app.Workbooks),book=books.Add();bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+            dynamic sheets=bag.Own(book.Worksheets),sheet=bag.Own(sheets.Item(1)),lead=bag.Own(sheets.Add());sheet.Name="变量汇总";lead.Name="Lead";
+            dynamic data=bag.Own(lead.Range["O3:Q4"]);data.Value2=new object[,]{{"甲简称","！01-示例（集团）","01"},{"乙简称","！02-示例乙","02"}};
+            dynamic years=bag.Own(lead.Range["N2:N3"]);years.Value2=new object[,]{{"2025年度"},{"2027年度"}};
+            dynamic src=bag.Own(sheet.Range["G10:H10"]);src.Value2="BS!$A$1";dynamic prior=bag.Own(sheet.Range["Q2"]);prior.Formula="=1+2";dynamic gap=bag.Own(sheet.Range["Q6"]);gap.Value2="未选空隙";
+            using(var form=new SingleSummaryForm(true)){
+                var view=(SummaryAreaView)form.Controls[0];view.Folder.Text=session.DirectoryPath;view.HeadersEnabled.Checked=true;view.VariableHeaders.Checked=true;
+                using(var host=new SummaryAreaHost(application,form,view,null,delegate{return true;})){
+                    Set(host,"book",(object)book);Set(host,"bookName",Convert.ToString(book.FullName));Set(host,"templateSheet","变量汇总");Set(host,"pasteSheet","变量汇总");Set(host,"leadSheet","Lead");
+                    ((List<SummaryAreaPlan>)Get(host,"areas")).Add(new SummaryAreaPlan{Sheet="变量汇总",Row=10,Column=7,Rows=1,Columns=2});Set(host,"paste",new SummaryAreaPlan{Row=10,Column=17,Rows=1,Columns=1});Set(host,"lead",new SummaryAreaPlan{Sheet="Lead",Row=3,Column=15,Rows=2,Columns=2});
+                    Set(host,"repeatSource",new SummaryAreaPlan{Sheet="Lead",Row=3,Column=15,Rows=2,Columns=3});Set(host,"repeatTarget",new SummaryAreaPlan{Sheet="变量汇总",Row=2,Column=17,Rows=3,Columns=1});Set(host,"yearSource",new SummaryAreaPlan{Sheet="Lead",Row=2,Column=14,Rows=2,Columns=1});Set(host,"yearTarget",new SummaryAreaPlan{Sheet="变量汇总",Row=7,Column=17,Rows=1,Columns=1});
+                    int before=Convert.ToInt32(sheets.Count);Call(host,"Preview");Check((bool)Get(host,"ready")&&Convert.ToInt32(sheets.Count)==before&&Convert.ToString(prior.Formula)=="=1+2","variable preflight is read-only");
+                    Call(host,"Start");for(int i=0;i<2;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending"),"variable formula execution succeeds");
+                    dynamic first=bag.Own(sheet.Range["Q7"]),second=bag.Own(sheet.Range["R7"]),next=bag.Own(sheet.Range["S2"]),serial=bag.Own(sheet.Range["Q4"]);
+                    Check(Convert.ToString(first.Formula).Replace("'", "")=="=Lead!$N$3"&&Convert.ToString(second.Formula).Replace("'", "")=="=Lead!$N$2","descending years link original cells");
+                    Check(Convert.ToString(next.Formula).Replace("'", "")=="=Lead!$O$4"&&Convert.ToString(serial.Formula).Replace("'", "")=="=Lead!$Q$3","multiple selected fields keep Lead row pairing");
+                    dynamic changed=bag.Own(lead.Range["N3"]);changed.Value2="2024年度";sheet.Calculate();Check(Convert.ToString(first.Value2)=="2024年度"&&Convert.ToString(first.Formula).Replace("'", "")=="=Lead!$N$3","Lead period edit updates value without reordering");changed.Value2="2027年度";
+                    dynamic code=bag.Own(lead.Range["O3"]);code.Value2="甲更新";sheet.Calculate();Check(Convert.ToString(prior.Value2)=="甲更新","repeat formula updates from Lead");code.Value2="甲简称";
+                    Call(host,"Undo");Check(Convert.ToString(prior.Formula)=="=1+2"&&string.IsNullOrEmpty((string)Convert.ToString(first.Value2))&&Convert.ToString(gap.Value2)=="未选空隙","variable headers and data undo together without touching gap");
+                    var preset=host.CapturePreset();host.ApplyPreset(preset);Check(view.VariableHeaders.Checked&&Get(host,"repeatSource")!=null&&Get(host,"repeatTarget")!=null,"variable settings preset roundtrip");
+                    years.Value2=new object[,]{{"2027.1.1"},{"2027.2.1"}};Call(host,"Preview");Call(host,"Start");for(int i=0;i<2;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&Convert.ToString(first.Value2)=="2027.2.1","text dates sort descending");Call(host,"Undo");
+                    dynamic n2=bag.Own(lead.Range["N2"]),n3=bag.Own(lead.Range["N3"]);n2.Value2=46000.0;n3.Value2=47000.0;n2.NumberFormat=n3.NumberFormat="yyyy.m.d";Call(host,"Preview");Call(host,"Start");for(int i=0;i<2;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&Convert.ToDouble(first.Value2)==47000&&Convert.ToString(first.NumberFormat)==Convert.ToString(n3.NumberFormat),"numeric dates retain value and source format");Call(host,"Undo");
+                    n2.Value2=n3.Value2;bool blocked=false;try{Call(host,"Preview");}catch(InvalidOperationException){blocked=true;}Check(blocked,"duplicate periods block before writing");Check(Convert.ToString(book.Path)=="","variable mode never saves workbook");
+                }
+            }
+            book.Close(false);closed=true;
+        }
+    }
     [STAThread] private static int Main(string[] args)
     {
         if (Array.IndexOf(args, "--timing") >= 0) return SummaryAreaSpeedChecks.Run();
@@ -69,6 +100,7 @@ internal static class SingleSummaryLiveProbe
                         using(var refs=new ComBag()) { dynamic sheets=refs.Own(source.Worksheets), sheet=refs.Own(sheets.Item(1));sheet.Name="BS";dynamic cell=refs.Own(sheet.Range["A1"]);cell.Value2=25; }
                         source.SaveAs(session.Output(name+".xlsx"),51);source.Close(false);closed=true;
                     }
+                    if(Array.IndexOf(args,"--variables-only")>=0){VariableHeaders((object)app,session);Console.WriteLine("PASS: "+checks+" variable header checks");return session.Finish(0);}
                     dynamic book=books.Add();session.Own((object)book,delegate{book.Close(false);});
                     dynamic worksheets=bag.Own(book.Worksheets), target=bag.Own(worksheets.Item(1));target.Name="汇总";
                     dynamic lead=bag.Own(worksheets.Add());lead.Name="Lead";
@@ -220,6 +252,7 @@ internal static class SingleSummaryLiveProbe
                     }
                 }
                 if(args.Length==2&&args[0]=="--provided-header-vectors")ProvidedHeaders((object)app,session,args[1]);
+                VariableHeaders((object)app,session);
                 Console.WriteLine("PASS: "+checks+" Excel self-owned sample checks; no user workbook or real button interaction");return session.Finish(0);
             }
             catch(Exception e){Console.WriteLine(e);return session.Finish(1);}

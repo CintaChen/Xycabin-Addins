@@ -14,8 +14,8 @@ namespace Excel_Iterate
         internal readonly List<SummaryAreaPlan> Template = new List<SummaryAreaPlan>(), Lead = new List<SummaryAreaPlan>();
         internal SummaryAreaPlan Paste;
         internal string Folder;
-        internal bool CheckFiles, HeadersEnabled, FormulaHeaders, RepeatNames;
-        internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget;
+        internal bool CheckFiles, HeadersEnabled, FormulaHeaders, RepeatNames, VariableHeaders;
+        internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget, RepeatSource, RepeatTarget;
         internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
         { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
         private static List<SummaryAreaPlan> Decode(string text, string sheet)
@@ -53,8 +53,10 @@ namespace Excel_Iterate
             if (values.ContainsKey("headersEnabled") && !bool.TryParse(values["headersEnabled"], out result.HeadersEnabled)) throw new InvalidOperationException("表头开关无效。");
             if(values.ContainsKey("headersFormula")&&!bool.TryParse(values["headersFormula"],out result.FormulaHeaders))throw new InvalidOperationException("表头公式选项无效。");
             if(values.ContainsKey("headersRepeat")&&!bool.TryParse(values["headersRepeat"],out result.RepeatNames))throw new InvalidOperationException("名称重复选项无效。");
+            if(values.ContainsKey("variableHeaders")&&!bool.TryParse(values["variableHeaders"],out result.VariableHeaders))throw new InvalidOperationException("变量表头选项无效。");
+            result.RepeatSource=OptionalHeader(values,"repeatSource");result.RepeatTarget=OptionalHeader(values,"repeatTarget");
             result.CompanyHeader = OptionalHeader(values, "companyHeader"); result.YearSource = OptionalHeader(values, "yearSource"); result.YearTarget = OptionalHeader(values, "yearTarget");
-            if (result.HeadersEnabled && (result.CompanyHeader == null || result.YearSource == null || result.YearTarget == null)) throw new InvalidOperationException("启用表头的预设缺少选区。");
+            if (result.HeadersEnabled && !result.VariableHeaders && (result.CompanyHeader == null || result.YearSource == null || result.YearTarget == null)) throw new InvalidOperationException("启用表头的预设缺少选区。");
             if ((result.CompanyHeader != null && (result.CompanyHeader.Rows != 1 || result.CompanyHeader.Columns != 1 || result.CompanyHeader.Sheet != values["templateSheet"])) || (result.YearTarget != null && (result.YearTarget.Rows != 1 || result.YearTarget.Columns != 1 || result.YearTarget.Sheet != values["templateSheet"])) || (result.YearSource != null && result.YearSource.Rows != 1 && result.YearSource.Columns != 1)) throw new InvalidOperationException("表头预设的目标或年度来源形状无效。");
             result.Paste = paste[0]; SummaryAreaEngine.LeadRows(result.Lead); SummaryAreaEngine.Targets(result.Template, result.Paste.Row, result.Paste.Column, 1);
             int row = result.Template.Min(p => p.Row), column = result.Template.Min(p => p.Column); foreach (var part in result.Template) { part.RowOffset = part.Row - row; part.ColumnOffset = part.Column - column; }
@@ -66,6 +68,23 @@ namespace Excel_Iterate
         internal SummaryAreaPlan Area;
         internal string Formula;
         internal bool Dynamic;
+    }
+    internal static class SummaryPeriodOrder
+    {
+        internal static DateTime Parse(object value,string display,bool date1904)
+        {
+            if(value is DateTime)return (DateTime)value;
+            string text=(display??"").Trim();
+            var year=Regex.Match(text,@"^(\d{4})(?:年度|年)?$");
+            if(year.Success){int y=int.Parse(year.Groups[1].Value);if(y>=1900&&y<=9999)return new DateTime(y,1,1);}
+            var date=Regex.Match(text,@"^(\d{4})[./年-](\d{1,2})[./月-](\d{1,2})日?$");
+            if(date.Success){try{return new DateTime(int.Parse(date.Groups[1].Value),int.Parse(date.Groups[2].Value),int.Parse(date.Groups[3].Value));}catch(ArgumentOutOfRangeException){}}
+            if(value is double||value is float||value is int||value is decimal)
+            {double n=Convert.ToDouble(value);if(n>=1&&n<2958466){try{return DateTime.FromOADate(n+(date1904?1462:0));}catch(ArgumentException){}}}
+            throw new InvalidOperationException("无法识别期间："+text+"；请选择年度或明确的年月日。");
+        }
+        internal static List<int> Descending(IList<DateTime> values)
+        {if(values.Count==0||values.Distinct().Count()!=values.Count)throw new InvalidOperationException("期间为空或包含重复时间，不能唯一排序。");return Enumerable.Range(0,values.Count).OrderByDescending(i=>values[i]).ToList();}
     }
     internal static class SummaryHeaderFormula
     {

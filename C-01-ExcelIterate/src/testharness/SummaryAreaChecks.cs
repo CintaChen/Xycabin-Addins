@@ -9,6 +9,15 @@ internal static class SummaryAreaChecks
     internal static void Run(Action<string, bool, string> check)
     {
         Action<Action, string> rejects = delegate(Action action, string name) { bool rejected = false; try { action(); } catch (InvalidOperationException) { rejected = true; } check(name, rejected, "invalid input accepted"); };
+        check("年度期间解析",SummaryPeriodOrder.Parse("2027年度","2027年度",false)==new DateTime(2027,1,1),"");
+        check("点分日期解析",SummaryPeriodOrder.Parse("2027.2.3","2027.2.3",false)==new DateTime(2027,2,3),"");
+        check("真实日期序列解析",SummaryPeriodOrder.Parse(46388.0,"1/1/2027",false)==DateTime.FromOADate(46388),"");
+        check("1904日期序列解析",SummaryPeriodOrder.Parse(40000.0,"unformatted",true)==DateTime.FromOADate(41462),"");
+        var periodOrder=SummaryPeriodOrder.Descending(new[]{new DateTime(2025,1,1),new DateTime(2027,1,1),new DateTime(2026,1,1)});
+        check("期间倒序保存原来源索引",periodOrder[0]==1&&periodOrder[1]==2&&periodOrder[2]==0,"");
+        rejects(delegate{SummaryPeriodOrder.Parse("not a date","未知期间",false);},"未知期间阻断");
+        rejects(delegate{SummaryPeriodOrder.Parse("2027.2.30","2027.2.30",false);},"无效日期阻断");
+        rejects(delegate{SummaryPeriodOrder.Descending(new[]{new DateTime(2027,1,1),new DateTime(2027,1,1)});},"重复时间阻断");
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };

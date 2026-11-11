@@ -15,6 +15,7 @@ namespace Excel_Iterate
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
         internal readonly ResultGrid ReferenceSources = new ResultGrid { AutoSize=false,Height=145,Dock=DockStyle.Top,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false };
         private Control referenceBody;
+        internal readonly CheckBox VariableHeaders = new CheckBox {Text="Lead 变量与期间关联（期间倒序，后续只更新对应值）",AutoSize=true};
         internal readonly CheckBox FormulaHeaders = new CheckBox {Text="使用公式关联 Lead（单列年度自动转置）",AutoSize=true,Checked=true};
         internal readonly CheckBox RepeatNames = new CheckBox {Text="每个年度列都填写公司名称",AutoSize=true,Checked=true};
         internal readonly CheckBox ReplaceHeaderArrays = new CheckBox {Text="允许整体重写既有表头数组（预检列出完整范围）",AutoSize=true};
@@ -63,6 +64,10 @@ namespace Excel_Iterate
             var expand=Ui.Button("▶ 表头自动填充",180);parameters.Controls.Add(expand);
             expand.Click+=delegate { headerBody.Visible=!headerBody.Visible;expand.Text=(headerBody.Visible?"▼":"▶")+" 表头自动填充"; };
             headerBody.Controls.Add(HeadersEnabled);inputs.Add(HeadersEnabled);
+            headerBody.Controls.Add(VariableHeaders);inputs.Add(VariableHeaders);VariableHeaders.CheckedChanged+=delegate{InvalidatePlan();};
+            headerBody.Controls.Add(Picker("重复变量来源（Lead 数据列，不含标题）","repeatSource"));
+            headerBody.Controls.Add(Picker("变量写入位置（每字段一行，同一列起点）","repeatTarget"));
+            headerBody.Controls.Add(new Label{AutoSize=true,ForeColor=Ui.InkDim,MaximumSize=new Size(1000,0),Text="变量模式：来源每列对应目标选区的一行，例如 Lead!O3:P5 对应 Q2:Q3。按 Lead 原行号与勾选公司配对，每条重复期间数量次。期间沿用下面的来源和写入起点；生成时倒序，后续不重新排序。"});
             foreach(var option in new[]{FormulaHeaders,RepeatNames,ReplaceHeaderArrays}){headerBody.Controls.Add(option);inputs.Add(option);option.CheckedChanged+=delegate{InvalidatePlan();};}
 
             headerBody.Controls.Add(Picker("公司名称写入位置", "companyHeader"));
