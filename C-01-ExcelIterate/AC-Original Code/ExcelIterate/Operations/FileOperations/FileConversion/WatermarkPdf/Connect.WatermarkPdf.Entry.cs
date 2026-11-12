@@ -6,7 +6,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
-// 功能：Excel-Iterate → 操作 → 文件操作 → 文件转换与 PDF 工具 → PDF 添加水印
+// 功能：Excel-Iterate → 操作 → 文件操作 → PDF 工具 → 编辑 PDF
 // 控件：btnWatermarkPdf
 // 共用实现：@shared/src/addin/Connect.Pdf.cs
 namespace Excel_Iterate

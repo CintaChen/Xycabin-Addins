@@ -129,3 +129,4 @@ internal static class PdfCurrentDocumentProbe
         catch (Exception error) { Console.WriteLine(error); return 1; }
     }
 }
+
