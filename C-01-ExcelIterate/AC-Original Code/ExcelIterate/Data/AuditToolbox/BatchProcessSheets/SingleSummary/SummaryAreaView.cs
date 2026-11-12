@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Collections.Generic;
 using System.Windows.Forms;
@@ -34,7 +34,7 @@ namespace Excel_Iterate
         internal event Action PreviewRequested, ExecuteRequested, UndoRequested, ConfirmRequested, Changed;
         private readonly List<Control> inputs = new List<Control>();
         private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
-        internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可点击选择文件夹。" };
+        internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可在 Excel 中选择存放路径文字的单元格。" };
         internal readonly ResultGrid ReferenceSources = new ResultGrid { AutoSize=false,Height=145,Dock=DockStyle.Top,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false };
         private Control referenceBody;
         internal readonly CheckBox VariableHeaders = new CheckBox {Text="Lead 变量与期间关联",AutoSize=true,Checked=true};
@@ -69,8 +69,8 @@ namespace Excel_Iterate
             var folder = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
             folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); folder.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             folder.Controls.Add(new Label { Text = "项目文件夹（可输入）", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0); folder.Controls.Add(Folder, 1, 0);
-            var browse = Ui.Button("选择文件夹…", 130); folder.Controls.Add(browse, 2, 0); inputs.Add(browse); inputs.Add(Folder);
-            browse.Click += delegate { string value = HostDialogService.Folder(FindForm(), "选择公司底稿所在文件夹", true); if (!string.IsNullOrEmpty(value)) Folder.Text = value; };
+            var browse = Ui.Button("在 Excel 中选择…", 150); browse.Name = "summaryPickFolderCell"; folder.Controls.Add(browse, 2, 0); inputs.Add(browse); inputs.Add(Folder);
+            browse.Click += delegate { if (Pick != null) Pick("folder", true); };
             Folder.TextChanged += delegate { InvalidatePlan(); }; CheckFiles.CheckedChanged += delegate { InvalidatePlan(); };
             parameters.Controls.Add(folder); parameters.Controls.Add(CheckFiles); inputs.Add(CheckFiles);
             ReferenceSources.Columns.Add(new DataGridViewTextBoxColumn{Name="source",HeaderText="来源文件 / 工作表",ReadOnly=true,Width=280});

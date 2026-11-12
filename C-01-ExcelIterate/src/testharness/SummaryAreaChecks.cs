@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Forms;
@@ -153,6 +153,22 @@ internal static class SummaryAreaChecks
             {
                 check("MVP复用原保存预设齿轮",view.Controls.Find("batchPresetSettings",true).Length==1,"preset gear absent");
                 var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+                var folderCell = new SummaryFolderCell { Value2 = "  C:\\底稿路径  " };
+                app.Selection = folderCell;
+                var pickFolder = typeof(SummaryAreaHost).GetMethod("Pick", flags);
+                pickFolder.Invoke(host, new object[] { "folder", false });
+                check("项目文件夹从单元格文字读取", view.ProjectFolder == @"C:\底稿路径", "cell path missing");
+                check("路径来源不绑定业务工作簿", typeof(SummaryAreaHost).GetField("book",flags).GetValue(host)==null, "folder cell bound workbook");
+                foreach (object invalid in new object[] { "", 123, DBNull.Value })
+                {
+                    folderCell.Value2 = invalid; pickFolder.Invoke(host, new object[] { "folder", false });
+                    check("无效路径文字保留旧值", view.ProjectFolder == @"C:\底稿路径", "invalid cell overwrote folder");
+                }
+                folderCell.Value2 = @"C:\其他路径"; folderCell.Width = 2;
+                pickFolder.Invoke(host, new object[] { "folder", false });
+                check("路径拒绝多单元格选区", view.ProjectFolder == @"C:\底稿路径", "multiple cells accepted");
+                app.Selection = null; pickFolder.Invoke(host, new object[] { "folder", false });
+                check("取消路径选区保留旧值", view.ProjectFolder == @"C:\底稿路径", "cancel overwrote folder");
                 Action<string,object> field=(name,value)=>typeof(SummaryAreaHost).GetField(name,flags).SetValue(host,value);
                 field("book",app.Book);field("bookName","test.xlsx");field("templateSheet","汇总");field("backup","备份");field("targets",SummaryAreaEngine.Targets(areas,3,17,2));
                 check("溢出空状态不等同于True",SummaryAreaHost.FormulaFlag(DBNull.Value,"test","HasSpill")==-1&&SummaryAreaHost.FormulaFlag(null,"test","HasSpill")==-1,"null misclassified");
@@ -182,11 +198,23 @@ internal static class SummaryAreaChecks
 }
 public sealed class SummaryAreaFakeApp
 {
+    public object Selection { get; set; }
     public int Calculation { get; set; }
     public bool EnableEvents{get;set;} public bool ScreenUpdating{get;set;} public bool AskToUpdateLinks{get;set;} public bool DisplayAlerts{get;set;}
     public SummaryAreaFakeBook Book=new SummaryAreaFakeBook();
     public SummaryAreaFakeApp(){Calculation=-4105;EnableEvents=ScreenUpdating=AskToUpdateLinks=DisplayAlerts=true;}
     public SummaryAreaFakeBooks Workbooks{get{return new SummaryAreaFakeBooks(Book);}}
+}
+public sealed class SummaryFolderCell
+{
+    public object Value2 { get; set; }
+    public object Parent { get { return new object(); } }
+    public int Row { get { return 1; } } public int Column { get { return 1; } }
+    public int Width = 1;
+    public string Address { get { return "$A$1"; } }
+    public SummarySpillCount Rows { get { return new SummarySpillCount(1); } }
+    public SummarySpillCount Columns { get { return new SummarySpillCount(Width); } }
+    public SummarySpillCount Areas { get { return new SummarySpillCount(1); } }
 }
 public sealed class SummaryAreaFakeBooks
 {

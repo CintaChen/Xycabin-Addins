@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -219,10 +219,23 @@ namespace Excel_Iterate
                     try
                     {
                         string promptKind=kind.StartsWith("repeat_")?(kind.EndsWith("Source")?"repeatSource":"repeatTarget"):kind.StartsWith("year_")?(kind.EndsWith("Source")?"yearSource":"yearTarget"):kind;
-                        if (native) { if (kind == "lead" || kind == "yearSource" || kind=="repeatSource" || kind.EndsWith("Source")) ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, promptKind == "repeatSource" ? "选择Lead变量，可按Ctrl多选分段或不相邻列；每家公司的实际行需包含所选字段，不含标题。" : promptKind == "repeatTarget" ? "选择汇总表同一列连续单元格，每个来源字段对应一个目标行。" : promptKind == "template" ? "选择已编制区域，可按 Ctrl 多选；按住Ctrl可选择多个区域。" : promptKind == "lead" ? "选择公司名称一列，不含表头；可Ctrl选择分段。" : promptKind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : promptKind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : promptKind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "合并批量链接", Type.Missing); }
+                        if (native) { if (kind == "lead" || kind == "yearSource" || kind=="repeatSource" || kind.EndsWith("Source")) ActivateLeadSheet(); form.Hide(); chosen = DataMigrationHost.PickNativeRange(app, promptKind == "folder" ? "请选择一个存放项目文件夹完整路径的单元格；读取文字，不修改该单元格。" : promptKind == "repeatSource" ? "选择Lead变量，可按Ctrl多选分段或不相邻列；每家公司的实际行需包含所选字段，不含标题。" : promptKind == "repeatTarget" ? "选择汇总表同一列连续单元格，每个来源字段对应一个目标行。" : promptKind == "template" ? "选择已编制区域，可按 Ctrl 多选；按住Ctrl可选择多个区域。" : promptKind == "lead" ? "选择公司名称一列，不含表头；可Ctrl选择分段。" : promptKind == "yearSource" ? "选择单列或单行连续年度来源；单列转置成一行，数量须等于已编制区域横向跨度。" : promptKind == "companyHeader" ? "选择第一家公司名称目标单元格，支持既有合并区域，不创建或拆分合并。" : promptKind == "yearTarget" ? "选择第一家公司年度写入起点，一个单元格。" : "选择粘贴起点，一个单元格。", "合并批量链接", Type.Missing); }
                         else chosen = ((dynamic)app).Selection;
                         if (chosen == null || chosen is bool) return;
                         dynamic range = bag.Own(chosen), sheet = bag.Own(range.Parent);
+                        if (kind == "folder")
+                        {
+                            dynamic folderAreas = bag.Own(range.Areas);
+                            var cell = Coordinates(range, bag);
+                            if (Convert.ToInt32(folderAreas.Count) != 1 || cell.Rows != 1 || cell.Columns != 1)
+                                throw new InvalidOperationException("项目文件夹请选择一个存放路径文字的单元格。");
+                            object content = range.Value2;
+                            string path = content as string;
+                            if (string.IsNullOrWhiteSpace(path)) throw new InvalidOperationException("所选单元格没有有效的路径文字；原路径已保留。");
+                            view.Folder.Text = path.Trim();
+                            view.Message("已读取项目文件夹：" + view.ProjectFolder);
+                            return;
+                        }
                         object selectedBook = sheet.Parent;
                         if (book == null) { book = references.Own(selectedBook); bookName = Convert.ToString(((dynamic)book).FullName); }
                         else { bag.Own(selectedBook); if (!WorksheetIdentity.SameObject(book, selectedBook)) throw new InvalidOperationException("三组选区必须来自同一个工作簿。"); }
