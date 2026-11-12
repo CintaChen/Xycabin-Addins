@@ -32,6 +32,8 @@ namespace Excel_Iterate
         internal void ClearGroups(){foreach(string key in ExtraGroups.ToArray())RemoveGroup(key);}
 
         internal event Action PreviewRequested, ExecuteRequested, UndoRequested, ConfirmRequested, Changed;
+        internal event Action BatchFilesRequested;
+        internal Action<string> LogSink;
         private readonly List<Control> inputs = new List<Control>();
         private readonly Dictionary<string, TextBox> addresses = new Dictionary<string, TextBox>();
         internal readonly TextBox Folder = new TextBox { Dock = DockStyle.Fill, Name = "summaryProjectFolder", ReadOnly = false, ShortcutsEnabled = true, AccessibleDescription = "可直接输入或粘贴项目文件夹路径，也可在 Excel 中选择存放路径文字的单元格。" };
@@ -112,7 +114,9 @@ namespace Excel_Iterate
             Ui.StyleGrid(Companies); root.Controls.Add(Companies, 0, 2); root.Controls.Add(log, 0, 3);
             Companies.CurrentCellDirtyStateChanged += delegate { if (Companies.IsCurrentCellDirty) Companies.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             Companies.CellValueChanged += delegate(object sender, DataGridViewCellEventArgs e) { if (e.ColumnIndex == 0) InvalidatePlan(); };
-            var bar = Ui.ActionBar(); bar.Controls.AddRange(new Control[] { preview, execute, confirm, undo }); root.Controls.Add(bar, 0, 4);
+            var batchFiles = Ui.Button("多文件批量链接…", 165); inputs.Add(batchFiles);
+            batchFiles.Click += delegate { if (BatchFilesRequested != null) BatchFilesRequested(); };
+            var bar = Ui.ActionBar(); bar.Controls.AddRange(new Control[] { preview, execute, confirm, undo, batchFiles }); root.Controls.Add(bar, 0, 4);
             Ui.StylePrimary(preview); preview.Click += delegate { if (PreviewRequested != null) PreviewRequested(); };
             execute.Click += delegate { if (ExecuteRequested != null) ExecuteRequested(); }; undo.Click += delegate { if (UndoRequested != null) UndoRequested(); }; confirm.Click += delegate { if (ConfirmRequested != null) ConfirmRequested(); };
             Controls.Add(root); SetState(false, false, false);
@@ -149,7 +153,7 @@ namespace Excel_Iterate
             parameters.Controls.Add(actions.Header(new Label { Text = "", AutoSize = true }), 0, 0); parameters.ResumeLayout(true);
         }
         internal void InvalidatePlan() { execute.Enabled = false; if (Changed != null) Changed(); }
-        internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }
+        internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); if (LogSink != null) LogSink(value); }
         internal void SetState(bool running, bool pending, bool ready)
         { foreach (var c in inputs) c.Enabled = !running && !pending; if (presets != null) presets.Gear.Enabled = !running && !pending; Companies.Enabled = !running && !pending; ReferenceSources.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
     }

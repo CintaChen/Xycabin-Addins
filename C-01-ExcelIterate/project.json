@@ -1,4 +1,4 @@
-{
+﻿{
   "assembly": "Excel_Iterate",
   "namespace": "Excel_Iterate",
   "host": "Excel",
@@ -232,6 +232,7 @@
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationRecovery.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaEngine.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaHost.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryFileBatch.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaView.cs",
     "@shared/src/addin/PdfFileSelection.cs"
   ],
@@ -773,6 +774,7 @@
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/_Shared/PresetManagerView.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaEngine.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryFileBatch.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaView.cs"
       ],
       "tests": [

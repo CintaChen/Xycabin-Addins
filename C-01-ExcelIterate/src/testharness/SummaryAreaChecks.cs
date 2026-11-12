@@ -141,6 +141,15 @@ internal static class SummaryAreaChecks
         check("整块状态忽略公式缓存变化",SummaryAreaEngine.XmlState(xml)==SummaryAreaEngine.XmlState(xml.Replace(">2</Data>",">3</Data>")),"formula cache treated as edit");
         check("整块状态保留格式变化",SummaryAreaEngine.XmlState(xml)!=SummaryAreaEngine.XmlState(xml.Replace("#000000","#123456")),"font change lost");
         check("整块状态保留批注变化",SummaryAreaEngine.XmlState(xml)!=SummaryAreaEngine.XmlState(xml.Replace("批注","另一批注")),"comment change lost");
+        var rebound = SummaryFileBatch.Rebind(preset, @"C:\新项目\乙.xlsx", @"C:\新底稿");
+        check("批文件预设重绑定到当前副本", rebound.Context == @"C:\新项目\乙.xlsx" && rebound.Values["projectFolder"] == @"C:\新底稿", "batch context retained original file");
+        check("批文件重绑定不修改原预设", preset.Context != rebound.Context && preset.Values["projectFolder"] != rebound.Values["projectFolder"], "preset mutated");
+        check("批文件保持多区域坐标", rebound.Values["templateAreas"] == preset.Values["templateAreas"], "template coordinates changed");
+        check("路径单元格兼容外层引号", SummaryFileBatch.CellPath("  \"" + System.IO.Path.GetTempPath() + "\"  ") == System.IO.Path.GetTempPath(), "cell path trim failed");
+        rejects(delegate { SummaryFileBatch.CellPath(123); }, "路径单元格拒绝数字");
+        rejects(delegate { SummaryFileBatch.CellPath(""); }, "路径单元格拒绝空白");
+        rejects(delegate { SummaryFileBatch.CellPath("relative"); }, "路径单元格拒绝相对路径");
+        check("批文件限制支持格式", SummaryFileBatch.IsWorkbook("甲.XLSX") && SummaryFileBatch.IsWorkbook("乙.xls") && !SummaryFileBatch.IsWorkbook("丙.xlsm"), "unsafe format accepted");
         using (var form = new SingleSummaryForm(true))
         {
             check("Ribbon MVP使用四组参数视图", form.Controls.Count==1 && form.Controls[0] is SummaryAreaView, "view missing");

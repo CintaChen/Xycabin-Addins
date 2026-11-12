@@ -55,6 +55,7 @@ namespace Excel_Iterate
             view.GroupRemoved+=delegate(string key){SummaryAreaPlan previous;if(extraInputs.TryGetValue(key+"Source",out previous))variableAreas.Remove(previous);extraInputs.Remove(key+"Source");extraInputs.Remove(key+"Target");};view.Pick += Pick; view.PreviewRequested += delegate { Safe(Preview); };
             view.ExecuteRequested += delegate { Safe(Start); }; view.UndoRequested += delegate { Safe(Undo); };
             view.ConfirmRequested += delegate { Safe(Confirm); }; view.Changed += Invalidate;
+            view.BatchFilesRequested += delegate { Safe(delegate { SummaryFileBatch.Show(app, form); }); };
             form.Activated += delegate { if (ready) Safe(delegate { CheckBook(); if (watch != null) watch.Validate(); }); };
             form.FormClosing += delegate(object sender, FormClosingEventArgs e) { if (handling || running || pending) { e.Cancel = true; view.Message("请先完成当前操作、确认或撤销本批；备份表：" + backup); } };
             timer.Tick += Tick;
@@ -87,6 +88,19 @@ namespace Excel_Iterate
                 return false;
             }
         }
+        internal void PrepareBatchFile(BatchPreset preset)
+        {
+            ApplyPreset(preset); Preview();
+        }
+        internal void StartBatchFile() { Start(); timer.Stop(); }
+        internal bool StepBatchFile()
+        {
+            if (running) Tick(this, EventArgs.Empty);
+            timer.Stop();
+            if (failed) throw new InvalidOperationException("本文件执行失败；副本不会输出，请查看详细日志。");
+            return !running && pending;
+        }
+        internal void FinishBatchFile() { Confirm(); }
         internal BatchPreset CapturePreset()
         {
             var preset = new BatchPreset { Feature = "summary", Name = "区域链接", Context = book == null ? "" : bookName, Values = new Dictionary<string, string> {
