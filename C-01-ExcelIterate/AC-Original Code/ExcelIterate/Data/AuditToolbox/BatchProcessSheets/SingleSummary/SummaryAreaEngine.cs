@@ -18,7 +18,7 @@ namespace Excel_Iterate
         internal SummaryAreaPlan CompanyHeader, YearSource, YearTarget, RepeatSource, RepeatTarget;
         internal static string Encode(IEnumerable<SummaryAreaPlan> parts)
         { return string.Join(";", parts.Select(p => string.Join(",", new[] { p.Row, p.Column, p.Rows, p.Columns }.Select(n => n.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray())).ToArray()); }
-        private static List<SummaryAreaPlan> Decode(string text, string sheet)
+        internal static List<SummaryAreaPlan> Decode(string text, string sheet)
         {
             if (string.IsNullOrEmpty(sheet) || string.IsNullOrEmpty(text)) throw new InvalidOperationException("预设缺少工作表或选区，请重新选择后保存。");
             var result = new List<SummaryAreaPlan>();

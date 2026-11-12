@@ -44,6 +44,9 @@ internal static class SummaryAreaChecks
             var ui=(SummaryAreaView)formatForm.Controls[0];check("表头默认启用且没有可见开关",ui.HeadersEnabled.Checked&&ui.HeadersEnabled.Parent==null,"");
             var controls=new Queue<Control>();controls.Enqueue(ui);bool hasRead=false;while(controls.Count>0){var current=controls.Dequeue();if(current.Text=="读取当前选区")hasRead=true;foreach(Control child in current.Controls)controls.Enqueue(child);}check("所有选区只保留原生选择按钮",!hasRead,"");
         }
+        var fragments=new List<SummaryAreaPlan>{new SummaryAreaPlan{Sheet="Lead",Row=3,Column=15,Rows=1,Columns=1},new SummaryAreaPlan{Sheet="Lead",Row=5,Column=15,Rows=1,Columns=1},new SummaryAreaPlan{Sheet="Lead",Row=3,Column=17,Rows=1,Columns=1},new SummaryAreaPlan{Sheet="Lead",Row=5,Column=17,Rows=1,Columns=1}};
+        check("重复变量Ctrl分段按真实行配对",SummaryAreaHost.VariableColumns(fragments,5).Count==2&&SummaryAreaHost.VariableColumns(fragments,3)[1]==17,"");
+        rejects(delegate{SummaryAreaHost.VariableColumns(fragments,4);},"未选公司行不得从相邻行取变量");fragments.Add(fragments[0]);rejects(delegate{SummaryAreaHost.VariableColumns(fragments,3);},"重复变量重叠选择阻断");
         var areas = new List<SummaryAreaPlan> {
             new SummaryAreaPlan { Sheet="汇总", Row=3,Column=12,Rows=4,Columns=5 },
             new SummaryAreaPlan { Sheet="汇总", Row=20,Column=12,Rows=11,Columns=5 } };
