@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows.Forms;
 
 namespace Excel_Iterate
@@ -20,6 +20,7 @@ namespace Excel_Iterate
                 var form = new CompanyWorkbookForm();
                 form.CanRun = delegate { return !_busy; };
                 form.OpenTemplate = delegate(string path) { return new CompanyWorkbookHost(_app, path); };
+                form.OpenCurrentTemplate = delegate { return CompanyWorkbookHost.FromCurrent(_app); };
                 form.BusyChanged += delegate(bool busy) { _busy = busy; };
                 form.FormClosed += delegate { _companyWorkbookForm = null; form.Dispose(); };
                 _companyWorkbookForm = form;

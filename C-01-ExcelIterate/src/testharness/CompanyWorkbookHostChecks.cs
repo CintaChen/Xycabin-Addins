@@ -64,6 +64,13 @@ public sealed class CompanyFakeWindows
 }
 public sealed class CompanyFakeBook
 {
+    public int FileFormat { get; set; }
+    public string Path { get; set; }
+    public string Name { get; set; }
+    public string FullName { get; set; }
+    public string MemoryContents = "unsaved edits";
+    public int Copies;
+    public void SaveCopyAs(string path) { Copies++; File.WriteAllText(path, MemoryContents); }
     public readonly CompanyFakeWindows Windows = new CompanyFakeWindows();
     public CompanyFakeSheets Worksheets { get; private set; }
     public bool ReadOnly { get; set; }
@@ -110,6 +117,19 @@ internal static class CompanyWorkbookHostChecks
 {
     internal static void Run(string folder, Action<bool, string> check, Action<Action, string> reject)
     {
+        var currentApp = new CompanyFakeApp();
+        reject(delegate { CompanyWorkbookHost.FromCurrent(currentApp); }, "current template requires open workbook");
+        var original = new CompanyFakeBook { FileFormat = 51, Path = "", Name = "Book1" };
+        currentApp.ActiveWorkbook = original;
+        using (var currentHost = CompanyWorkbookHost.FromCurrent(currentApp))
+        {
+            check(File.ReadAllText(currentHost.Snapshot) == "unsaved edits", "current template includes in-memory contents");
+            check(original.Copies == 1 && original.Saved == 0 && !original.Closed, "snapshot does not save or close original");
+            check(currentHost.TemplateSource == "Book1.xlsx", "unsaved current workbook gets supported template suffix");
+        }
+        check(!original.Closed && original.Windows.Window.Visible, "disposing snapshot leaves current workbook open and visible");
+        original.FileFormat = 52;
+        reject(delegate { CompanyWorkbookHost.FromCurrent(currentApp); }, "macro format cannot silently lose macros");
         var request = new CompanyWorkbookRequest { SourceSheet = "source", TargetSheet = "lead", NameField = "name", CodeField = "code", FullNameField = "full", TargetCodeField = "code", TargetNameField = "full", Output = folder, HeaderRow = 1, FirstRow = 3, LastRow = 5, TargetHeaderRow = 1, TargetRow = 8, UpdateLead = true };
         var app = new CompanyFakeApp(); var cells = app.Workbooks.Template.Worksheets.Source.Cells;
         cells.Item(1, 1).Value2 = "name"; cells.Item(1, 2).Value2 = "code"; cells.Item(1, 3).Value2 = "full";

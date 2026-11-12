@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Diagnostics;
@@ -40,6 +40,7 @@ namespace Excel_Iterate
         private bool ticking, cancelled, closePending, loading, preparing;
         internal event Action<bool> BusyChanged;
         internal Func<string, CompanyWorkbookHost> OpenTemplate;
+        internal Func<CompanyWorkbookHost> OpenCurrentTemplate;
         internal Func<bool> CanRun;
         internal bool Running { get { return records != null; } }
         private static ComboBox Choice() { return new ComboBox { Width = 180, DropDownWidth = 300, DropDownStyle = ComboBoxStyle.DropDownList }; }
@@ -53,15 +54,15 @@ namespace Excel_Iterate
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 62)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 38)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var browse = Ui.Button("选择模板…", 115); browse.Click += delegate { PickTemplate(); };
-            AddRow("模板文件", template, browse);
+            var current = Ui.Button("使用当前工作簿", 145);
+            current.Click += delegate { LoadTemplate(null); };
+            AddRow("模板文件", template, browse, current);
             presets = new BatchPresetActions(this, "company", CapturePreset, ApplyPreset,
                 delegate { return !Running && !ticking && !preparing && (CanRun == null || CanRun()); }, Append);
             AddRow("来源工作表", source, Label("表头行"), header, PickButton("sourceHeader"));
             AddRow("来源数据行", Label("起始（必填）"), first, Label("结束（必填，含此行）"), last, PickButton("data"));
             AddRow("命名名称", naming, PickButton("naming"));
             AddRow("名称处理", Label("从原文末尾去除"), RemoveTailCharacters, Label("个字符，再"), StripExcelSuffix);
-            AddRow("命名顺序", Label("先去除指定字符，再去掉 Excel 后缀，最后统一添加模板后缀；默认去除 0 个字符。"));
-            AddRow("生成方式", update);
             AddRow("目标表中替换字段", Label("编码"), code, PickButton("code"), Label("全称"), full, PickButton("full"));
             AddRow("目标工作表", target, Label("表头行"), leadHeader, PickButton("targetHeader"));
             AddRow("目标字段", Label("编码"), targetCode, PickButton("targetCode"), Label("全称"), targetName, PickButton("targetName"));
@@ -69,12 +70,7 @@ namespace Excel_Iterate
             var chooseOutput = Ui.Button("选择文件夹…", 115); chooseOutput.Click += delegate
             { string selected = HostDialogService.Folder(this, "选择过程表输出文件夹", true); if (!string.IsNullOrEmpty(selected)) output.Text = selected; };
             AddRow("输出文件夹", output, chooseOutput);
-            AddRow("选区结果", selectionInfo);
             AddRow("核对", confirmed);
-            AddRow("来源说明", Label("每个公司数据行生成一个工作簿。数据范围不含表头；选中哪些列不限制实际读取字段。"));
-            AddRow("字段说明", Label("字段请选择实际表头单元格；新选区会替换原工作表、表头行与字段。程序按字段读取编码、全称及文件名。下拉与手填行号仍可使用。"));
-            AddRow("目标说明", Label("仅更新生成副本的指定数据行中编码、全称两个字段。原始模板不会写入或覆盖。"));
-            AddRow("说明", Label("读取磁盘模板快照；空行提示跳过，其他异常阻断；已有文件绝不覆盖。\n只复制模式保留原文件字节；更新 Lead 模式会经宿主保存，请先用小样本核验。"));
             progressArea.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             for (int i = 0; i < 4; i++) progressArea.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             progressArea.Controls.Add(ProgressCounts, 0, 0); progressArea.Controls.Add(Progress, 0, 1);
@@ -357,22 +353,38 @@ namespace Excel_Iterate
             string[] paths = HostDialogService.OpenFiles(this, "Excel 模板 (*.xlsx;*.xls)|*.xlsx;*.xls");
             if (paths.Length == 0) return;
             if (paths.Length != 1) { Append("请每次只选择一个原始模板。"); return; }
+            LoadTemplate(paths[0]);
+        }
+        private void LoadTemplate(string path)
+        {
+            if (CanRun != null && !CanRun()) { Append("宿主正在执行其他任务，请稍后再试。"); return; }
             {
                 try
                 {
                     SetBusy(true);
                     ResetProgress("等待配置");
-                    ReleaseHost(); template.Clear();
+                    CompanyWorkbookHost candidate;
+                    if (path == null)
+                    {
+                        if (OpenCurrentTemplate == null) throw new InvalidOperationException("当前工作簿读取服务尚未连接。");
+                        candidate = OpenCurrentTemplate();
+                    }
+                    else
+                    {
+                        if (OpenTemplate == null) throw new InvalidOperationException("模板读取服务尚未连接。");
+                        candidate = OpenTemplate(path);
+                    }
+                    ReleaseHost(); host = candidate; template.Text = host.TemplateSource;
                     loading = true; source.Items.Clear(); target.Items.Clear(); naming.Items.Clear(); code.Items.Clear(); full.Items.Clear(); targetCode.Items.Clear(); targetName.Items.Clear();
                     if (OpenTemplate == null) throw new InvalidOperationException("模板读取服务尚未连接。");
-                    host = OpenTemplate(paths[0]); template.Text = paths[0];
+
                     source.Items.AddRange(host.Sheets.ToArray()); target.Items.AddRange(host.Sheets.ToArray());
                     Select(source, "公司主题汇总"); Select(target, "lead");
                     confirmed.Checked = false;
-                    Append("已读取磁盘模板快照，共 " + host.Sheets.Count + " 张表；如修改原模板，请重新选择以刷新快照。");
+                    Append("已读取模板快照，共 " + host.Sheets.Count + " 张表；如修改原模板，请重新选择以刷新快照。");
                     if (source.SelectedIndex < 0 || target.SelectedIndex < 0) Append("默认来源表或 lead 不存在，请从实际工作表中选择。");
                 }
-                catch (Exception error) { Append("读取模板失败 [" + paths[0] + "]：" + error); }
+                catch (Exception error) { Append("读取模板失败 [" + (path ?? "当前工作簿") + "]：" + error); }
                 finally { loading = false; SetBusy(false); RefreshFields(false); RefreshFields(true); }
             }
         }

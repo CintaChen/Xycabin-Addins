@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -16,10 +16,28 @@ namespace Excel_Iterate
         private object book;
         private readonly string folder;
         internal readonly string Snapshot;
+        internal readonly string TemplateSource;
         internal readonly List<string> Sheets = new List<string>();
-        internal CompanyWorkbookHost(object application, string template)
+        internal CompanyWorkbookHost(object application, string template) : this(application, template, null) { }
+        internal static CompanyWorkbookHost FromCurrent(object application)
+        {
+            using (var refs = new ComBag())
+            {
+                dynamic current = refs.Own(((dynamic)application).ActiveWorkbook);
+                if (current == null) throw new InvalidOperationException("请先打开需要作为模板的工作簿。");
+                int format = Convert.ToInt32(current.FileFormat);
+                string extension = format == 51 ? ".xlsx" : (format == 56 || format == -4143) ? ".xls" : null;
+                if (extension == null) throw new InvalidOperationException("当前工作簿格式暂不支持，请使用 .xlsx 或 .xls 模板；不会自动转换或丢弃宏。");
+                string path = Convert.ToString(current.Path);
+                string name = Convert.ToString(current.Name);
+                string source = string.IsNullOrEmpty(path) ? name + extension : Convert.ToString(current.FullName);
+                return new CompanyWorkbookHost(application, source, (object)current);
+            }
+        }
+        private CompanyWorkbookHost(object application, string template, object current)
         {
             app = application;
+            TemplateSource = template;
             string extension = Path.GetExtension(template).ToLowerInvariant();
             if (extension != ".xlsx" && extension != ".xls") throw new InvalidOperationException("模板仅支持 .xlsx 和 .xls。");
             folder = Path.Combine(Path.GetTempPath(), "ExcelIterate-Company-" + Guid.NewGuid().ToString("N"));
@@ -27,8 +45,9 @@ namespace Excel_Iterate
             Snapshot = Path.Combine(folder, Path.GetFileName(template));
             try
             {
-                // Copy disk bytes, never Save/SaveCopyAs the user's workbook.
-                using (var source = new FileStream(template, FileMode.Open, FileAccess.Read, FileShare.Read))
+                // SaveCopyAs snapshots in-memory edits without saving or closing the original.
+                if (current != null) ((dynamic)current).SaveCopyAs(Snapshot);
+                else using (var source = new FileStream(template, FileMode.Open, FileAccess.Read, FileShare.Read))
                 using (var target = new FileStream(Snapshot, FileMode.CreateNew, FileAccess.Write)) source.CopyTo(target);
                 string reading = Path.Combine(folder, "read-" + Guid.NewGuid().ToString("N") + extension);
                 File.Copy(Snapshot, reading, false);
