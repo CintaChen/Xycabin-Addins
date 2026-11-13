@@ -41,7 +41,8 @@ namespace Excel_Iterate
             chooseInput.Click += delegate { Attempt(delegate {
                 string path = HostDialogService.Folder(dialog, "选择待处理工作簿文件夹", false); if (string.IsNullOrEmpty(path)) return;
                 var found = Directory.GetFiles(path).Where(IsWorkbook).Where(p => !Path.GetFileName(p).StartsWith("~$", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
-                files.Rows.Clear(); foreach (string file in found) { int row = files.Rows.Add(true, Path.GetFileName(file), "待预检"); files.Rows[row].Tag = file; } input.Text = path;
+                files.Rows.Clear(); foreach (string file in found) { int row = files.Rows.Add(DefaultSelected(file), Path.GetFileName(file), "待预检"); files.Rows[row].Tag = file; } input.Text = path;
+                Message("已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。");
             }); };
             var choosePreset = Ui.Button("选择导出预设…", 140);
             choosePreset.Click += delegate { Attempt(delegate { string[] paths = HostDialogService.OpenFiles(dialog, "合并链接预设 (*.xybatch.json)|*.xybatch.json"); if (paths.Length != 1) return; BatchPresetStore.Decode(File.ReadAllText(paths[0]), "summary"); presetPath.Text = paths[0]; }); };
@@ -65,6 +66,11 @@ namespace Excel_Iterate
         { int row = settings.RowCount++; settings.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row); settings.Controls.Add(value, 1, row); settings.Controls.Add(action, 2, row); }
         internal static bool IsWorkbook(string file)
         { string extension = Path.GetExtension(file); return string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase); }
+        internal static bool DefaultSelected(string file)
+        {
+            string name = Path.GetFileNameWithoutExtension(file);
+            return name.Contains("（合并）") || name.Contains("(合并)");
+        }
         internal static string CellPath(object value)
         {
             string text = value as string;

@@ -150,6 +150,8 @@ internal static class SummaryAreaChecks
         rejects(delegate { SummaryFileBatch.CellPath(""); }, "路径单元格拒绝空白");
         rejects(delegate { SummaryFileBatch.CellPath("relative"); }, "路径单元格拒绝相对路径");
         check("批文件限制支持格式", SummaryFileBatch.IsWorkbook("甲.XLSX") && SummaryFileBatch.IsWorkbook("乙.xls") && !SummaryFileBatch.IsWorkbook("丙.xlsm"), "unsafe format accepted");
+        check("合并主体默认勾选兼容N盘", SummaryFileBatch.DefaultSelected(@"N:\底稿\甲（合并）.xlsx") && SummaryFileBatch.DefaultSelected(@"N:\底稿\乙(合并).xls"), "consolidated file not selected");
+        check("其他工作簿默认不勾选", !SummaryFileBatch.DefaultSelected(@"N:\底稿\丙.xlsx") && !SummaryFileBatch.DefaultSelected(@"N:\（合并）\丁.xlsx") && !SummaryFileBatch.DefaultSelected("合并说明.xlsx"), "directory or unrelated name selected");
         using (var form = new SingleSummaryForm(true))
         {
             check("Ribbon MVP使用四组参数视图", form.Controls.Count==1 && form.Controls[0] is SummaryAreaView, "view missing");
