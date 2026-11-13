@@ -70,12 +70,7 @@ namespace Excel_Iterate
             foreach(var child in all.Where(t=>chosen.Contains(Key(t.Sequence))))
             {
                 if(!child.Leaf)throw new InvalidOperationException("第"+child.Row+"行不是末级公司；本模式只处理末级公司到直属父公司。");
-                string key=Key(child.Sequence);int separator=key.LastIndexOf('-');CompanyStructureTask parent=null;
-                if(separator>=0)keys.TryGetValue(key.Substring(0,separator),out parent);else if(root!=null&&!ReferenceEquals(root,child))parent=root;
-                if(parent==null)throw new InvalidOperationException("第"+child.Row+"行找不到直属父公司，不会自动跳到更高层。");
-                string declared=(child.ParentFullName??"").Trim();
-                if((declared=="母公司本部"&&!string.Equals(child.FullName,parent.FullName,StringComparison.Ordinal))||(declared.Length>0&&declared!="母公司本部"&&!string.Equals(declared,(parent.FullName??"").Trim(),StringComparison.Ordinal)))
-                    throw new InvalidOperationException("第"+child.Row+"行F列并表母公司与序号层级不一致，请核对后重试。");
+                var parent=ParentOf(keys,root,child);
                 CompanyWorkbookRules.FileName(child.FileName);
                 if(!string.Equals(Path.GetExtension(child.FileName),".xlsx",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("第"+child.Row+"行来源文件须为.xlsx，当前外链规则不自动转换其他格式。");
                 string parentKey=Key(parent.Sequence);CompanyParentLinkTask group;
@@ -86,6 +81,25 @@ namespace Excel_Iterate
             ResolveFiles(ordered.Select(g=>g.Parent),Path.GetTempPath());
             foreach(var group in ordered)ResolveFiles(group.Children,Path.GetTempPath());
             return ordered;
+        }
+        private static CompanyStructureTask ParentOf(IDictionary<string,CompanyStructureTask> keys,CompanyStructureTask root,CompanyStructureTask child)
+        {
+            string key=Key(child.Sequence);int separator=key.LastIndexOf('-');CompanyStructureTask parent=null;
+            if(separator>=0)keys.TryGetValue(key.Substring(0,separator),out parent);else if(root!=null&&!ReferenceEquals(root,child))parent=root;
+            if(parent==null)throw new InvalidOperationException("第"+child.Row+"行找不到直属父公司，不会自动跳到更高层。");
+            string declared=(child.ParentFullName??"").Trim();
+            if((declared=="母公司本部"&&!string.Equals(child.FullName,parent.FullName,StringComparison.Ordinal))||(declared.Length>0&&declared!="母公司本部"&&!string.Equals(declared,(parent.FullName??"").Trim(),StringComparison.Ordinal)))throw new InvalidOperationException("第"+child.Row+"行F列并表母公司与序号层级不一致，请核对后重试。");
+            return parent;
+        }
+        internal static List<CompanyStructureTask> DirectChildren(IList<CompanyStructureTask> all,CompanyStructureTask selected)
+        {
+            Classify(all,true);var keys=all.ToDictionary(t=>Key(t.Sequence),StringComparer.Ordinal);
+            CompanyStructureTask parent;if(!keys.TryGetValue(Key(selected.Sequence),out parent)||parent.Leaf)throw new InvalidOperationException("请选择有下属公司的合并主体。");
+            var root=all.SingleOrDefault(t=>Regex.IsMatch((t.Level??"").Trim(),@"^0\s*级?$"));
+            var children=all.Where(t=>!ReferenceEquals(t,root)&&Key(ParentOf(keys,root,t).Sequence)==Key(parent.Sequence)).ToList();
+            var body=children.Where(t=>(t.ParentFullName??"").Trim()=="母公司本部"&&t.FullName==parent.FullName).ToList();
+            if(body.Count!=1)throw new InvalidOperationException("该主体须在架构表中明确列出且只列出一条母公司本部。");
+            return body.Concat(children.Where(t=>!ReferenceEquals(t,body[0]))).ToList();
         }
         internal static List<string> ResolveFiles(IEnumerable<CompanyStructureTask> tasks,string folder)
         {

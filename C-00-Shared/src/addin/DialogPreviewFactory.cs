@@ -75,6 +75,7 @@ namespace Excel_Iterate
                     case "audit.batch.progress":form=new BatchProgressForm(new BatchProgressState("批量任务"));break;
                     case "batch.preset.name":form=new BatchPresetNameForm("company", "保存为预设", "示例年度预设");break;
                     case "batch.preset.manager":form=new BatchPresetManagerForm("company");break;
+                    case "company.consolidated":form=new ConsolidatedWorkbookForm();break;
                     case "company.workbooks":form=new CompanyWorkbookForm();break;
                     case "summary.single":form=new SingleSummaryForm(true);break;
                     case "migration.data":form=new DataMigrationForm();break;
@@ -141,4 +142,3 @@ namespace Excel_Iterate
         }
     }
 }
-

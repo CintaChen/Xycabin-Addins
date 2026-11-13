@@ -275,6 +275,15 @@ BUTTONS = [
                         "callback": "OnCompanyWorkbooks",
                     },
                     {
+                        "id": "btnConsolidatedWorkbooks",
+                        "label": "合并模板生成",
+                        "builtin_icon": "table",
+                        "screentip": "按架构表为合并主体生成模板并填写Lead",
+                        "supertip": "选择合并模板和架构表，默认勾选有下属公司的主体；写入本部及全部直系子公司，保留公式，原文件不变，同名输出不覆盖。",
+                        "action": "feature",
+                        "callback": "OnConsolidatedWorkbooks",
+                    },
+                    {
                         "id": "btnSingleSummary",
                         "label": "合并批量链接",
                         "builtin_icon": "table",
@@ -595,5 +604,3 @@ check_installer_version = _core.check_installer_version
 main = _core.main
 if __name__ == "__main__":
     main()
-
-

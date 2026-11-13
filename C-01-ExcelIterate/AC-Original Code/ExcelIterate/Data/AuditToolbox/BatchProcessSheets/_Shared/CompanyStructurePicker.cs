@@ -24,6 +24,9 @@ namespace Excel_Iterate
         private string preferredSheet;
         private Control mappingBody;
         private bool simpleMode;
+        private bool selectParents;
+        private RoundedButton defaultSelection;
+        internal bool SelectParents { get { return selectParents; } set {selectParents=value;if(defaultSelection!=null)defaultSelection.Text=value?"选择合并主体":"选择末级公司";if(Tasks.Rows.Count>0)SetSelection(0);} }
         internal bool SimpleMode { get { return simpleMode; } set { simpleMode=value;if(mappingBody!=null)mappingBody.Visible=!value;InvalidateRows(); } }
         internal static readonly string[] ConfigurationKeys = { "structureSheet", "structureFirst", "structureSequence", "structureShort", "structureFull", "structureFile", "structureLevel" };
         private static TextBox Column(string text) { return new TextBox { Text = text, Width = 40 }; }
@@ -62,7 +65,7 @@ namespace Excel_Iterate
             Tasks.Columns.Add(new DataGridViewTextBoxColumn{Name="file",HeaderText="过程表文件名称",AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill,ReadOnly=true});Ui.StyleGrid(Tasks);
             Tasks.Columns.Add(new DataGridViewTextBoxColumn{Name="status",HeaderText="预检状态",Width=180,ReadOnly=true});
             var actions = new FlowLayoutPanel { Dock=DockStyle.Top,AutoSize=true,WrapContents=false };
-            var leaves=Ui.Button("选择末级公司",130);var all=Ui.Button("全选",80);var clear=Ui.Button("清空",80);actions.Controls.AddRange(new Control[]{leaves,all,clear,count});root.Controls.Add(actions,0,3);Controls.Add(root);
+            var leaves=Ui.Button("选择末级公司",130);defaultSelection=leaves;var all=Ui.Button("全选",80);var clear=Ui.Button("清空",80);actions.Controls.AddRange(new Control[]{leaves,all,clear,count});root.Controls.Add(actions,0,3);Controls.Add(root);
             browse.Click+=delegate{Attempt(delegate{string[] paths=HostDialogService.OpenFiles(FindForm(),"架构表 (*.xlsx;*.xls)|*.xlsx;*.xls");if(paths.Length==1)LoadSource(paths[0]);});};read.Click+=delegate{Attempt(delegate{if(string.IsNullOrEmpty(file.Text))throw new InvalidOperationException("请先选择架构表。");preferredSheet=sheet.Text;LoadSource(file.Text);});};
             leaves.Click+=delegate{SetSelection(0);};all.Click+=delegate{SetSelection(1);};clear.Click+=delegate{SetSelection(2);};
             foreach(var column in new[]{sequence,shortName,fullName,fileName,level})column.TextChanged+=delegate{InvalidateRows();};first.ValueChanged+=delegate{InvalidateRows();};sheet.SelectedIndexChanged+=delegate{InvalidateRows();};
@@ -115,7 +118,7 @@ namespace Excel_Iterate
         }
         internal void SetTasks(IList<CompanyStructureTask> rows)
         {
-            loading=true;try{Tasks.Rows.Clear();foreach(var task in rows){int row=Tasks.Rows.Add(task.Leaf,task.Sequence,task.ShortName,task.FullName,task.FileName,"待预检");Tasks.Rows[row].Tag=task;}}finally{loading=false;}Notify();
+            loading=true;try{Tasks.Rows.Clear();foreach(var task in rows){int row=Tasks.Rows.Add(SelectParents?!task.Leaf:task.Leaf,task.Sequence,task.ShortName,task.FullName,task.FileName,"待预检");Tasks.Rows[row].Tag=task;}}finally{loading=false;}Notify();
         }
         internal void Report(int sourceRow,string status)
         {
@@ -127,7 +130,7 @@ namespace Excel_Iterate
         }
         internal List<CompanyStructureTask> All(){return Tasks.Rows.Cast<DataGridViewRow>().Select(r=>Copy((CompanyStructureTask)r.Tag)).ToList();}
         private static CompanyStructureTask Copy(CompanyStructureTask t){return new CompanyStructureTask{Row=t.Row,Sequence=t.Sequence,ShortName=t.ShortName,FullName=t.FullName,FileName=t.FileName,Leaf=t.Leaf,Level=t.Level,ParentFullName=t.ParentFullName};}
-        private void SetSelection(int mode){loading=true;try{foreach(DataGridViewRow row in Tasks.Rows)row.Cells[0].Value=mode==1||(mode==0&&((CompanyStructureTask)row.Tag).Leaf);}finally{loading=false;}Notify();}
+        private void SetSelection(int mode){loading=true;try{foreach(DataGridViewRow row in Tasks.Rows)row.Cells[0].Value=mode==1||(mode==0&&(SelectParents?!((CompanyStructureTask)row.Tag).Leaf:((CompanyStructureTask)row.Tag).Leaf));}finally{loading=false;}Notify();}
         private void InvalidateRows(){if(loading)return;Tasks.Rows.Clear();Notify();}
         private void Notify(){count.Text="共"+Tasks.Rows.Count+"项，已选"+Selected().Count+"项";if(Changed!=null)Changed();}
     }

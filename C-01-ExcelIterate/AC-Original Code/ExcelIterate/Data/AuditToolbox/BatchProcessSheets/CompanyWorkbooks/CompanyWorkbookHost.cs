@@ -326,7 +326,7 @@ namespace Excel_Iterate
                 WriteText(bag.Own(cells.Item(request.TargetRow, CompanyWorkbookRules.Column(headers, request.TargetNameField))), record.FullName);
             }
         }
-        private static void WriteText(object cell, string value)
+        internal static void WriteText(object cell, string value)
         {
             dynamic c = cell;
             object format = c.NumberFormat;
@@ -335,7 +335,7 @@ namespace Excel_Iterate
             if (Convert.ToBoolean(c.HasFormula) || CompanyWorkbookRules.Text(c.Value2) != value)
                 throw new InvalidOperationException("目标字段写入后核验不一致。");
         }
-        internal void Generate(CompanyWorkbookRequest request, CompanyWorkbookRecord record, Action<object, CompanyWorkbookRequest, CompanyWorkbookRecord> update, Action<string> progress = null)
+        internal void Generate(CompanyWorkbookRequest request, CompanyWorkbookRecord record, Action<object, CompanyWorkbookRequest, CompanyWorkbookRecord> update, Action<string> progress = null, Action<object,CompanyWorkbookRequest,CompanyWorkbookRecord> verifyOutput = null)
         {
             string stage = Path.Combine(request.Output, ".company-" + Guid.NewGuid().ToString("N") + Path.GetExtension(Snapshot));
             object outputBook = null;
@@ -368,12 +368,15 @@ namespace Excel_Iterate
                                 for (int i = 1; i <= Sheets.Count; i++)
                                     if (Convert.ToString(((dynamic)verify.Own(sheets.Item(i))).Name) != Sheets[i - 1])
                                         throw new InvalidOperationException("保存后工作表名称或顺序发生变化。");
+                                if(verifyOutput!=null)verifyOutput(outputBook,request,record);
+                                else {
                                 dynamic sheet = verify.Own(sheets.Item(request.TargetSheet));
                                 var headers = HeadersOn(sheet, request.TargetHeaderRow);
                                 object cells = verify.Own(sheet.Cells);
                                 if (Read(cells, request.TargetRow, CompanyWorkbookRules.Column(headers, request.TargetCodeField)) != record.Code
                                     || Read(cells, request.TargetRow, CompanyWorkbookRules.Column(headers, request.TargetNameField)) != record.FullName)
                                     throw new InvalidOperationException("保存后重开核验 Lead 字段失败。");
+                                }
                             }
                             ((dynamic)outputBook).Close(false); closed = true;
                         }

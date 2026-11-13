@@ -13,6 +13,52 @@ internal static class SingleSummaryLiveProbe
     private static void Set(object host,string name,object value){host.GetType().GetField(name,Flags).SetValue(host,value);}
     private static object Get(object host,string name){return host.GetType().GetField(name,Flags).GetValue(host);}
     private static void Call(object host,string name,params object[] args){try{host.GetType().GetMethod(name,Flags).Invoke(host,args);}catch(TargetInvocationException e){throw e.InnerException;}}
+    private static void ConsolidatedTemplates(object application,ProbeSession session)
+    {
+        string path=session.Output("合并测试模板.xlsx");
+        using(var bag=new ComBag())
+        {
+            dynamic books=bag.Own(((dynamic)application).Workbooks),book=bag.Own(books.Add());bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+            dynamic sheets=bag.Own(book.Worksheets),lead=bag.Own(sheets.Item(1));lead.Name="Lead";
+            ((dynamic)bag.Own(lead.Range["K1:O1"])).Value2=new object[,]{{"编码","简称","公司全称","文件名称","文件名称"}};
+            ((dynamic)bag.Own(lead.Range["K2:O9"])).Value2="旧公司";
+            ((dynamic)bag.Own(lead.Range["A5"])).Value2="科目保留";((dynamic)bag.Own(lead.Range["I2"])).Value2=45000;
+            ((dynamic)bag.Own(lead.Range["J2"])).Value2="2027年度";((dynamic)bag.Own(lead.Range["A6"])).Formula="=COUNTA(Lead!M3:M20)";
+            book.SaveAs(path,51);book.Close(false);closed=true;
+        }
+        byte[] before=System.IO.File.ReadAllBytes(path);
+        var tree=new List<CompanyStructureTask>{
+            new CompanyStructureTask{Row=3,Sequence="00-",Level="0级",FullName="总公司",FileName="00-总公司（合并）.xlsx"},
+            new CompanyStructureTask{Row=4,Sequence="02-",Level="1级",FullName="子集团",ParentFullName="总公司",FileName="02-子集团（合并）.xlsx"},
+            new CompanyStructureTask{Row=5,Sequence="01-",Level="1级",FullName="总公司",ParentFullName="母公司本部",FileName="01-总公司.xlsx"},
+            new CompanyStructureTask{Row=6,Sequence="02-01-",Level="2级",FullName="子集团",ParentFullName="母公司本部",FileName="02-01-子集团.xlsx"}
+        };
+        var direct=CompanyStructureTasks.DirectChildren(tree,tree[0]);Check(direct.Count==2&&direct[0].Sequence=="01-"&&direct[1].Sequence=="02-","body first, all direct companies included, grandchildren excluded");
+        using(var picker=new CompanyStructurePicker{SelectParents=true}){picker.SetTasks(tree);Check(picker.Selected().Count==2,"consolidated selector defaults to parent companies");}
+        using(var host=CompanyWorkbookHost.FromOpenOrDisk(application,path))
+        {
+            var profile=ConsolidatedTemplateProfile.Read(host.Snapshot);Check(profile.CapacityLast==20&&profile.OldLast==9,"profile detects template company capacity and old tail");
+            var plan=profile.Plan(tree,tree[0],session.DirectoryPath);Check(!System.IO.File.Exists(plan.Record.OutputPath),"preflight creates no output");
+            profile.CapacityLast=3;bool blocked=false;try{profile.Plan(tree,tree[0],session.DirectoryPath);}catch(InvalidOperationException){blocked=true;}Check(blocked,"capacity overflow blocked");profile.CapacityLast=20;
+            host.Generate(new CompanyWorkbookRequest{Output=session.DirectoryPath,UpdateLead=true},plan.Record,delegate(object book,CompanyWorkbookRequest r,CompanyWorkbookRecord record){ConsolidatedLeadWriter.Write(book,plan);},null,delegate(object book,CompanyWorkbookRequest r,CompanyWorkbookRecord record){ConsolidatedLeadWriter.Verify(book,plan);});
+            Check(System.IO.File.Exists(plan.Record.OutputPath),"output published only after native save and reopen verification");
+            var failedPlan=profile.Plan(tree,tree[1],session.DirectoryPath);bool injected=false;
+            try{host.Generate(new CompanyWorkbookRequest{Output=session.DirectoryPath,UpdateLead=true},failedPlan.Record,delegate(object book,CompanyWorkbookRequest r,CompanyWorkbookRecord record){ConsolidatedLeadWriter.Write(book,failedPlan);throw new InvalidOperationException("test failure after private-copy write");});}catch(InvalidOperationException){injected=true;}
+            Check(injected&&!System.IO.File.Exists(failedPlan.Record.OutputPath)&&System.IO.Directory.GetFiles(session.DirectoryPath,".company-*.xlsx").Length==0,"failed generation publishes nothing and removes private staging copy");
+            blocked=false;try{profile.Plan(tree,tree[0],session.DirectoryPath);}catch(InvalidOperationException){blocked=true;}Check(blocked,"existing output never overwritten");
+            using(var bag=new ComBag())
+            {
+                dynamic books=bag.Own(((dynamic)application).Workbooks),book=bag.Own(books.Open(plan.Record.OutputPath,0,true));bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+                dynamic sheets=bag.Own(book.Worksheets),lead=bag.Own(sheets.Item("Lead"));
+                Check(Convert.ToString(((dynamic)bag.Own(lead.Range["M2"])).Value2)=="总公司（合并）"&&Convert.ToString(((dynamic)bag.Own(lead.Range["K3"])).Value2)=="01-"&&Convert.ToString(((dynamic)bag.Own(lead.Range["M4"])).Value2)=="子集团（合并）","parent/body/direct-company mapping survives reopening");
+                Check(Convert.ToString(((dynamic)bag.Own(lead.Range["L4"])).Formula)=="=K4&M4"&&Convert.ToString(((dynamic)bag.Own(lead.Range["N4"])).Formula)=="=K4&O4","concat formulas retained");
+                Check(Convert.ToString(((dynamic)bag.Own(lead.Range["A5"])).Value2)=="科目保留"&&Convert.ToDouble(((dynamic)bag.Own(lead.Range["I2"])).Value2)==45000&&Convert.ToString(((dynamic)bag.Own(lead.Range["J2"])).Value2)=="2027年度","accounting subjects and years untouched");
+                Check(((dynamic)bag.Own(lead.Range["M9"])).Value2==null,"stale company tail cleared");book.Close(false);closed=true;
+            }
+        }
+        Check(System.Linq.Enumerable.SequenceEqual(before,System.IO.File.ReadAllBytes(path)),"original template unchanged byte for byte");
+        var broken=new List<CompanyStructureTask>{tree[0],tree[1],tree[3]};bool missing=false;try{CompanyStructureTasks.DirectChildren(broken,tree[0]);}catch(InvalidOperationException){missing=true;}Check(missing,"missing body blocks parent");
+    }
     private static void StructureTemplates(object application,ProbeSession session)
     {
         string sourcePath=session.Output("架构来源.xlsx"),templatePath=session.Output("仅Lead模板.xlsx");
@@ -288,6 +334,7 @@ internal static class SingleSummaryLiveProbe
                         using(var refs=new ComBag()) { dynamic sheets=refs.Own(source.Worksheets), sheet=refs.Own(sheets.Item(1));sheet.Name="BS";dynamic cell=refs.Own(sheet.Range["A1"]);cell.Value2=25; }
                         source.SaveAs(session.Output(name+".xlsx"),51);source.Close(false);closed=true;
                     }
+                    if(Array.IndexOf(args,"--consolidated-only")>=0){ConsolidatedTemplates((object)app,session);Console.WriteLine("PASS: "+checks+" consolidated checks");return session.Finish(0);}
                     if(Array.IndexOf(args,"--structure-only")>=0){StructureTemplates((object)app,session);Console.WriteLine("PASS: "+checks+" structure template checks");return session.Finish(0);}
                     if(Array.IndexOf(args,"--file-batch-only")>=0){FileBatch((object)app,session);Console.WriteLine("PASS: "+checks+" file batch checks");return session.Finish(0);}
                     if(Array.IndexOf(args,"--variables-only")>=0){VariableHeaders((object)app,session);Console.WriteLine("PASS: "+checks+" variable header checks");return session.Finish(0);}
