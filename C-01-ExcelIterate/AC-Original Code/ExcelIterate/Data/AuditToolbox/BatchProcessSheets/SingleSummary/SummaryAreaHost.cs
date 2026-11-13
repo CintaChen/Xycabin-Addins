@@ -94,6 +94,7 @@ namespace Excel_Iterate
             ApplyPreset(preset);structureChildren=requiredChildren==null?null:new List<CompanyStructureTask>(requiredChildren);Preview();
         }
         internal void StartBatchFile() { Start(); timer.Stop(); }
+        internal string BatchProgressText { get { return step+"/"+targets.Count+" 个区域"; } }
         internal bool StepBatchFile()
         {
             if (running) Tick(this, EventArgs.Empty);

@@ -146,7 +146,7 @@ namespace Excel_Iterate
             foreach (DataGridViewRow row in files.Rows) row.Cells[2].Value = "待预检";
             Message("已选择预设“" + snapshot.Name + "”；仅使用坐标配置，各文件读取自己的数据，无需原预设工作簿存在。");
         }
-        private void Message(string text) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }
+        private void Message(string text) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); log.Update(); files.Update(); }
         private void Attempt(Action action) { try { action(); } catch (Exception error) { Message("失败：" + error.Message); } }
         private void Begin(bool save)
         {
@@ -225,8 +225,10 @@ namespace Excel_Iterate
         }
         private void InWorkingWindow(Action action)
         {
-            // Worksheet.Copy/Activate can fail when every workbook window is
-            // hidden. Show only our private copy during the native operation;
+            // Only the initial Worksheet.Copy backup needs a visible window.
+            // Never call this for each Area: toggling Visible and Activate on
+            // every timer tick repeatedly exposes the temporary workbook.
+            // Show only our private copy during the backup operation;
             // restore its visibility and the user's active workbook afterwards.
             using(var quiet=new CompanyWorkbookQuiet(app))using(var bag=new ComBag())
             {
@@ -256,7 +258,11 @@ namespace Excel_Iterate
                         if (writing) { queue[position].Cells[2].Value = "执行中"; return; }
                     }
                     else if (writing)
-                    {bool complete=false;InWorkingWindow(delegate{complete=worker.StepBatchFile();});if(!complete)return;}
+                    {
+                        bool complete=worker.StepBatchFile();
+                        queue[position].Cells[2].Value="执行中："+worker.BatchProgressText;files.Update();
+                        if(!complete)return;
+                    }
                     if (writing)
                     {
                         worker.FinishBatchFile();
