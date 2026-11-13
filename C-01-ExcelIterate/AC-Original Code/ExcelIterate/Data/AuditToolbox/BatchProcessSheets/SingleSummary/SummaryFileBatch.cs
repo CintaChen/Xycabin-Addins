@@ -12,7 +12,7 @@ namespace Excel_Iterate
         private readonly object app;
         private readonly Form dialog = new Form();
         private readonly TableLayoutPanel settings = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
-        private readonly TextBox input = new TextBox { Dock = DockStyle.Fill, ReadOnly = true }, output = new TextBox { Dock = DockStyle.Fill }, presetPath = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
+        private readonly TextBox input = new TextBox { Dock = DockStyle.Fill, ShortcutsEnabled = true, AccessibleDescription = "输入或粘贴文件夹路径，按 Enter 或点击读取文件。" }, output = new TextBox { Dock = DockStyle.Fill }, presetPath = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
         private readonly TextBox pathSheet = new TextBox { Text = "单体数据汇总", Dock = DockStyle.Fill }, pathCell = new TextBox { Text = "A1", Dock = DockStyle.Fill };
         private readonly DataGridView files = new ResultGrid { Dock = DockStyle.Fill, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false };
         private readonly RichTextBox log = new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true };
@@ -21,7 +21,8 @@ namespace Excel_Iterate
         private readonly Timer timer = new Timer { Interval = 40 };
         private List<DataGridViewRow> queue;
         private BatchPreset preset;
-        private string destination, sourceSheet, sourceCell, scratch, workingFile;
+        private BatchPreset chosenPreset;
+        private string destination, sourceSheet, sourceCell, scratch, workingFile, loadedInput;
         private int position;
         private bool writing, stopping, inTick;
         private ComBag refs;
@@ -40,15 +41,25 @@ namespace Excel_Iterate
             var chooseInput = Ui.Button("选择文件夹…", 140);
             chooseInput.Click += delegate { Attempt(delegate {
                 string path = HostDialogService.Folder(dialog, "选择待处理工作簿文件夹", false); if (string.IsNullOrEmpty(path)) return;
-                var found = Directory.GetFiles(path).Where(IsWorkbook).Where(p => !Path.GetFileName(p).StartsWith("~$", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
-                files.Rows.Clear(); foreach (string file in found) { int row = files.Rows.Add(DefaultSelected(file), Path.GetFileName(file), "待预检"); files.Rows[row].Tag = file; } input.Text = path;
-                Message("已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。");
+                input.Text = path; LoadFiles();
             }); };
-            var choosePreset = Ui.Button("选择导出预设…", 140);
-            choosePreset.Click += delegate { Attempt(delegate { string[] paths = HostDialogService.OpenFiles(dialog, "合并链接预设 (*.xybatch.json)|*.xybatch.json"); if (paths.Length != 1) return; BatchPresetStore.Decode(File.ReadAllText(paths[0]), "summary"); presetPath.Text = paths[0]; }); };
+            var loadInput = Ui.Button("读取文件", 100); loadInput.Click += delegate { Attempt(LoadFiles); };
+            var inputActions = Ui.ActionBar(); inputActions.Controls.AddRange(new Control[] { chooseInput, loadInput });
+            input.KeyDown += delegate(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Attempt(LoadFiles); } };
+            input.TextChanged += delegate { if (queue == null) { loadedInput = null; files.Rows.Clear(); } };
+            var choosePreset = Ui.Button("选择已保存预设…", 155);
+            choosePreset.Click += delegate { Attempt(delegate {
+                string json = HostDialogService.ShowIsolatedResult<string>(dialog,
+                    delegate { return new BatchPresetManagerForm("summary"); },
+                    delegate(Form chooser) { var value = ((BatchPresetManagerForm)chooser).Chosen; return value == null ? null : BatchPresetStore.Encode(value); }, null);
+                if (json != null) UsePreset(BatchPresetStore.Decode(json, "summary"), "已保存：");
+            }); };
+            var importPreset = Ui.Button("导入预设…", 115);
+            importPreset.Click += delegate { Attempt(delegate { string[] paths = HostDialogService.OpenFiles(dialog, "合并链接预设 (*.xybatch.json)|*.xybatch.json"); if (paths.Length != 1) return; UsePreset(BatchPresetStore.Read(paths[0], "summary"), "已导入："); }); };
+            var presetActions = Ui.ActionBar(); presetActions.Controls.AddRange(new Control[] { choosePreset, importPreset });
             var chooseOutput = Ui.Button("选择输出文件夹…", 155);
             chooseOutput.Click += delegate { string path = HostDialogService.Folder(dialog, "选择结果输出文件夹", true); if (!string.IsNullOrEmpty(path)) output.Text = path; };
-            AddRow("输入文件夹", input, chooseInput); AddRow("使用预设", presetPath, choosePreset); AddRow("输出文件夹", output, chooseOutput);
+            AddRow("输入文件夹", input, inputActions); AddRow("使用预设", presetPath, presetActions); AddRow("输出文件夹", output, chooseOutput);
             AddRow("各文件路径来源表", pathSheet, new Label { AutoSize = true, Text = "使用各文件自己的 Lead、变量和期间" }); AddRow("路径来源单元格", pathCell, new Label { AutoSize = true, Text = "默认 A1，读取路径文字或公式结果" });
             files.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "处理", Width = 60 });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "文件", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
@@ -64,6 +75,16 @@ namespace Excel_Iterate
         }
         private void AddRow(string label, Control value, Control action)
         { int row = settings.RowCount++; settings.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row); settings.Controls.Add(value, 1, row); settings.Controls.Add(action, 2, row); }
+        private void LoadFiles()
+        {
+            if (queue != null) return;
+            string path = CellPath(input.Text);
+            var found = Directory.GetFiles(path).Where(IsWorkbook).Where(p => !Path.GetFileName(p).StartsWith("~$", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
+            input.Text = path; files.Rows.Clear();
+            foreach (string file in found) { int row = files.Rows.Add(DefaultSelected(file), Path.GetFileName(file), "待预检"); files.Rows[row].Tag = file; }
+            loadedInput = path;
+            Message("已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。");
+        }
         internal static bool IsWorkbook(string file)
         { string extension = Path.GetExtension(file); return string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase); }
         internal static bool DefaultSelected(string file)
@@ -81,14 +102,25 @@ namespace Excel_Iterate
         }
         internal static BatchPreset Rebind(BatchPreset original, string file, string folder)
         { var copy = BatchPresetStore.Decode(BatchPresetStore.Encode(original), "summary"); copy.Context = file; copy.Values["projectFolder"] = folder; return copy; }
+        internal void UsePreset(BatchPreset value, string prefix)
+        {
+            if (queue != null) throw new InvalidOperationException("执行期间不能更换预设。");
+            var snapshot = BatchPresetStore.Decode(BatchPresetStore.Encode(value), "summary");
+            SummaryAreaSettings.Read(snapshot);
+            chosenPreset = snapshot; presetPath.Text = prefix + snapshot.Name;
+            foreach (DataGridViewRow row in files.Rows) row.Cells[2].Value = "待预检";
+            Message("已选择预设“" + snapshot.Name + "”；仅使用坐标配置，各文件读取自己的数据，无需原预设工作簿存在。");
+        }
         private void Message(string text) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); }
         private void Attempt(Action action) { try { action(); } catch (Exception error) { Message("失败：" + error.Message); } }
         private void Begin(bool save)
         {
             if (queue != null) return; files.EndEdit();
+            if (loadedInput == null) throw new InvalidOperationException("输入路径后，请先按 Enter 或点击读取文件，再勾选工作簿。");
             var selected = files.Rows.Cast<DataGridViewRow>().Where(r => object.Equals(r.Cells[0].Value, true)).ToList();
             if (selected.Count == 0) throw new InvalidOperationException("请勾选需要处理的文件。");
-            var selectedPreset = BatchPresetStore.Decode(File.ReadAllText(presetPath.Text), "summary"); SummaryAreaSettings.Read(selectedPreset);
+            if (chosenPreset == null) throw new InvalidOperationException("请选择已保存预设，或导入一个预设文件。");
+            var selectedPreset = BatchPresetStore.Decode(BatchPresetStore.Encode(chosenPreset), "summary"); SummaryAreaSettings.Read(selectedPreset);
             string directory = Path.GetFullPath(output.Text.Trim()); if (!Directory.Exists(directory)) throw new InvalidOperationException("请选择已存在的输出文件夹。");
             if (!System.Text.RegularExpressions.Regex.IsMatch(pathCell.Text.Trim(), @"^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,6}$") || string.IsNullOrWhiteSpace(pathSheet.Text)) throw new InvalidOperationException("请填写路径来源表和一个单元格地址，例如 A1。");
             if (save && UiDialog.Show(dialog, "将逐文件重新预检，并覆盖各临时副本中预设指定的目标区域及表头；成功后自动保存到输出文件夹，原文件保持不变，同名输出不覆盖。失败文件跳过，其他文件继续。确认执行？", "批量输出确认", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
@@ -103,18 +135,23 @@ namespace Excel_Iterate
             string outputFile = Path.Combine(destination, Path.GetFileName(inputFile));
             if (string.Equals(Path.GetFullPath(inputFile), Path.GetFullPath(outputFile), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("输出文件夹不能覆盖输入文件，请选择其他文件夹。");
             if (File.Exists(outputFile)) throw new InvalidOperationException("输出文件已存在，已跳过，不覆盖。");
+            scratch = Path.Combine(destination, ".xybatch-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(scratch);
+            workingFile = Path.Combine(scratch, ".xybatch-" + Guid.NewGuid().ToString("N") + Path.GetExtension(inputFile));
+            bool copiedOpen = false;
             using (var bag = new ComBag())
             {
                 dynamic books = bag.Own(((dynamic)app).Workbooks);
                 for (int i = 1; i <= Convert.ToInt32(books.Count); i++)
                 {
                     dynamic existing = bag.Own(books.Item(i));
-                    if (string.Equals(Convert.ToString(existing.Name), Path.GetFileName(inputFile), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("同名工作簿已打开，请先自行保存并关闭后重试。");
+                    if (!string.Equals(Convert.ToString(existing.FullName), Path.GetFullPath(inputFile), StringComparison.OrdinalIgnoreCase)) continue;
+                    using (var quiet = new CompanyWorkbookQuiet(app)) existing.SaveCopyAs(workingFile);
+                    copiedOpen = true;
+                    Message("读取已打开工作簿的当前内容（包含未保存修改）：" + inputFile + "；不保存、不关闭原工作簿。");
+                    break;
                 }
             }
-            scratch = Path.Combine(destination, ".xybatch-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(scratch);
-            workingFile = Path.Combine(scratch, Path.GetFileName(inputFile));
-            using (var source = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+            if (!copiedOpen) using (var source = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var target = new FileStream(workingFile, FileMode.CreateNew, FileAccess.Write)) source.CopyTo(target);
             refs = new ComBag();
             using (var quiet = new CompanyWorkbookQuiet(app))
@@ -153,6 +190,7 @@ namespace Excel_Iterate
                     if (writing)
                     {
                         worker.FinishBatchFile();
+                        VerifyNoTemporaryLinks();
                         using (var quiet = new CompanyWorkbookQuiet(app)) ((dynamic)workBook).Save();
                         string temporary = workingFile, final = Path.Combine(destination, Path.GetFileName(Convert.ToString(queue[position].Tag)));
                         CloseObjects(); File.Move(temporary, final);
@@ -168,6 +206,14 @@ namespace Excel_Iterate
         }
         private void End()
         { timer.Stop(); queue = null; settings.Enabled = files.Enabled = preview.Enabled = execute.Enabled = true; stop.Enabled = false; Message("本轮结束；成功输出保留，失败原因见文件列表及日志。原文件未修改。"); }
+        private void VerifyNoTemporaryLinks()
+        {
+            object links = ((dynamic)workBook).LinkSources(1);
+            var items = links as Array;
+            if (items != null) foreach (object link in items)
+                if (Convert.ToString(link).IndexOf(Path.GetFileName(workingFile), StringComparison.OrdinalIgnoreCase) >= 0 || Convert.ToString(link).IndexOf(scratch, StringComparison.OrdinalIgnoreCase) >= 0)
+                    throw new InvalidOperationException("输出包含指向临时副本的外链，已阻止保存，请检查模板公式。");
+        }
         private void CloseObjects()
         {
             if (worker != null) { worker.Dispose(); worker = null; }

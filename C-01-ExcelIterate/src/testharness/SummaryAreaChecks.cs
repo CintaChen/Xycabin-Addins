@@ -152,6 +152,29 @@ internal static class SummaryAreaChecks
         check("批文件限制支持格式", SummaryFileBatch.IsWorkbook("甲.XLSX") && SummaryFileBatch.IsWorkbook("乙.xls") && !SummaryFileBatch.IsWorkbook("丙.xlsm"), "unsafe format accepted");
         check("合并主体默认勾选兼容N盘", SummaryFileBatch.DefaultSelected(@"N:\底稿\甲（合并）.xlsx") && SummaryFileBatch.DefaultSelected(@"N:\底稿\乙(合并).xls"), "consolidated file not selected");
         check("其他工作簿默认不勾选", !SummaryFileBatch.DefaultSelected(@"N:\底稿\丙.xlsx") && !SummaryFileBatch.DefaultSelected(@"N:\（合并）\丁.xlsx") && !SummaryFileBatch.DefaultSelected("合并说明.xlsx"), "directory or unrelated name selected");
+        string scanFolder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "SummaryScan-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(scanFolder);
+        try
+        {
+            System.IO.File.WriteAllText(System.IO.Path.Combine(scanFolder,"甲（合并）.xlsx"), "fixture");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(scanFolder,"乙.xlsx"), "fixture");
+            using (var batch = (SummaryFileBatch)Activator.CreateInstance(typeof(SummaryFileBatch), BindingFlags.Instance|BindingFlags.NonPublic, null, new object[] { new SummaryAreaFakeApp() }, null))
+            {
+                var flags = BindingFlags.Instance|BindingFlags.NonPublic;
+                var inputBox=(TextBox)typeof(SummaryFileBatch).GetField("input",flags).GetValue(batch);
+                var grid=(DataGridView)typeof(SummaryFileBatch).GetField("files",flags).GetValue(batch);
+                check("批文件输入路径可手填",!inputBox.ReadOnly&&inputBox.ShortcutsEnabled,"input locked");
+                inputBox.Text=" \""+scanFolder+"\" ";typeof(SummaryFileBatch).GetMethod("LoadFiles",flags).Invoke(batch,null);
+                check("手填路径读取文件列表",grid.Rows.Count==2,"scan failed");
+                foreach(DataGridViewRow row in grid.Rows)check("扫描保持合并默认勾选",object.Equals(row.Cells[0].Value,Convert.ToString(row.Cells[1].Value).Contains("（合并）")),"selection wrong");
+                var libraryPreset=SummaryFileBatch.Rebind(preset,@"Z:\不存在的旧模板.xlsx",scanFolder);libraryPreset.Values["leadAreas"]="3,1,2,1;3,4,2,1";
+                batch.UsePreset(libraryPreset,"已保存：");libraryPreset.Values["projectFolder"]="changed";
+                var snapshot=(BatchPreset)typeof(SummaryFileBatch).GetField("chosenPreset",flags).GetValue(batch);
+                check("已保存预设不依赖旧文件并固定快照",snapshot.Context==@"Z:\不存在的旧模板.xlsx"&&snapshot.Values["projectFolder"]==scanFolder,"library preset bound old workbook or mutated");
+                inputBox.Text=scanFolder+"-other";check("编辑输入路径清除旧文件列表",grid.Rows.Count==0&&typeof(SummaryFileBatch).GetField("loadedInput",flags).GetValue(batch)==null,"stale files retained");
+            }
+        }
+        finally {foreach(string file in System.IO.Directory.GetFiles(scanFolder))System.IO.File.Delete(file);System.IO.Directory.Delete(scanFolder,false);}
         using (var form = new SingleSummaryForm(true))
         {
             check("Ribbon MVP使用四组参数视图", form.Controls.Count==1 && form.Controls[0] is SummaryAreaView, "view missing");

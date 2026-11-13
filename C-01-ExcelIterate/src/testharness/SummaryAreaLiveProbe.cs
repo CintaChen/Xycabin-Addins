@@ -38,6 +38,10 @@ internal static class SingleSummaryLiveProbe
             {"mode","area-mvp"},{"templateSheet","汇总"},{"templateAreas","3,1,1,1"},{"pasteSheet","汇总"},{"pasteArea","3,3,1,1"},{"leadSheet","Lead"},{"leadAreas","3,12,1,1"},{"projectFolder","旧路径"},{"checkFiles","False"},
             {"headersEnabled","True"},{"headersFormula","True"},{"headersRepeat","True"},{"variableHeaders","True"},{"repeatSource","3,13,1,1"},{"repeatSourceSheet","Lead"},{"repeatTarget","2,3,1,1"},{"repeatTargetSheet","汇总"},{"yearSource","2,10,1,1"},{"yearSourceSheet","Lead"},{"yearTarget","4,3,1,1"},{"yearTargetSheet","汇总"}
         } };
+        dynamic openOriginal;
+        using(var bag=new ComBag()) {dynamic books=bag.Own(((dynamic)application).Workbooks);openOriginal=books.Open(selected[0],0,false);}
+        bool openOriginalClosed=false;session.Own((object)openOriginal,delegate{if(!openOriginalClosed)openOriginal.Close(false);});
+        using(var bag=new ComBag()){dynamic sheets=bag.Own(openOriginal.Worksheets),lead=bag.Own(sheets.Item("Lead")),variable=bag.Own(lead.Range["M3"]);variable.Value2="未保存变量";}
         Func<bool, SummaryFileBatch> create = delegate(bool save) {
             var batch = (SummaryFileBatch)Activator.CreateInstance(typeof(SummaryFileBatch), Flags, null, new object[] { application }, null);
             var grid = (DataGridView)Get(batch,"files"); var rows = new List<DataGridViewRow>();
@@ -61,6 +65,9 @@ internal static class SingleSummaryLiveProbe
             Console.WriteLine(((RichTextBox)Get(batch,"log")).Text);
             Check(System.IO.File.Exists(System.IO.Path.Combine(output,"任务0.xlsx")) && !System.IO.File.Exists(System.IO.Path.Combine(output,"任务1.xlsx")) && System.IO.File.Exists(System.IO.Path.Combine(output,"任务2.xlsx")),"batch saves successful files and skips invalid file");
         }
+        Check(!Convert.ToBoolean(openOriginal.Saved),"open original remains unsaved after batch");
+        using(var bag=new ComBag()){dynamic sheets=bag.Own(openOriginal.Worksheets),lead=bag.Own(sheets.Item("Lead")),variable=bag.Own(lead.Range["M3"]);Check(Convert.ToString(variable.Value2)=="未保存变量","open original remains available with unsaved edits");}
+        openOriginal.Close(false);openOriginalClosed=true;
         foreach(string file in selected) Check(System.Linq.Enumerable.SequenceEqual(hashes[file],System.IO.File.ReadAllBytes(file)),"original bytes unchanged "+System.IO.Path.GetFileName(file));
         using(var bag=new ComBag())
         {
@@ -68,7 +75,7 @@ internal static class SingleSummaryLiveProbe
             foreach(int i in new[]{0,2})
             {
                 dynamic book=bag.Own(books.Open(System.IO.Path.Combine(output,"任务"+i+".xlsx"),0,true));
-                try {dynamic sheets=bag.Own(book.Worksheets),sheet=bag.Own(sheets.Item("汇总")),cell=bag.Own(sheet.Range["C3"]),variable=bag.Own(sheet.Range["C2"]),year=bag.Own(sheet.Range["C4"]);Check(Convert.ToString(cell.Formula).Contains(i==0?"！01-示例（集团）":"！02-示例乙"),"each file uses its own Lead filename");Check(Convert.ToString(cell.Formula).Contains("sources"+i),"each file uses its own A1 folder");Check(Convert.ToString(variable.Value2)=="变量"+i&&Convert.ToString(year.Value2)==(i==0?"2027年度":"2026年度"),"each file maps its own variable and period");}
+                try {dynamic sheets=bag.Own(book.Worksheets),sheet=bag.Own(sheets.Item("汇总")),cell=bag.Own(sheet.Range["C3"]),variable=bag.Own(sheet.Range["C2"]),year=bag.Own(sheet.Range["C4"]);Check(Convert.ToString(cell.Formula).Contains(i==0?"！01-示例（集团）":"！02-示例乙"),"each file uses its own Lead filename");Check(Convert.ToString(cell.Formula).Contains("sources"+i),"each file uses its own A1 folder");Check(!Convert.ToString(cell.Formula).Contains(".xybatch-"),"output links do not point to temporary workbook");Check(Convert.ToString(variable.Value2)==(i==0?"未保存变量":"变量"+i)&&Convert.ToString(year.Value2)==(i==0?"2027年度":"2026年度"),"each file maps its own variable and period including unsaved original");}
                 finally{book.Close(false);}
             }
         }

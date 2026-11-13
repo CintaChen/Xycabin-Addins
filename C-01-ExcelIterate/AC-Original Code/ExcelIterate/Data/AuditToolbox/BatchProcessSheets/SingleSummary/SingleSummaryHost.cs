@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -719,8 +719,13 @@ namespace Excel_Iterate
             using (ComBag bag = new ComBag())
             {
                 string name = BackupPrefix + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+                // Hidden copies need not become ActiveSheet. Resolve the new sheet
+                // from the bound workbook so another open workbook is never renamed.
+                dynamic allSheets = bag.Own(((dynamic)book).Sheets);
+                int count = Convert.ToInt32(allSheets.Count), index = Convert.ToInt32(((dynamic)sheet).Index);
                 ((dynamic)sheet).Copy(Type.Missing, sheet);
-                dynamic created = bag.Own(((dynamic)app).ActiveSheet);
+                if (Convert.ToInt32(allSheets.Count) != count + 1) throw new InvalidOperationException("备份工作表未在目标工作簿中创建。");
+                dynamic created = bag.Own(allSheets.Item(index + 1));
                 created.Name = WorkbookUi.UniqueName(name, SheetNames(book, bag));
                 created.Visible = 0;   // xlSheetHidden：静默备份，不打扰用户
                 return Convert.ToString(created.Name);
