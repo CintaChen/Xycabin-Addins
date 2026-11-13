@@ -114,7 +114,7 @@ namespace Excel_Iterate
             Ui.StyleGrid(Companies); root.Controls.Add(Companies, 0, 2); root.Controls.Add(log, 0, 3);
             Companies.CurrentCellDirtyStateChanged += delegate { if (Companies.IsCurrentCellDirty) Companies.CommitEdit(DataGridViewDataErrorContexts.Commit); };
             Companies.CellValueChanged += delegate(object sender, DataGridViewCellEventArgs e) { if (e.ColumnIndex == 0) InvalidatePlan(); };
-            var batchFiles = Ui.Button("多文件批量链接…", 165); inputs.Add(batchFiles);
+            var batchFiles = Ui.Button("多文件批量链接", 165); inputs.Add(batchFiles);
             batchFiles.Click += delegate { if (BatchFilesRequested != null) BatchFilesRequested(); };
             var bar = Ui.ActionBar(); bar.Controls.AddRange(new Control[] { preview, execute, confirm, undo, batchFiles }); root.Controls.Add(bar, 0, 4);
             Ui.StylePrimary(preview); preview.Click += delegate { if (PreviewRequested != null) PreviewRequested(); };

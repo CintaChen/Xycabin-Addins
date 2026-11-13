@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -11,7 +12,7 @@ namespace Excel_Iterate
     {
         private readonly object app;
         private readonly Form dialog = new Form();
-        private readonly TableLayoutPanel settings = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
+        private readonly TableLayoutPanel settings = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 4, Margin = new Padding(0, 0, 0, 12) };
         private readonly TextBox input = new TextBox { Dock = DockStyle.Fill, ShortcutsEnabled = true, AccessibleDescription = "输入或粘贴文件夹路径，按 Enter 或点击读取文件。" }, output = new TextBox { Dock = DockStyle.Fill }, presetPath = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
         private readonly TextBox pathSheet = new TextBox { Text = "单体数据汇总", Dock = DockStyle.Fill }, pathCell = new TextBox { Text = "A1", Dock = DockStyle.Fill };
         private readonly DataGridView files = new ResultGrid { Dock = DockStyle.Fill, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false };
@@ -37,34 +38,33 @@ namespace Excel_Iterate
         {
             app = application; dialog.Text = "合并批量链接 · 多文件";
             DialogSizing.Prepare(dialog, "summary.single", "table", Ui.Blue);
-            settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            var chooseInput = Ui.Button("选择文件夹…", 140);
+            settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            var chooseInput = Ui.Button("选择文件夹", 155);
             chooseInput.Click += delegate { Attempt(delegate {
                 string path = HostDialogService.Folder(dialog, "选择待处理工作簿文件夹", false); if (string.IsNullOrEmpty(path)) return;
                 input.Text = path; LoadFiles();
             }); };
-            var loadInput = Ui.Button("读取文件", 100); loadInput.Click += delegate { Attempt(LoadFiles); };
-            var inputActions = Ui.ActionBar(); inputActions.Controls.AddRange(new Control[] { chooseInput, loadInput });
+            var loadInput = Ui.Button("读取文件", 115); loadInput.Click += delegate { Attempt(LoadFiles); };
             input.KeyDown += delegate(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Attempt(LoadFiles); } };
             input.TextChanged += delegate { if (queue == null) { loadedInput = null; files.Rows.Clear(); } };
-            var choosePreset = Ui.Button("选择已保存预设…", 155);
+            var choosePreset = Ui.Button("选择已保存预设", 155);
             choosePreset.Click += delegate { Attempt(delegate {
                 string json = HostDialogService.ShowIsolatedResult<string>(dialog,
                     delegate { return new BatchPresetManagerForm("summary"); },
                     delegate(Form chooser) { var value = ((BatchPresetManagerForm)chooser).Chosen; return value == null ? null : BatchPresetStore.Encode(value); }, null);
                 if (json != null) UsePreset(BatchPresetStore.Decode(json, "summary"), "已保存：");
             }); };
-            var importPreset = Ui.Button("导入预设…", 115);
+            var importPreset = Ui.Button("导入预设", 115);
             importPreset.Click += delegate { Attempt(delegate { string[] paths = HostDialogService.OpenFiles(dialog, "合并链接预设 (*.xybatch.json)|*.xybatch.json"); if (paths.Length != 1) return; UsePreset(BatchPresetStore.Read(paths[0], "summary"), "已导入："); }); };
-            var presetActions = Ui.ActionBar(); presetActions.Controls.AddRange(new Control[] { choosePreset, importPreset });
-            var chooseOutput = Ui.Button("选择输出文件夹…", 155);
+            var chooseOutput = Ui.Button("选择输出文件夹", 155);
             chooseOutput.Click += delegate { string path = HostDialogService.Folder(dialog, "选择结果输出文件夹", true); if (!string.IsNullOrEmpty(path)) output.Text = path; };
-            AddRow("输入文件夹", input, inputActions); AddRow("使用预设", presetPath, presetActions); AddRow("输出文件夹", output, chooseOutput);
-            AddRow("各文件路径来源表", pathSheet, new Label { AutoSize = true, Text = "使用各文件自己的 Lead、变量和期间" }); AddRow("路径来源单元格", pathCell, new Label { AutoSize = true, Text = "默认 A1，读取路径文字或公式结果" });
+            AddRow("输入文件夹", input, chooseInput, loadInput); AddRow("使用预设", presetPath, choosePreset, importPreset); AddRow("输出文件夹", output, chooseOutput);
+            AddRow("路径来源工作表", pathSheet); AddRow("路径来源单元格", pathCell);
             files.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "处理", Width = 60 });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "文件", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", ReadOnly = true, Width = 200 }); Ui.StyleGrid(files);
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(16) };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var actions = Ui.ActionBar(); actions.Controls.AddRange(new Control[] { preview, execute, stop });
             root.Controls.Add(settings, 0, 0); root.Controls.Add(files, 0, 1); root.Controls.Add(progress, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
@@ -73,8 +73,14 @@ namespace Excel_Iterate
             timer.Tick += delegate { Advance(); };
             dialog.FormClosing += delegate(object sender, FormClosingEventArgs e) { if (queue != null) { e.Cancel = true; stopping = true; Message("正在停止，请等待当前操作结束后关闭。"); } };
         }
-        private void AddRow(string label, Control value, Control action)
-        { int row = settings.RowCount++; settings.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row); settings.Controls.Add(value, 1, row); settings.Controls.Add(action, 2, row); }
+        private void AddRow(string label, Control value, Control action = null, Control secondary = null)
+        {
+            int row = settings.RowCount++; settings.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            settings.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 7, 12, 7) }, 0, row);
+            value.Dock = DockStyle.None; value.Anchor = AnchorStyles.Left | AnchorStyles.Right; value.Margin = new Padding(0, 4, 12, 4); settings.Controls.Add(value, 1, row);
+            if (action != null) { action.Anchor = AnchorStyles.Left; action.Margin = new Padding(0, 3, 8, 3); settings.Controls.Add(action, 2, row); }
+            if (secondary != null) { secondary.Anchor = AnchorStyles.Left; secondary.Margin = new Padding(0, 3, 0, 3); settings.Controls.Add(secondary, 3, row); }
+        }
         private void LoadFiles()
         {
             if (queue != null) return;
