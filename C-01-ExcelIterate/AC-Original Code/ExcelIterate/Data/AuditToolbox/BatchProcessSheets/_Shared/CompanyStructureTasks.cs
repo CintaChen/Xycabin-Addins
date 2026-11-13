@@ -96,7 +96,17 @@ namespace Excel_Iterate
             Classify(all,true);var keys=all.ToDictionary(t=>Key(t.Sequence),StringComparer.Ordinal);
             CompanyStructureTask parent;if(!keys.TryGetValue(Key(selected.Sequence),out parent)||parent.Leaf)throw new InvalidOperationException("请选择有下属公司的合并主体。");
             var root=all.SingleOrDefault(t=>Regex.IsMatch((t.Level??"").Trim(),@"^0\s*级?$"));
-            var children=all.Where(t=>!ReferenceEquals(t,root)&&Key(ParentOf(keys,root,t).Sequence)==Key(parent.Sequence)).ToList();
+            // Resolve only this parent's immediate children. A top-level row has no
+            // parent and must not invalidate every unrelated consolidation task.
+            if(root==null)keys.TryGetValue("0",out root);
+            string parentKey=Key(parent.Sequence);
+            var children=all.Where(t=>
+            {
+                if(ReferenceEquals(t,parent)||ReferenceEquals(t,root))return false;
+                string key=Key(t.Sequence);int separator=key.LastIndexOf('-');
+                return separator>=0?key.Substring(0,separator)==parentKey:ReferenceEquals(parent,root);
+            }).ToList();
+            foreach(var child in children)ParentOf(keys,root,child);
             var body=children.Where(t=>(t.ParentFullName??"").Trim()=="母公司本部"&&t.FullName==parent.FullName).ToList();
             if(body.Count!=1)throw new InvalidOperationException("该主体须在架构表中明确列出且只列出一条母公司本部。");
             return body.Concat(children.Where(t=>!ReferenceEquals(t,body[0]))).ToList();

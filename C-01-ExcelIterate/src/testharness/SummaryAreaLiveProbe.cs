@@ -34,6 +34,12 @@ internal static class SingleSummaryLiveProbe
             new CompanyStructureTask{Row=6,Sequence="02-01-",Level="2级",FullName="子集团",ParentFullName="母公司本部",FileName="02-01-子集团.xlsx"}
         };
         var direct=CompanyStructureTasks.DirectChildren(tree,tree[0]);Check(direct.Count==2&&direct[0].Sequence=="01-"&&direct[1].Sequence=="02-","body first, all direct companies included, grandchildren excluded");
+        tree[0].Level="一级";
+        Check(CompanyStructureTasks.DirectChildren(tree,tree[1]).Count==1,"unrecognized root level does not require top-level row to have a parent");
+        var noRoot=new List<CompanyStructureTask>{tree[1],tree[3],new CompanyStructureTask{Row=99,Sequence="99-01-",FullName="无关公司"}};
+        Check(CompanyStructureTasks.DirectChildren(noRoot,tree[1]).Count==1,"unrelated missing parent cannot block selected group's valid children");
+        tree[3].ParentFullName="错误归属";bool conflict=false;try{CompanyStructureTasks.DirectChildren(tree,tree[1]);}catch(InvalidOperationException){conflict=true;}Check(conflict,"selected group's own child parent conflict still blocks");tree[3].ParentFullName="母公司本部";
+        tree[0].Level="0级";CompanyStructureTasks.Classify(tree,true);
         using(var picker=new CompanyStructurePicker{SelectParents=true}){picker.SetTasks(tree);Check(picker.Selected().Count==2,"consolidated selector defaults to parent companies");}
         using(var host=CompanyWorkbookHost.FromOpenOrDisk(application,path))
         {
