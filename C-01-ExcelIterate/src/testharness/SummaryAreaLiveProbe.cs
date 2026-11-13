@@ -25,8 +25,9 @@ internal static class SingleSummaryLiveProbe
             template.SaveAs(templatePath,51);template.Close(false);closed=true;
             architecture=books.Add();session.Own((object)architecture,delegate{if(!architectureClosed)architecture.Close(false);});
             dynamic architectureSheets=bag.Own(architecture.Worksheets),sheet=bag.Own(architectureSheets.Item(1));sheet.Name="架构";
-            dynamic rows=bag.Own(sheet.Range["A3:F6"]);rows.Value2=new object[,]{{"00-","总简称","0级","总全称",null,"00-总（合并）.xlsx"},{"03-","组简称","1级","组全称",null,"03-组（合并）.xlsx"},{"03-01-","末级简称","2级","末级全称",null,"03-01-末级.xlsx"},{"03-02-",null,"2级","缺简称全称",null,"03-02-缺简称.xlsx"}};
-            architecture.SaveAs(sourcePath,51);dynamic code=bag.Own(sheet.Range["B5"]);code.Value2="未保存简称";
+            dynamic header=bag.Own(sheet.Range["A1:G1"]);header.Value2=new object[,]{{"序号","合并集团简称","简称","级次","公司名称","并表母公司","过程表文件名称"}};
+            dynamic rows=bag.Own(sheet.Range["A3:G6"]);rows.Value2=new object[,]{{"00-","集团展示名","总简称","0级","总全称",null,"00-总（合并）.xlsx"},{"03-","分组展示名","组简称","1级","组全称",null,"03-组（合并）.xlsx"},{"03-01-",null,"末级简称","2级","末级全称",null,"03-01-末级.xlsx"},{"03-02-",null,null,"2级","缺简称全称",null,"03-02-缺简称.xlsx"}};
+            architecture.SaveAs(sourcePath,51);dynamic code=bag.Own(sheet.Range["C5"]);code.Value2="未保存简称";
         }
         using(var source=CompanyWorkbookHost.FromOpenOrDisk(application,sourcePath))
         using(var template=CompanyWorkbookHost.FromOpenOrDisk(application,templatePath))
@@ -47,6 +48,29 @@ internal static class SingleSummaryLiveProbe
             bool blocked=false;try{template.PreviewStructure(request,selected,false,false);}catch(InvalidOperationException){blocked=true;}Check(blocked,"architecture generation never overwrites existing output");
             Check(!Convert.ToBoolean(architecture.Saved),"original architecture remains open and unsaved after generation");
         }
+        using(var picker=new CompanyStructurePicker{SimpleMode=true,OpenSource=delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(application,path);}})
+        {
+            picker.LoadSource(sourcePath);var tasks=picker.Selected();Check(tasks.Count==2&&tasks[0].ShortName=="未保存简称"&&tasks[0].FileName=="03-01-末级.xlsx","simple picker reads C short names and G filenames without using B group labels");
+        }
+        string previousRoot=DialogSizeStore.RootOverride;DialogSizeStore.RootOverride=session.DirectoryPath;
+        try
+        {
+            using(var form=new CompanyWorkbookForm())
+            {
+                form.OpenTemplate=delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(application,path);};form.RememberConfigurationEnabled=true;form.StructureMode.Checked=true;Call(form,"LoadTemplate",templatePath);
+                ((ComboBox)Get(form,"targetCode")).Text="简称";((ComboBox)Get(form,"targetName")).Text="全称";((NumericUpDown)Get(form,"leadRow")).Value=2;((TextBox)Get(form,"output")).Text=session.DirectoryPath;form.RememberConfiguration();
+                Check(System.IO.File.Exists(CompanyWorkbookForm.LastConfigurationFile),"last valid structure settings saved separately from preset library");
+                var legacy=form.CapturePreset();legacy.Name="旧模板配置";legacy.Values.Remove("structureMode");legacy.Values["source"]="不存在的公司汇总表";form.ApplyPreset(legacy);
+                Check(form.StructureMode.Checked&&((ComboBox)Get(form,"targetCode")).Text=="简称","explicit structure mode reuses legacy target settings without requiring old source summary sheet");
+            }
+            using(var restored=new CompanyWorkbookForm())
+            {
+                restored.OpenTemplate=delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(application,path);};restored.RememberConfigurationEnabled=true;restored.RestoreLastConfiguration();
+                Check(restored.StructureMode.Checked&&Get(restored,"host")!=null&&((ComboBox)Get(restored,"targetCode")).Text=="简称"&&((NumericUpDown)Get(restored,"leadRow")).Value==2&&((TextBox)Get(restored,"output")).Text==session.DirectoryPath,"next session restores template output and write locations without reconfiguration");
+                Check(restored.Structure.Selected().Count==0,"restoring settings does not select companies or execute generation");
+            }
+        }
+        finally{DialogSizeStore.RootOverride=previousRoot;}
         architecture.Close(false);architectureClosed=true;
     }
     private static void FileBatch(object application, ProbeSession session)

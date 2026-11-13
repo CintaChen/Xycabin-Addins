@@ -15,7 +15,7 @@ namespace Excel_Iterate
     }
     internal sealed class CompanyStructureColumns
     {
-        internal int FirstRow = 3, Sequence = 1, ShortName = 2, FullName = 4, FileName = 6, Level = 3;
+        internal int FirstRow = 3, Sequence = 1, ShortName = 3, FullName = 5, FileName = 7, Level = 4;
     }
     internal static class CompanyStructureTasks
     {

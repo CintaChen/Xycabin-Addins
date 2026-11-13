@@ -39,6 +39,8 @@ internal static class CompanyWorkbookProbe
                 var selected=picker.Selected();selected[0].FileName="changed";Check(picker.Selected()[0].FileName!="changed","architecture selection snapshots are detached");
                 int changes=0;picker.Changed+=delegate{changes++;};picker.Report(5,"阻止：简称为空");Check(changes==0&&Convert.ToString(picker.Tasks.Rows[2].Cells["status"].Value).Contains("简称为空"),"status updates do not change task selection or invalidate plan");
                 var configuration=picker.Configuration();configuration["structureFirst"]="8";configuration["structureShort"]="G";picker.ApplyConfiguration(configuration);Check(picker.Configuration()["structureFirst"]=="8"&&picker.Configuration()["structureShort"]=="G"&&picker.Selected().Count==0,"architecture mapping presets restore without retaining stale company data");
+                picker.SimpleMode=true;configuration["structureShort"]="B";configuration["structureFull"]="D";configuration["structureLevel"]="C";configuration["structureFile"]="F";picker.ApplyConfiguration(configuration);
+                var fixedColumns=picker.Configuration();Check(fixedColumns["structureShort"]=="C"&&fixedColumns["structureFull"]=="E"&&fixedColumns["structureLevel"]=="D"&&fixedColumns["structureFile"]=="G"&&fixedColumns["structureFirst"]=="3","simple architecture mode ignores obsolete mappings and uses new seven-column schema");
             }
             CompanyWorkbookSelectionRules.Validate("data", 3, 1, 8, 4, false, 2);
             Check(true, "data rectangle supplies row interval independent of chosen columns");

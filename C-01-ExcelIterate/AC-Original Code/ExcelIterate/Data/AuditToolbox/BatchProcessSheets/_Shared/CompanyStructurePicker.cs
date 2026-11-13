@@ -16,17 +16,20 @@ namespace Excel_Iterate
         private CompanyWorkbookHost source;
         private readonly TextBox file = new TextBox { ReadOnly = true, Dock = DockStyle.Fill };
         private readonly ComboBox sheet = new ComboBox { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
-        private readonly TextBox sequence = Column("A"), shortName = Column("B"), fullName = Column("D"), fileName = Column("F"), level = Column("C");
+        private readonly TextBox sequence = Column("A"), shortName = Column("C"), fullName = Column("E"), fileName = Column("G"), level = Column("D");
         private readonly NumericUpDown first = new NumericUpDown { Minimum = 1, Maximum = 1048576, Value = 3, Width = 75 };
         internal readonly DataGridView Tasks = new ResultGrid { Dock = DockStyle.Fill, AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = false };
         private readonly Label count = new Label { AutoSize = true };
         private bool loading;
         private string preferredSheet;
+        private Control mappingBody;
+        private bool simpleMode;
+        internal bool SimpleMode { get { return simpleMode; } set { simpleMode=value;if(mappingBody!=null)mappingBody.Visible=!value;InvalidateRows(); } }
         internal static readonly string[] ConfigurationKeys = { "structureSheet", "structureFirst", "structureSequence", "structureShort", "structureFull", "structureFile", "structureLevel" };
         private static TextBox Column(string text) { return new TextBox { Text = text, Width = 40 }; }
         internal static List<CompanyStructureTask> Choose(Form owner,Func<string,CompanyWorkbookHost> open,bool useLevel)
         {
-            using(var dialog=new Form())using(var picker=new CompanyStructurePicker{Dock=DockStyle.Fill,OpenSource=open,UseLevel=useLevel})
+            using(var dialog=new Form())using(var picker=new CompanyStructurePicker{Dock=DockStyle.Fill,OpenSource=open,UseLevel=useLevel,SimpleMode=true})
             {
                 dialog.Text="选择架构任务";DialogSizing.Prepare(dialog,"summary.single","table",Ui.Blue);
                 var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=2,Padding=new Padding(16)};root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -41,13 +44,13 @@ namespace Excel_Iterate
             Height = 310; Dock = DockStyle.Top; MinimumSize = new Size(550, 260);
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            var path = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2 };
-            path.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); path.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            var browse = Ui.Button("选择架构表", 130); path.Controls.Add(file,0,0);path.Controls.Add(browse,1,0);root.Controls.Add(path,0,0);
+            var path = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3 };
+            path.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); path.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));path.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            var browse = Ui.Button("选择架构表", 130);var read = Ui.Button("重新读取",110);path.Controls.Add(file,0,0);path.Controls.Add(browse,1,0);path.Controls.Add(read,2,0);root.Controls.Add(path,0,0);
             var mapping = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
             foreach(Control control in new Control[] { new Label{Text="工作表",AutoSize=true}, sheet, new Label{Text="首行",AutoSize=true}, first,
                 new Label{Text="序号列",AutoSize=true},sequence,new Label{Text="简称列",AutoSize=true},shortName,new Label{Text="全称列",AutoSize=true},fullName,new Label{Text="文件名列",AutoSize=true},fileName,new Label{Text="级次列",AutoSize=true},level }) mapping.Controls.Add(control);
-            var read = Ui.Button("读取任务",110);mapping.Controls.Add(read);root.Controls.Add(mapping,0,1);root.Controls.Add(Tasks,0,2);
+            mappingBody=mapping;root.Controls.Add(mapping,0,1);root.Controls.Add(Tasks,0,2);
             Tasks.Columns.Add(new DataGridViewCheckBoxColumn{Name="selected",HeaderText="生成 / 处理",Width=90});
             Tasks.Columns.Add(new DataGridViewTextBoxColumn{Name="sequence",HeaderText="序号",Width=90,ReadOnly=true});
             Tasks.Columns.Add(new DataGridViewTextBoxColumn{Name="short",HeaderText="简称",Width=130,ReadOnly=true});
@@ -78,6 +81,7 @@ namespace Excel_Iterate
         }
         internal Dictionary<string,string> Configuration()
         {
+            if(SimpleMode)return new Dictionary<string,string>{{"structureSheet",sheet.Text},{"structureFirst","3"},{"structureSequence","A"},{"structureShort","C"},{"structureFull","E"},{"structureFile","G"},{"structureLevel","D"}};
             return new Dictionary<string,string>{{"structureSheet",sheet.Text},{"structureFirst",first.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{"structureSequence",sequence.Text},{"structureShort",shortName.Text},{"structureFull",fullName.Text},{"structureFile",fileName.Text},{"structureLevel",level.Text}};
         }
         internal static void ValidateConfiguration(IDictionary<string,string> values)
@@ -90,12 +94,19 @@ namespace Excel_Iterate
         internal void ApplyConfiguration(IDictionary<string,string> values)
         {
             ValidateConfiguration(values);if(values.Count==0)return;
+            if(SimpleMode){preferredSheet=values["structureSheet"];InvalidateRows();return;}
             loading=true;try{preferredSheet=values["structureSheet"];first.Value=int.Parse(values["structureFirst"]);sequence.Text=values["structureSequence"];shortName.Text=values["structureShort"];fullName.Text=values["structureFull"];fileName.Text=values["structureFile"];level.Text=values["structureLevel"];if(sheet.Items.Contains(preferredSheet))sheet.SelectedItem=preferredSheet;}finally{loading=false;}InvalidateRows();
         }
         private void ReadTasks()
         {
             InvalidateRows();if(source==null||sheet.SelectedIndex<0)throw new InvalidOperationException("请先选择架构表和工作表。");
-            var rows=source.StructureRows(sheet.Text,new CompanyStructureColumns{FirstRow=(int)first.Value,Sequence=ColumnNumber(sequence.Text),ShortName=ColumnNumber(shortName.Text),FullName=ColumnNumber(fullName.Text),FileName=ColumnNumber(fileName.Text),Level=ColumnNumber(level.Text)});
+            if(SimpleMode)
+            {
+                var headers=source.Headers(sheet.Text,1);
+                foreach(var expected in new Dictionary<string,int>{{"序号",1},{"简称",3},{"级次",4},{"公司名称",5},{"过程表文件名称",7}})
+                {int column;if(!headers.TryGetValue(expected.Key,out column)||column!=expected.Value)throw new InvalidOperationException("架构表格式不匹配：请使用A列序号、C列简称、D列级次、E列公司名称、G列过程表文件名称的版本。");}
+            }
+            var rows=source.StructureRows(sheet.Text,SimpleMode?new CompanyStructureColumns():new CompanyStructureColumns{FirstRow=(int)first.Value,Sequence=ColumnNumber(sequence.Text),ShortName=ColumnNumber(shortName.Text),FullName=ColumnNumber(fullName.Text),FileName=ColumnNumber(fileName.Text),Level=ColumnNumber(level.Text)});
             CompanyStructureTasks.Classify(rows,UseLevel);SetTasks(rows);
         }
         internal void SetTasks(IList<CompanyStructureTask> rows)

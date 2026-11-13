@@ -41,8 +41,11 @@ namespace Excel_Iterate
         internal event Action<bool> BusyChanged;
         internal Func<string, CompanyWorkbookHost> OpenTemplate;
         internal Func<CompanyWorkbookHost> OpenCurrentTemplate;
-        internal readonly CheckBox StructureMode = new CheckBox { Text = "使用架构表任务", AutoSize = true };
-        internal readonly CompanyStructurePicker Structure = new CompanyStructurePicker { Visible = false };
+        internal readonly CheckBox StructureMode = new CheckBox { Text = "使用架构表", AutoSize = true };
+        internal readonly CompanyStructurePicker Structure = new CompanyStructurePicker { Visible = false, SimpleMode = true };
+        internal bool RememberConfigurationEnabled;
+        private readonly RoundedButton structureSettings = Ui.Button("更改模板与输出设置",180);
+        private bool showStructureSetup;
         internal Func<bool> CanRun;
         internal bool Running { get { return records != null; } }
         private static ComboBox Choice() { return new ComboBox { Width = 180, DropDownWidth = 300, DropDownStyle = ComboBoxStyle.DropDownList }; }
@@ -59,7 +62,8 @@ namespace Excel_Iterate
             var current = Ui.Button("使用当前工作簿", 145);
             current.Click += delegate { LoadTemplate(null); };
             AddRow("模板文件", template, browse, current);
-            AddRow("任务来源", StructureMode);
+            structureSettings.Visible=false;structureSettings.Click+=delegate{showStructureSetup=!showStructureSetup;SetStructureMode();};
+            AddRow("任务来源", StructureMode, structureSettings);
             inputs.Controls.Add(Structure);
             Structure.Log = Append; Structure.Changed += delegate { confirmed.Checked=false;InvalidateNames(); };
             StructureMode.CheckedChanged += delegate { SetStructureMode(); };
@@ -105,7 +109,7 @@ namespace Excel_Iterate
             leadRow.ValueChanged += delegate { InvalidateNames(); };
             timer.Tick += delegate { Tick(); };
             FormClosing += delegate(object sender, FormClosingEventArgs e)
-            { if (Running || ticking || preparing) { e.Cancel = true; closePending = true; RequestCancel(); } };
+            { if (Running || ticking || preparing) { e.Cancel = true; closePending = true; RequestCancel(); } else RememberConfiguration(); };
             Disposed += delegate { timer.Stop(); timer.Dispose(); if (progressView != null) progressView.Close(); ReleaseHost(); };
             inputs.ClientSizeChanged += delegate { FitInputRows(); };
             Shown += delegate { FitInputRows(); };
@@ -133,13 +137,27 @@ namespace Excel_Iterate
             foreach(var entry in Structure.Configuration())values[entry.Key]=entry.Value;
             return new BatchPreset { Feature = "company", Context = template.Text, Values = values };
         }
+        internal static string LastConfigurationFile
+        { get { return System.IO.Path.Combine(System.IO.Path.GetDirectoryName(BatchPresetStore.Library("company")),"company-last-settings.json"); } }
+        internal void RememberConfiguration()
+        {
+            if(!RememberConfigurationEnabled||!StructureMode.Checked||host==null||string.IsNullOrWhiteSpace(targetCode.Text)||string.IsNullOrWhiteSpace(targetName.Text)||leadRow.Value<=leadHeader.Value||!System.IO.Directory.Exists(output.Text)||!System.IO.Path.IsPathRooted(template.Text))return;
+            try{host.ValidateStructureTarget(BuildRequest(false));var preset=CapturePreset();preset.Name="上次有效架构配置";BatchPresetStore.Write(LastConfigurationFile,preset,true);}
+            catch(Exception error){Append("上次配置未能记住："+error.Message);}
+        }
+        internal void RestoreLastConfiguration()
+        {
+            if(!RememberConfigurationEnabled||!System.IO.File.Exists(LastConfigurationFile))return;
+            try{ApplyPreset(BatchPresetStore.Read(LastConfigurationFile,"company"));Append("已沿用上次模板「"+template.Text+"」、输出目录「"+output.Text+"」和写入位置；选择架构表后重新预览即可。");}
+            catch(Exception error){Append("上次配置暂不能恢复，请选择一次已有预设或模板："+error.Message);}
+        }
         internal void ApplyPreset(BatchPreset preset)
         {
             if (Running || ticking || preparing || (CanRun != null && !CanRun())) throw new InvalidOperationException("任务执行期间不能应用预设。");
             BatchPresetStore.Validate(preset, "company");
             var fields = PresetFields(); var values = new Dictionary<string,string>(preset.Values);
-            string mode;bool external=false;
-            if(values.TryGetValue("structureMode",out mode)){if(!bool.TryParse(mode,out external))throw new InvalidOperationException("架构表模式预设无效。");values.Remove("structureMode");}
+            string mode;bool external=StructureMode.Checked;
+            if(values.TryGetValue("structureMode",out mode)){bool savedMode;if(!bool.TryParse(mode,out savedMode))throw new InvalidOperationException("架构表模式预设无效。");external=external||savedMode;values.Remove("structureMode");}
             var structureSettings=new Dictionary<string,string>();foreach(string key in CompanyStructurePicker.ConfigurationKeys){string value;if(values.TryGetValue(key,out value)){structureSettings[key]=value;values.Remove(key);}}
             CompanyStructurePicker.ValidateConfiguration(structureSettings);
             BatchPresetStore.ValidateFields(fields, values);
@@ -181,7 +199,7 @@ namespace Excel_Iterate
                 var previous = host; host = candidate; candidate = null; template.Text = preset.Context;
                 if (previous != null) try { previous.Dispose(); } catch (Exception error) { Append("旧读取副本清理失败：" + error.Message); }
             }
-            confirmed.Checked = false; InvalidateNames(); SetLeadEnabled(); ResetProgress("预设已应用，请重新预览");
+            confirmed.Checked = false; InvalidateNames(); SetLeadEnabled(); showStructureSetup=false;SetStructureMode();ResetProgress("预设已应用，请重新预览");
             selectionInfo.Text = "预设仅应用参数，当前模板：" + template.Text + "；保存时模板：" + preset.Context;
             }
             finally
@@ -234,10 +252,14 @@ namespace Excel_Iterate
         private void SetStructureMode()
         {
             Structure.Visible=StructureMode.Checked;
+            if(StructureMode.Checked&&(host==null||target.SelectedIndex<0||string.IsNullOrWhiteSpace(targetCode.Text)||string.IsNullOrWhiteSpace(targetName.Text)||leadRow.Value<=leadHeader.Value||!System.IO.Directory.Exists(output.Text)))showStructureSetup=true;
+            structureSettings.Visible=StructureMode.Checked;structureSettings.Text=showStructureSetup?"收起模板与输出设置":"更改模板与输出设置";
             var hidden=new HashSet<string>{"来源工作表","来源数据行","命名名称","名称处理","目标表中替换字段"};
+            var setup=new HashSet<string>{"模板文件","目标工作表","目标字段","Lead 写入行","输出文件夹"};
             foreach(Control row in inputs.Controls)
             {
                 string title=row.Tag as string;if(title!=null&&hidden.Contains(title))row.Visible=!StructureMode.Checked;
+                if(title!=null&&setup.Contains(title))row.Visible=!StructureMode.Checked||showStructureSetup;
                 if(title=="目标字段")foreach(Control cell in row.Controls)if(cell is Label&&(cell.Text=="编码"||cell.Text=="简称"))cell.Text=StructureMode.Checked?"简称":"编码";
             }
             confirmed.Text=StructureMode.Checked?"已核对架构任务、完整文件名和模板目标写入行":"已确认上述来源范围及 Lead 唯一写入行；仅更新指定的两个字段";
@@ -422,7 +444,7 @@ namespace Excel_Iterate
                     if ((!StructureMode.Checked && source.SelectedIndex < 0) || target.SelectedIndex < 0) Append(StructureMode.Checked?"请从实际模板中选择目标工作表；架构模式不要求公司汇总表。":"默认来源表或 lead 不存在，请从实际工作表中选择。");
                 }
                 catch (Exception error) { Append("读取模板失败 [" + (path ?? "当前工作簿") + "]：" + error); }
-                finally { loading = false; SetBusy(false); RefreshFields(false); RefreshFields(true); }
+                finally { loading = false; SetBusy(false); RefreshFields(false); RefreshFields(true);SetStructureMode(); }
             }
         }
         private static void Select(ComboBox box, string value)
@@ -480,6 +502,7 @@ namespace Excel_Iterate
                 NamePreview.Clear();
                 Append("正在预检模板、来源行、字段与输出目录…");
                 records = PreviewRecords(request,false);
+                RememberConfiguration();
                 ShowNamePreview(records); details.SelectedTab = logTab;
                 taskProgress.Reset(records.Count); elapsed.Restart();
                 cancel.Enabled = !cancelled;

@@ -122,8 +122,7 @@ namespace Excel_Iterate
             if (!Directory.Exists(request.Output)) throw new InvalidOperationException("请选择已存在的输出文件夹。");
             if (!namesOnly)
             {
-                if (!request.UpdateLead || request.TargetHeaderRow < 1 || request.TargetRow <= request.TargetHeaderRow || string.IsNullOrWhiteSpace(request.TargetSheet) || string.IsNullOrWhiteSpace(request.TargetCodeField) || string.IsNullOrWhiteSpace(request.TargetNameField)) throw new InvalidOperationException("请选择模板中简称、全称的目标字段、表头行及写入行。");
-                using (var bag = new ComBag()) CheckTarget(Sheet(request.TargetSheet,bag), request);
+                ValidateStructureTarget(request);
             }
             var duplicates = new HashSet<string>(rows.GroupBy(r=>r.Name,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()>1).Select(g=>g.Key),StringComparer.OrdinalIgnoreCase);
             var valid = new List<CompanyWorkbookRecord>();
@@ -146,6 +145,11 @@ namespace Excel_Iterate
             if(rows.Count==0)throw new InvalidOperationException("请勾选需要生成的公司。");
             if(valid.Count==0)throw new InvalidOperationException("没有通过预检的架构任务；请查看任务状态和运行日志，修正后重新读取。");
             return valid;
+        }
+        internal void ValidateStructureTarget(CompanyWorkbookRequest request)
+        {
+            if (!request.UpdateLead || request.TargetHeaderRow < 1 || request.TargetRow <= request.TargetHeaderRow || string.IsNullOrWhiteSpace(request.TargetSheet) || string.IsNullOrWhiteSpace(request.TargetCodeField) || string.IsNullOrWhiteSpace(request.TargetNameField)) throw new InvalidOperationException("请选择模板中简称、全称的目标字段、表头行及写入行。");
+            using(var bag=new ComBag())CheckTarget(Sheet(request.TargetSheet,bag),request);
         }
         internal CompanyWorkbookSelection Pick(string kind, CompanyWorkbookRequest request, Func<object, object> picker = null, Action<string> preparation = null)
         {

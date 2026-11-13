@@ -22,9 +22,11 @@ namespace Excel_Iterate
                 form.OpenTemplate = delegate(string path) { return CompanyWorkbookHost.FromOpenOrDisk(_app, path); };
                 form.OpenCurrentTemplate = delegate { return CompanyWorkbookHost.FromCurrent(_app); };
                 form.Structure.OpenSource = delegate(string path) { return CompanyWorkbookHost.FromOpenOrDisk(_app,path); };
+                form.RememberConfigurationEnabled=true;
                 form.BusyChanged += delegate(bool busy) { _busy = busy; };
                 form.FormClosed += delegate { _companyWorkbookForm = null; form.Dispose(); };
                 _companyWorkbookForm = form;
+                form.RestoreLastConfiguration();
                 IntPtr owner = GetHostWindowHandle();
                 if (owner == IntPtr.Zero) form.Show(); else form.Show(new WindowWrapper(owner));
             }
