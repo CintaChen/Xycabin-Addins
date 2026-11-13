@@ -42,6 +42,7 @@ namespace Excel_Iterate
         private readonly List<SummaryAreaCell> cells = new List<SummaryAreaCell>();
         private List<SummaryAreaPlan> targets = new List<SummaryAreaPlan>();
         private readonly List<SummaryCompany> companies = new List<SummaryCompany>();
+        private List<CompanyStructureTask> structureChildren;
         private readonly List<SummaryAreaCell> originalTargetFormulas = new List<SummaryAreaCell>();
         private string stamp, selectedKey;
         private SourceChangeWatch watch;
@@ -88,9 +89,9 @@ namespace Excel_Iterate
                 return false;
             }
         }
-        internal void PrepareBatchFile(BatchPreset preset)
+        internal void PrepareBatchFile(BatchPreset preset, IList<CompanyStructureTask> requiredChildren = null)
         {
-            ApplyPreset(preset); Preview();
+            ApplyPreset(preset);structureChildren=requiredChildren==null?null:new List<CompanyStructureTask>(requiredChildren);Preview();
         }
         internal void StartBatchFile() { Start(); timer.Stop(); }
         internal bool StepBatchFile()
@@ -370,6 +371,22 @@ namespace Excel_Iterate
                     if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行两列必须同时填写。");
                     var company = new SummaryCompany { Row = binding.Row, Code = code, Name = name, Selected = !selected.ContainsKey(binding.Row) || selected[binding.Row] };
                     companies.Add(company); view.Companies.Rows.Add(company.Selected, company.Row, code, name);
+                }
+                if(structureChildren!=null)
+                {
+                    if(structureChildren.Count==0)throw new InvalidOperationException("该父公司没有选中的末级公司。");
+                    var rows=new HashSet<int>();var issues=new List<string>();
+                    foreach(var child in structureChildren)
+                    {
+                        string file=CompanyWorkbookRules.FileName(child.FileName);
+                        var matches=companies.Where(c=>string.Equals(c.Name+".xlsx",file,StringComparison.OrdinalIgnoreCase)).ToList();
+                        if(matches.Count==0)issues.Add("缺少「"+file+"」（应在预设公司字段选区内填写不含.xlsx的完整文件名）");
+                        else if(matches.Count>1)issues.Add("「"+file+"」存在重复记录");
+                        else{rows.Add(matches[0].Row);view.Message("直属末级 "+child.Sequence+" → 父公司Lead第"+matches[0].Row+"行："+file);}
+                    }
+                    if(issues.Count>0)throw new InvalidOperationException("父公司Lead缺少或重复所需记录，整个父公司任务已阻止；不修改Lead："+string.Join("；",issues.ToArray()));
+                    for(int i=0;i<companies.Count;i++){companies[i].Selected=rows.Contains(companies[i].Row);view.Companies.Rows[i].Cells["selected"].Value=companies[i].Selected;}
+                    view.Message("已在父公司原有Lead中筛选"+rows.Count+"家直属末级公司，保留Lead原始顺序；其他公司不参与本次铺列，未修改Lead。");
                 }
             }
             finally { loading = false; }

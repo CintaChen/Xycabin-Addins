@@ -95,7 +95,7 @@ namespace Excel_Iterate
         internal List<CompanyStructureTask> StructureRows(string name, CompanyStructureColumns columns)
         {
             var result = new List<CompanyStructureTask>();
-            var selected = new[] { columns.Sequence, columns.ShortName, columns.FullName, columns.FileName, columns.Level };
+            var selected = new[] { columns.Sequence, columns.ShortName, columns.FullName, columns.FileName, columns.Level, columns.ParentName };
             if (columns.FirstRow < 1 || selected.Any(c => c < 1 || c > 16384) || selected.Distinct().Count() != selected.Length) throw new InvalidOperationException("架构表的来源列须有效且互不重复。");
             using (var bag = new ComBag())
             {
@@ -109,7 +109,7 @@ namespace Excel_Iterate
                     {
                         string full = Read(cells,row,columns.FullName), file = Read(cells,row,columns.FileName), code = Read(cells,row,columns.ShortName);
                         if (string.IsNullOrWhiteSpace(full) && string.IsNullOrWhiteSpace(file) && string.IsNullOrWhiteSpace(code)) continue;
-                        result.Add(new CompanyStructureTask { Row=row, Sequence=Read(cells,row,columns.Sequence), ShortName=code, FullName=full, FileName=file, Level=Read(cells,row,columns.Level) });
+                        result.Add(new CompanyStructureTask { Row=row, Sequence=Read(cells,row,columns.Sequence), ShortName=code, FullName=full, FileName=file, Level=Read(cells,row,columns.Level), ParentFullName=Read(cells,row,columns.ParentName) });
                     }
                     catch (Exception error) { throw new InvalidOperationException("架构表第"+row+"行："+error.Message,error); }
                 }

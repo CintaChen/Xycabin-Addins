@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Excel_Iterate;
 
 internal static class CompanyWorkbookProbe
@@ -27,6 +28,15 @@ internal static class CompanyWorkbookProbe
             CompanyStructureTasks.Classify(tree,false);
             Check(tree[0].Leaf&&!tree[1].Leaf&&tree[2].Leaf&&!tree[3].Leaf&&tree[4].Leaf&&tree[5].Leaf,"sequence segment hierarchy does not confuse 03 with 030");
             CompanyStructureTasks.Classify(tree,true);Check(!tree[0].Leaf,"optional level zero identifies total group");
+            var parents=CompanyStructureTasks.DirectParentLinks(tree,new[]{tree[2],tree[4]});
+            Check(parents.Count==2&&parents[0].Parent.Sequence=="03-"&&parents[1].Parent.Sequence=="03-08-"&&parents.All(g=>g.Children.Count==1),"selected leaves group only into direct parents without ancestor propagation");
+            var top=CompanyStructureTasks.DirectParentLinks(tree,new[]{tree[5]});Check(top.Count==1&&top[0].Parent.Sequence=="00-","top-level leaf resolves to explicit zero-level total group");
+            Reject(delegate{CompanyStructureTasks.DirectParentLinks(tree,new[]{tree[1]});},"non-leaf sources cannot enter leaf-only parent workflow");
+            tree[2].ParentFullName="冲突父公司";Reject(delegate{CompanyStructureTasks.DirectParentLinks(tree,new[]{tree[2]});},"declared parent conflicts with sequence and blocks plan");tree[2].ParentFullName=null;
+            var missingParent=new List<CompanyStructureTask>{tree[0],tree[1],new CompanyStructureTask{Row=9,Sequence="03-99-01-",Level="3级",FullName="孤立公司",FileName="孤立公司.xlsx"}};
+            Reject(delegate{CompanyStructureTasks.DirectParentLinks(missingParent,new[]{missingParent[2]});},"missing direct parent never falls back to higher ancestor");
+            var body=new CompanyStructureTask{Row=10,Sequence="01-",Level="1级",FullName=tree[0].FullName,ParentFullName="母公司本部",FileName="01-本部.xlsx"};
+            Check(CompanyStructureTasks.DirectParentLinks(new[]{tree[0],body},new[]{body})[0].Parent.Sequence=="00-","parent-body special label resolves by explicit hierarchy rather than duplicate company names");
             Reject(delegate{CompanyStructureTasks.Classify(new[]{new CompanyStructureTask{Row=1,Sequence="03-"},new CompanyStructureTask{Row=2,Sequence="3"}},false);},"normalized duplicate sequences block");
             foreach(string text in new[]{"", "03--01", "公司03", "03/01"})Reject(delegate{CompanyStructureTasks.Key(text);},"invalid hierarchy "+text);
             Check(CompanyStructureTasks.Key("03-01-")=="3-1","hierarchy accepts trailing separator and leading zeroes");

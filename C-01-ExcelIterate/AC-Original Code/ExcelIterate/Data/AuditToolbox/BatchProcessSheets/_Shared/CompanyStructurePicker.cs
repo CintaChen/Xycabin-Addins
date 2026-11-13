@@ -29,6 +29,10 @@ namespace Excel_Iterate
         private static TextBox Column(string text) { return new TextBox { Text = text, Width = 40 }; }
         internal static List<CompanyStructureTask> Choose(Form owner,Func<string,CompanyWorkbookHost> open,bool useLevel)
         {
+            var choice=ChooseSelection(owner,open,useLevel);return choice==null?null:choice.Selected;
+        }
+        internal static CompanyStructureSelection ChooseSelection(Form owner,Func<string,CompanyWorkbookHost> open,bool useLevel)
+        {
             using(var dialog=new Form())using(var picker=new CompanyStructurePicker{Dock=DockStyle.Fill,OpenSource=open,UseLevel=useLevel,SimpleMode=true})
             {
                 dialog.Text="选择架构任务";DialogSizing.Prepare(dialog,"summary.single","table",Ui.Blue);
@@ -36,7 +40,7 @@ namespace Excel_Iterate
                 var confirm=Ui.Button("使用选中任务",140);var cancel=Ui.Button("取消",90);var actions=Ui.ActionBar();actions.Controls.AddRange(new Control[]{confirm,cancel});root.Controls.Add(picker,0,0);root.Controls.Add(actions,0,1);dialog.Controls.Add(root);
                 picker.Log=delegate(string text){UiDialog.Show(dialog,text,"架构任务",MessageBoxButtons.OK,MessageBoxIcon.Information);};
                 confirm.Click+=delegate{if(picker.Selected().Count==0){picker.Log("请至少勾选一个任务。");return;}dialog.DialogResult=DialogResult.OK;};cancel.Click+=delegate{dialog.DialogResult=DialogResult.Cancel;};
-                return dialog.ShowDialog(owner)==DialogResult.OK?picker.Selected():null;
+                return dialog.ShowDialog(owner)==DialogResult.OK?new CompanyStructureSelection{All=picker.All(),Selected=picker.Selected()}:null;
             }
         }
         internal CompanyStructurePicker()
@@ -119,8 +123,10 @@ namespace Excel_Iterate
         }
         internal List<CompanyStructureTask> Selected()
         {
-            Tasks.EndEdit();return Tasks.Rows.Cast<DataGridViewRow>().Where(r=>object.Equals(r.Cells[0].Value,true)).Select(r=>(CompanyStructureTask)r.Tag).Select(t=>new CompanyStructureTask{Row=t.Row,Sequence=t.Sequence,ShortName=t.ShortName,FullName=t.FullName,FileName=t.FileName,Leaf=t.Leaf,Level=t.Level}).ToList();
+            Tasks.EndEdit();return Tasks.Rows.Cast<DataGridViewRow>().Where(r=>object.Equals(r.Cells[0].Value,true)).Select(r=>Copy((CompanyStructureTask)r.Tag)).ToList();
         }
+        internal List<CompanyStructureTask> All(){return Tasks.Rows.Cast<DataGridViewRow>().Select(r=>Copy((CompanyStructureTask)r.Tag)).ToList();}
+        private static CompanyStructureTask Copy(CompanyStructureTask t){return new CompanyStructureTask{Row=t.Row,Sequence=t.Sequence,ShortName=t.ShortName,FullName=t.FullName,FileName=t.FileName,Leaf=t.Leaf,Level=t.Level,ParentFullName=t.ParentFullName};}
         private void SetSelection(int mode){loading=true;try{foreach(DataGridViewRow row in Tasks.Rows)row.Cells[0].Value=mode==1||(mode==0&&((CompanyStructureTask)row.Tag).Leaf);}finally{loading=false;}Notify();}
         private void InvalidateRows(){if(loading)return;Tasks.Rows.Clear();Notify();}
         private void Notify(){count.Text="共"+Tasks.Rows.Count+"项，已选"+Selected().Count+"项";if(Changed!=null)Changed();}

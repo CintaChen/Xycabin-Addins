@@ -91,6 +91,11 @@ internal static class SingleSummaryLiveProbe
                 string companyName=i==0?"！01-示例（集团）":"！02-示例乙";
                 System.IO.File.Copy(System.IO.Path.Combine(session.DirectoryPath,companyName+".xlsx"),System.IO.Path.Combine(ownSources,companyName+".xlsx"));
                 path.Value2 = i == 1 ? "" : ownSources; source.Value2 = "BS!$A$1"; company.Value2 = companyName; variable.Value2 = "变量" + i; period.Value2 = i==0?"2027年度":"2026年度";
+                if(i==2)
+                {
+                    dynamic extraCompany=bag.Own(lead.Range["L4"]),extraVariable=bag.Own(lead.Range["M4"]),untouched=bag.Own(sheet.Range["D3"]);extraCompany.Value2="！01-示例（集团）";extraVariable.Value2="无关公司变量";untouched.Value2="保留未选公司区域";
+                    System.IO.File.Copy(System.IO.Path.Combine(session.DirectoryPath,"！01-示例（集团）.xlsx"),System.IO.Path.Combine(ownSources,"！01-示例（集团）.xlsx"));
+                }
                 book.SaveAs(file, 51); book.Close(false); closed = true; selected.Add(file); hashes[file] = System.IO.File.ReadAllBytes(file);
             }
         }
@@ -148,6 +153,34 @@ internal static class SingleSummaryLiveProbe
             Set(batch,"destination",cancelled);Call(batch,"Advance");Set(batch,"stopping",true);Call(batch,"Advance");
             Check(Get(batch,"queue")==null&&System.IO.Directory.GetFileSystemEntries(cancelled).Length==0,"stopping discards in-progress copy without output");
         }
+        string parentOutput=System.IO.Path.Combine(session.DirectoryPath,"parents");System.IO.Directory.CreateDirectory(parentOutput);
+        using(var batch=create(true))
+        {
+            var rows=(List<DataGridViewRow>)Get(batch,"queue");rows.RemoveAt(1);
+            Set(batch,"destination",parentOutput);
+            var parentPreset=BatchPresetStore.Decode(BatchPresetStore.Encode(preset),"summary");parentPreset.Values["leadAreas"]="3,12,2,1";parentPreset.Values["repeatSource"]="3,13,2,1";Set(batch,"preset",parentPreset);
+            Set(batch,"parentChildren",new Dictionary<string,List<CompanyStructureTask>>(StringComparer.OrdinalIgnoreCase){
+                {selected[0],new List<CompanyStructureTask>{new CompanyStructureTask{Sequence="03-01-",FileName="！01-示例（集团）.xlsx"},new CompanyStructureTask{Sequence="03-02-",FileName="缺少的末级公司.xlsx"}}},
+                {selected[2],new List<CompanyStructureTask>{new CompanyStructureTask{Sequence="04-01-",FileName="！02-示例乙.xlsx"}}}
+            });
+            int guard=0;while(Get(batch,"queue")!=null&&guard++<100)Call(batch,"Advance");
+            var grid=(DataGridView)Get(batch,"files");string blocked=Convert.ToString(grid.Rows[0].Cells[2].Value);
+            Check(blocked.StartsWith("阻止")&&blocked.Contains("Lead缺少"),"missing one required leaf blocks whole parent before writing");
+            Check(!System.IO.File.Exists(System.IO.Path.Combine(parentOutput,"任务0.xlsx"))&&System.IO.File.Exists(System.IO.Path.Combine(parentOutput,"任务2.xlsx")),"other valid parent continues and blocked parent has no output");
+        }
+        using(var bag=new ComBag())
+        {
+            dynamic books=bag.Own(((dynamic)application).Workbooks),book=bag.Own(books.Open(System.IO.Path.Combine(parentOutput,"任务2.xlsx"),0,true));
+            try
+            {
+                dynamic sheets=bag.Own(book.Worksheets),lead=bag.Own(sheets.Item("Lead")),company=bag.Own(lead.Range["L3"]),variable=bag.Own(lead.Range["M3"]),period=bag.Own(lead.Range["J2"]),sheet=bag.Own(sheets.Item("汇总")),formula=bag.Own(sheet.Range["C3"]),untouched=bag.Own(sheet.Range["D3"]);
+                Check(Convert.ToString(company.Value2)=="！02-示例乙"&&Convert.ToString(variable.Value2)=="变量2"&&Convert.ToString(period.Value2)=="2026年度","parent linking keeps original Lead company variable and period values");
+                Check(Convert.ToString(formula.Formula).Contains("[！02-示例乙.xlsx]BS"),"parent output contains real external link for matched leaf");
+                Check(Convert.ToString(untouched.Value2)=="保留未选公司区域","unrelated Lead companies are not linked and their target cells remain untouched");
+            }
+            finally{book.Close(false);}
+        }
+        foreach(string file in selected)Check(System.Linq.Enumerable.SequenceEqual(hashes[file],System.IO.File.ReadAllBytes(file)),"parent workflow never saves original "+System.IO.Path.GetFileName(file));
     }
     private static void ProvidedHeaders(object application,ProbeSession session,string vectorsPath)
     {

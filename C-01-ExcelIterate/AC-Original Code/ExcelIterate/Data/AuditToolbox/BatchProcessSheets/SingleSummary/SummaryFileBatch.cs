@@ -24,10 +24,12 @@ namespace Excel_Iterate
         private BatchPreset preset;
         private BatchPreset chosenPreset;
         private List<CompanyStructureTask> structureTasks;
+        private List<CompanyParentLinkTask> parentGroups;
+        private Dictionary<string,List<CompanyStructureTask>> parentChildren;
         internal bool StructureUsesLevel = true;
         private string destination, sourceSheet, sourceCell, scratch, workingFile, loadedInput;
         private int position;
-        private bool writing, stopping, inTick;
+        private bool writing, stopping, inTick, currentStarted;
         private ComBag refs;
         private object workBook;
         private SingleSummaryForm workerForm;
@@ -48,7 +50,7 @@ namespace Excel_Iterate
             }); };
             var loadInput = Ui.Button("读取文件", 115); loadInput.Click += delegate { Attempt(LoadFiles); };
             input.KeyDown += delegate(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Attempt(LoadFiles); } };
-            input.TextChanged += delegate { if (queue == null) { loadedInput = null; files.Rows.Clear(); } };
+            input.TextChanged += delegate { if (queue == null) { loadedInput = null;parentChildren=null;files.Rows.Clear(); } };
             var choosePreset = Ui.Button("选择已保存预设", 155);
             choosePreset.Click += delegate { Attempt(delegate {
                 string json = HostDialogService.ShowIsolatedResult<string>(dialog,
@@ -64,12 +66,22 @@ namespace Excel_Iterate
             var chooseStructure=Ui.Button("从架构表读取",155);var resetStructure=Ui.Button("使用文件夹名单",135);
             chooseStructure.Click+=delegate{Attempt(delegate{
                 var tasks=CompanyStructurePicker.Choose(dialog,delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(app,path);},StructureUsesLevel);
-                if(tasks==null)return;CompanyStructureTasks.ResolveFiles(tasks,Path.GetTempPath());structureTasks=tasks;files.Rows.Clear();loadedInput=null;
+                if(tasks==null)return;CompanyStructureTasks.ResolveFiles(tasks,Path.GetTempPath());parentGroups=null;parentChildren=null;structureTasks=tasks;files.Rows.Clear();loadedInput=null;
                 Message("已选择架构任务"+tasks.Count+"项；按过程表文件名称精确匹配，各文件仍使用自己的Lead。");
                 if(Directory.Exists(input.Text.Trim().Trim('"')))LoadFiles();else Message("请输入数据文件夹，然后读取文件。");
             });};
-            resetStructure.Click+=delegate{Attempt(delegate{structureTasks=null;files.Rows.Clear();loadedInput=null;LoadFiles();});};
+            resetStructure.Click+=delegate{Attempt(delegate{structureTasks=null;parentGroups=null;parentChildren=null;files.Rows.Clear();loadedInput=null;LoadFiles();});};
             AddRow("任务名单",new Label{Text="默认选择末级公司，可手动补选其他公司",AutoSize=true},chooseStructure,resetStructure);
+            var parentLinks=Ui.Button("末级链接至父公司",155);
+            parentLinks.Click+=delegate{Attempt(delegate{
+                var choice=CompanyStructurePicker.ChooseSelection(dialog,delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(app,path);},true);if(choice==null)return;
+                var groups=CompanyStructureTasks.DirectParentLinks(choice.All,choice.Selected);
+                parentGroups=groups;parentChildren=null;structureTasks=groups.Select(g=>g.Parent).ToList();files.Rows.Clear();loadedInput=null;
+                foreach(var group in groups)Message("父公司 "+group.Parent.Sequence+" "+group.Parent.FileName+" ← "+string.Join("、",group.Children.Select(c=>c.Sequence+" "+c.FileName).ToArray()));
+                Message("只处理直属父公司；不改Lead、不继续向祖父公司传递，Lead缺少任一所选末级公司时阻止该父公司整个任务。");
+                if(Directory.Exists(input.Text.Trim().Trim('"')))LoadFiles();else Message("请输入父公司过程表所在文件夹，然后读取文件。");
+            });};
+            AddRow("父子链接",new Label{Text="按架构分组，只链接到直属父公司",AutoSize=true},parentLinks);
             AddRow("路径来源工作表", pathSheet); AddRow("路径来源单元格", pathCell);
             files.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "处理", Width = 60 });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "文件", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
@@ -99,6 +111,12 @@ namespace Excel_Iterate
             var found = structureTasks==null?Directory.GetFiles(path).Where(IsWorkbook).Where(p => !Path.GetFileName(p).StartsWith("~$", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray():CompanyStructureTasks.ResolveFiles(structureTasks,path).ToArray();
             input.Text = path; files.Rows.Clear();
             foreach (string file in found) { int row = files.Rows.Add(structureTasks!=null||DefaultSelected(file), Path.GetFileName(file), File.Exists(file)?"待预检":"未找到文件"); files.Rows[row].Tag = file; }
+            parentChildren=null;
+            if(parentGroups!=null)
+            {
+                parentChildren=new Dictionary<string,List<CompanyStructureTask>>(StringComparer.OrdinalIgnoreCase);
+                for(int i=0;i<found.Length;i++){parentChildren[found[i]]=new List<CompanyStructureTask>(parentGroups[i].Children);files.Rows[i].Cells[1].ToolTipText=parentGroups[i].Parent.FullName+" ← "+string.Join("、",parentGroups[i].Children.Select(c=>c.FileName).ToArray());}
+            }
             loadedInput = path;
             Message(structureTasks==null?"已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。":"已按架构表顺序匹配"+found.Length+"个任务；未找到的文件会明确报告，不使用近似名称替代。");
         }
@@ -148,6 +166,7 @@ namespace Excel_Iterate
         }
         private void OpenCurrent()
         {
+            currentStarted=false;
             string inputFile = Convert.ToString(queue[position].Tag);
             string outputFile = Path.Combine(destination, Path.GetFileName(inputFile));
             if (string.Equals(Path.GetFullPath(inputFile), Path.GetFullPath(outputFile), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("输出文件夹不能覆盖输入文件，请选择其他文件夹。");
@@ -186,8 +205,10 @@ namespace Excel_Iterate
             workerForm = new SingleSummaryForm(true); var view = (SummaryAreaView)workerForm.Controls[0];
             view.LogSink = delegate(string text) { Message(Path.GetFileName(inputFile) + "｜" + text); };
             worker = new SummaryAreaHost(app, workerForm, view, null, delegate { return true; });
-            worker.PrepareBatchFile(Rebind(preset, workingFile, folder));
-            if (writing) worker.StartBatchFile();
+            List<CompanyStructureTask> required=null;
+            if(parentChildren!=null&&!parentChildren.TryGetValue(inputFile,out required))throw new InvalidOperationException("该父公司缺少架构任务分组，请重新读取架构表。");
+            worker.PrepareBatchFile(Rebind(preset, workingFile, folder),required);
+            if (writing) { worker.StartBatchFile();currentStarted=true; }
         }
         private void Advance()
         {
@@ -215,7 +236,7 @@ namespace Excel_Iterate
                     }
                     queue[position].Cells[2].Value = writing ? "已输出" : "预检通过";
                 }
-                catch (Exception error) { queue[position].Cells[2].Value = "失败：" + error.Message; Message(Convert.ToString(queue[position].Tag) + "｜失败：" + error.Message); }
+                catch (Exception error) { string state=parentChildren!=null&&!currentStarted?"阻止：":"失败：";queue[position].Cells[2].Value = state + error.Message; Message(Convert.ToString(queue[position].Tag) + "｜"+state+error.Message); }
                 Cleanup(); position++; progress.Value = position;
             }
             catch (Exception error) { Message("批处理停止：" + error.Message); End(); }
