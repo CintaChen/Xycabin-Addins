@@ -214,6 +214,7 @@ namespace Excel_Iterate
                 new[] { "模板与粘贴", "templateSheet|模板工作表", "templateAreas|模板区域（行,列,行数,列数）", "pasteSheet|目标工作表", "pasteArea|粘贴起点（行,列,行数,列数）" },
                 new[] { "Lead 与项目", "leadSheet|Lead 工作表", "leadAreas|公司字段选区（行,列,行数,列数）", "projectFolder|项目文件夹", "checkFiles|检查来源文件" }
             } : feature == "company" ? new[] {
+                new[] { "架构任务", "structureMode|使用架构表任务", "structureSheet|架构工作表", "structureFirst|数据起始行", "structureSequence|序号列", "structureShort|简称列", "structureFull|全称列", "structureFile|过程表文件名列", "structureLevel|级次列" },
                 new[] { "命名", "naming|命名名称", "removeTail|末尾去除字符数", "stripSuffix|去除 Excel 后缀" },
                 new[] { "来源", "source|工作表", "header|表头行", "first|数据起始行", "last|数据结束行", "code|替换字段的编码来源", "full|替换字段的全称来源" },
                 new[] { "目标", "update|更新 Lead", "target|工作表", "targetHeader|表头行", "targetRow|写入行", "targetCode|编码字段", "targetName|全称字段", "output|输出文件夹" }

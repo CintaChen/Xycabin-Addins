@@ -167,6 +167,10 @@ internal static class SummaryAreaChecks
                 inputBox.Text=" \""+scanFolder+"\" ";typeof(SummaryFileBatch).GetMethod("LoadFiles",flags).Invoke(batch,null);
                 check("手填路径读取文件列表",grid.Rows.Count==2,"scan failed");
                 foreach(DataGridViewRow row in grid.Rows)check("扫描保持合并默认勾选",object.Equals(row.Cells[0].Value,Convert.ToString(row.Cells[1].Value).Contains("（合并）")),"selection wrong");
+                typeof(SummaryFileBatch).GetField("structureTasks",flags).SetValue(batch,new List<CompanyStructureTask>{new CompanyStructureTask{Row=8,Sequence="03-02-",FileName="乙.xlsx"},new CompanyStructureTask{Row=9,Sequence="03-03-",FileName="缺少.xlsx"}});
+                typeof(SummaryFileBatch).GetMethod("LoadFiles",flags).Invoke(batch,null);
+                check("架构任务替代文件夹默认筛选",grid.Rows.Count==2&&Convert.ToString(grid.Rows[0].Cells[1].Value)=="乙.xlsx"&&object.Equals(grid.Rows[0].Cells[0].Value,true),"architecture order or selection lost");
+                check("架构任务缺文件明确列出",Convert.ToString(grid.Rows[1].Cells[2].Value)=="未找到文件","missing architecture file hidden");
                 var libraryPreset=SummaryFileBatch.Rebind(preset,@"Z:\不存在的旧模板.xlsx",scanFolder);libraryPreset.Values["leadAreas"]="3,1,2,1;3,4,2,1";
                 batch.UsePreset(libraryPreset,"已保存：");libraryPreset.Values["projectFolder"]="changed";
                 var snapshot=(BatchPreset)typeof(SummaryFileBatch).GetField("chosenPreset",flags).GetValue(batch);

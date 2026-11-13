@@ -41,6 +41,8 @@ namespace Excel_Iterate
         internal event Action<bool> BusyChanged;
         internal Func<string, CompanyWorkbookHost> OpenTemplate;
         internal Func<CompanyWorkbookHost> OpenCurrentTemplate;
+        internal readonly CheckBox StructureMode = new CheckBox { Text = "使用架构表任务", AutoSize = true };
+        internal readonly CompanyStructurePicker Structure = new CompanyStructurePicker { Visible = false };
         internal Func<bool> CanRun;
         internal bool Running { get { return records != null; } }
         private static ComboBox Choice() { return new ComboBox { Width = 180, DropDownWidth = 300, DropDownStyle = ComboBoxStyle.DropDownList }; }
@@ -57,6 +59,10 @@ namespace Excel_Iterate
             var current = Ui.Button("使用当前工作簿", 145);
             current.Click += delegate { LoadTemplate(null); };
             AddRow("模板文件", template, browse, current);
+            AddRow("任务来源", StructureMode);
+            inputs.Controls.Add(Structure);
+            Structure.Log = Append; Structure.Changed += delegate { confirmed.Checked=false;InvalidateNames(); };
+            StructureMode.CheckedChanged += delegate { SetStructureMode(); };
             presets = new BatchPresetActions(this, "company", CapturePreset, ApplyPreset,
                 delegate { return !Running && !ticking && !preparing && (CanRun == null || CanRun()); }, Append);
             AddRow("来源工作表", source, Label("表头行"), header, PickButton("sourceHeader"));
@@ -123,13 +129,19 @@ namespace Excel_Iterate
         internal BatchPreset CapturePreset()
         {
             ValidateChildren();
-            return new BatchPreset { Feature = "company", Context = template.Text, Values = BatchPresetStore.Capture(PresetFields()) };
+            var values = BatchPresetStore.Capture(PresetFields());values["structureMode"]=StructureMode.Checked.ToString();
+            foreach(var entry in Structure.Configuration())values[entry.Key]=entry.Value;
+            return new BatchPreset { Feature = "company", Context = template.Text, Values = values };
         }
         internal void ApplyPreset(BatchPreset preset)
         {
             if (Running || ticking || preparing || (CanRun != null && !CanRun())) throw new InvalidOperationException("任务执行期间不能应用预设。");
             BatchPresetStore.Validate(preset, "company");
-            var fields = PresetFields(); var values = preset.Values;
+            var fields = PresetFields(); var values = new Dictionary<string,string>(preset.Values);
+            string mode;bool external=false;
+            if(values.TryGetValue("structureMode",out mode)){if(!bool.TryParse(mode,out external))throw new InvalidOperationException("架构表模式预设无效。");values.Remove("structureMode");}
+            var structureSettings=new Dictionary<string,string>();foreach(string key in CompanyStructurePicker.ConfigurationKeys){string value;if(values.TryGetValue(key,out value)){structureSettings[key]=value;values.Remove(key);}}
+            CompanyStructurePicker.ValidateConfiguration(structureSettings);
             BatchPresetStore.ValidateFields(fields, values);
             CompanyWorkbookHost candidate = null;
             preparing = true; SetBusy(true);
@@ -142,12 +154,12 @@ namespace Excel_Iterate
             }
             var reading = candidate ?? host;
             if (reading == null) throw new InvalidOperationException("请先选择模板；原模板位置：" + preset.Context);
-            bool updating = bool.Parse(values["update"]);
-            if (!reading.Sheets.Contains(values["source"]) || (updating && !reading.Sheets.Contains(values["target"]))) throw new InvalidOperationException("模板缺少预设工作表，请选择对应模板或手动配置。");
-            var sourceHeaders = reading.Headers(values["source"], int.Parse(values["header"]));
+            bool updating = external || bool.Parse(values["update"]);
+            if ((!external && !reading.Sheets.Contains(values["source"])) || (updating && !reading.Sheets.Contains(values["target"]))) throw new InvalidOperationException("模板缺少预设工作表，请选择对应模板或手动配置。");
+            var sourceHeaders = external ? new Dictionary<string,int>() : reading.Headers(values["source"], int.Parse(values["header"]));
             var targetHeaders = updating ? reading.Headers(values["target"], int.Parse(values["targetHeader"])) : new Dictionary<string, int>();
             foreach (string key in new[] { "naming", "code", "full" })
-                if ((updating || key == "naming") && values[key].Length > 0 && !sourceHeaders.ContainsKey(values[key])) throw new InvalidOperationException("来源表缺少预设字段：" + values[key]);
+                if (!external && (updating || key == "naming") && values[key].Length > 0 && !sourceHeaders.ContainsKey(values[key])) throw new InvalidOperationException("来源表缺少预设字段：" + values[key]);
             foreach (string key in new[] { "targetCode", "targetName" })
                 if (updating && values[key].Length > 0 && !targetHeaders.ContainsKey(values[key])) throw new InvalidOperationException("当前目标表缺少预设字段：" + values[key]);
             loading = true;
@@ -160,6 +172,8 @@ namespace Excel_Iterate
                 foreach (var box in new[] { naming, code, full }) { box.Items.Clear(); box.Items.AddRange(new List<string>(sourceHeaders.Keys).ToArray()); }
                 foreach (var box in new[] { targetCode, targetName }) { box.Items.Clear(); box.Items.AddRange(new List<string>(targetHeaders.Keys).ToArray()); }
                 BatchPresetStore.Apply(fields, values);
+                StructureMode.Checked=external;
+                Structure.ApplyConfiguration(structureSettings);
             }
             finally { loading = false; }
             if (candidate != null)
@@ -203,8 +217,31 @@ namespace Excel_Iterate
         {
             return new CompanyWorkbookRequest { SourceSheet = source.Text, TargetSheet = target.Text, NameField = naming.Text, CodeField = code.Text, FullNameField = full.Text,
                 TargetCodeField = targetCode.Text, TargetNameField = targetName.Text, Output = output.Text, HeaderRow = (int)header.Value,
-                FirstRow = (int)first.Value, LastRow = (int)last.Value, TargetHeaderRow = (int)leadHeader.Value, TargetRow = (int)leadRow.Value, UpdateLead = update.Checked && !namesOnly,
+                FirstRow = (int)first.Value, LastRow = (int)last.Value, TargetHeaderRow = (int)leadHeader.Value, TargetRow = (int)leadRow.Value, UpdateLead = (update.Checked || StructureMode.Checked) && !namesOnly,
                 StripExcelSuffix = StripExcelSuffix.Checked, RemoveTailCharacters = (int)RemoveTailCharacters.Value };
+        }
+        private List<CompanyWorkbookRecord> PreviewRecords(CompanyWorkbookRequest value, bool namesOnly)
+        {
+            if(!StructureMode.Checked)return host.Preview(value,Append);
+            var rows=CompanyStructureTasks.Records(Structure.Selected());
+            foreach(var row in rows)Structure.Report(row.Row,"待预检");
+            int blocked=0;
+            var valid=host.PreviewStructure(value,rows,namesOnly,false,delegate(CompanyWorkbookRecord row,string reason){blocked++;Structure.Report(row.Row,"阻止："+reason);Append("阻止架构表第"+row.Row+"行「"+row.Name+"」："+reason+"；该项不生成。");});
+            foreach(var row in valid)Structure.Report(row.Row,"通过");
+            Append("架构任务预检：选中"+rows.Count+"项，通过"+valid.Count+"项，阻止"+blocked+"项；只生成通过项。");
+            return valid;
+        }
+        private void SetStructureMode()
+        {
+            Structure.Visible=StructureMode.Checked;
+            var hidden=new HashSet<string>{"来源工作表","来源数据行","命名名称","名称处理","目标表中替换字段"};
+            foreach(Control row in inputs.Controls)
+            {
+                string title=row.Tag as string;if(title!=null&&hidden.Contains(title))row.Visible=!StructureMode.Checked;
+                if(title=="目标字段")foreach(Control cell in row.Controls)if(cell is Label&&(cell.Text=="编码"||cell.Text=="简称"))cell.Text=StructureMode.Checked?"简称":"编码";
+            }
+            confirmed.Text=StructureMode.Checked?"已核对架构任务、完整文件名和模板目标写入行":"已确认上述来源范围及 Lead 唯一写入行；仅更新指定的两个字段";
+            confirmed.Checked=false;InvalidateNames();FitInputRows();
         }
         internal void ShowNamePreview(IList<CompanyWorkbookRecord> rows)
         {
@@ -223,7 +260,7 @@ namespace Excel_Iterate
                 ValidateChildren();
                 var previewRequest = BuildRequest(true);
                 preparing = true; SetBusy(true); cancel.Enabled = false; NamePreview.Clear(); confirmed.Checked = false;
-                var preview = host.Preview(previewRequest, Append);
+                var preview = PreviewRecords(previewRequest,true);
                 ShowNamePreview(preview); details.SelectedTab = namesTab;
                 elapsed.Reset(); taskProgress.Reset(preview.Count); CurrentTask.Text = "尚未开始生成。"; RenderProgress("文件名已预览，等待生成", false);
                 Append("文件名预览完成，共 " + preview.Count + " 项；未生成工作簿。生成前还会校验 Lead 配置和数据。");
@@ -310,7 +347,7 @@ namespace Excel_Iterate
         }
         private void AddRow(string title, params Control[] controls)
         {
-            var row = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 3, 0, 3) };
+            var row = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 3, 0, 3), Tag = title };
             row.Controls.Add(new Label { Text = title, AutoSize = true, UseMnemonic = false, Tag = "companyRowTitle", MinimumSize = new Size(105, 0), Margin = new Padding(3, 6, 3, 3) });
             row.Controls.AddRange(controls); inputs.Controls.Add(row);
         }
@@ -382,7 +419,7 @@ namespace Excel_Iterate
                     Select(source, "公司主题汇总"); Select(target, "lead");
                     confirmed.Checked = false;
                     Append("已读取模板快照，共 " + host.Sheets.Count + " 张表；如修改原模板，请重新选择以刷新快照。");
-                    if (source.SelectedIndex < 0 || target.SelectedIndex < 0) Append("默认来源表或 lead 不存在，请从实际工作表中选择。");
+                    if ((!StructureMode.Checked && source.SelectedIndex < 0) || target.SelectedIndex < 0) Append(StructureMode.Checked?"请从实际模板中选择目标工作表；架构模式不要求公司汇总表。":"默认来源表或 lead 不存在，请从实际工作表中选择。");
                 }
                 catch (Exception error) { Append("读取模板失败 [" + (path ?? "当前工作簿") + "]：" + error); }
                 finally { loading = false; SetBusy(false); RefreshFields(false); RefreshFields(true); }
@@ -442,12 +479,12 @@ namespace Excel_Iterate
                 ResetProgress("正在预检，尚未开始生成");
                 NamePreview.Clear();
                 Append("正在预检模板、来源行、字段与输出目录…");
-                records = host.Preview(request, Append);
+                records = PreviewRecords(request,false);
                 ShowNamePreview(records); details.SelectedTab = logTab;
                 taskProgress.Reset(records.Count); elapsed.Restart();
                 cancel.Enabled = !cancelled;
                 RenderProgress(cancelled ? "正在取消" : "开始生成", true);
-                Append("预检通过，共 " + records.Count + " 家；来源「" + request.SourceSheet + "」，目标「" + request.TargetSheet + "」第 " + request.TargetRow + " 行。开始生成。");
+                Append("预检通过，共 " + records.Count + " 家；来源「" + (StructureMode.Checked?"架构表任务":request.SourceSheet) + "」，目标「" + request.TargetSheet + "」第 " + request.TargetRow + " 行。开始生成。");
                 if (progressView.State.Cancelled) RequestCancel();
                 timer.Start();
             }

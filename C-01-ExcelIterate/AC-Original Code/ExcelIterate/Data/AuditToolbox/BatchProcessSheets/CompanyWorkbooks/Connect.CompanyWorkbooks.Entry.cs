@@ -19,8 +19,9 @@ namespace Excel_Iterate
                 if (!EnsureApplication()) throw new InvalidOperationException("无法连接当前表格宿主。");
                 var form = new CompanyWorkbookForm();
                 form.CanRun = delegate { return !_busy; };
-                form.OpenTemplate = delegate(string path) { return new CompanyWorkbookHost(_app, path); };
+                form.OpenTemplate = delegate(string path) { return CompanyWorkbookHost.FromOpenOrDisk(_app, path); };
                 form.OpenCurrentTemplate = delegate { return CompanyWorkbookHost.FromCurrent(_app); };
+                form.Structure.OpenSource = delegate(string path) { return CompanyWorkbookHost.FromOpenOrDisk(_app,path); };
                 form.BusyChanged += delegate(bool busy) { _busy = busy; };
                 form.FormClosed += delegate { _companyWorkbookForm = null; form.Dispose(); };
                 _companyWorkbookForm = form;

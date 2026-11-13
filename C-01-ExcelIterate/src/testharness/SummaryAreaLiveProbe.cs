@@ -13,6 +13,42 @@ internal static class SingleSummaryLiveProbe
     private static void Set(object host,string name,object value){host.GetType().GetField(name,Flags).SetValue(host,value);}
     private static object Get(object host,string name){return host.GetType().GetField(name,Flags).GetValue(host);}
     private static void Call(object host,string name,params object[] args){try{host.GetType().GetMethod(name,Flags).Invoke(host,args);}catch(TargetInvocationException e){throw e.InnerException;}}
+    private static void StructureTemplates(object application,ProbeSession session)
+    {
+        string sourcePath=session.Output("架构来源.xlsx"),templatePath=session.Output("仅Lead模板.xlsx");
+        dynamic architecture;bool architectureClosed=false;
+        using(var bag=new ComBag())
+        {
+            dynamic books=bag.Own(((dynamic)application).Workbooks),template=books.Add();bool closed=false;session.Own((object)template,delegate{if(!closed)template.Close(false);});
+            dynamic sheets=bag.Own(template.Worksheets),lead=bag.Own(sheets.Item(1));lead.Name="Lead";
+            dynamic headers=bag.Own(lead.Range["A1:B2"]),sentinel=bag.Own(lead.Range["D5"]);headers.Value2=new object[,]{{"简称","全称"},{"原简称","原全称"}};sentinel.Value2=123;
+            template.SaveAs(templatePath,51);template.Close(false);closed=true;
+            architecture=books.Add();session.Own((object)architecture,delegate{if(!architectureClosed)architecture.Close(false);});
+            dynamic architectureSheets=bag.Own(architecture.Worksheets),sheet=bag.Own(architectureSheets.Item(1));sheet.Name="架构";
+            dynamic rows=bag.Own(sheet.Range["A3:F6"]);rows.Value2=new object[,]{{"00-","总简称","0级","总全称",null,"00-总（合并）.xlsx"},{"03-","组简称","1级","组全称",null,"03-组（合并）.xlsx"},{"03-01-","末级简称","2级","末级全称",null,"03-01-末级.xlsx"},{"03-02-",null,"2级","缺简称全称",null,"03-02-缺简称.xlsx"}};
+            architecture.SaveAs(sourcePath,51);dynamic code=bag.Own(sheet.Range["B5"]);code.Value2="未保存简称";
+        }
+        using(var source=CompanyWorkbookHost.FromOpenOrDisk(application,sourcePath))
+        using(var template=CompanyWorkbookHost.FromOpenOrDisk(application,templatePath))
+        {
+            var tasks=source.StructureRows("架构",new CompanyStructureColumns());CompanyStructureTasks.Classify(tasks,true);
+            Check(!tasks[0].Leaf&&!tasks[1].Leaf&&tasks[2].Leaf&&tasks[3].Leaf,"native structure leaf classification includes total-group level");
+            Check(tasks[2].ShortName=="未保存简称"&&!Convert.ToBoolean(architecture.Saved),"architecture snapshots include unsaved edits without saving original");
+            var selected=CompanyStructureTasks.Records(new[]{tasks[2],tasks[3]});var request=new CompanyWorkbookRequest{Output=session.DirectoryPath,TargetSheet="Lead",TargetHeaderRow=1,TargetRow=2,TargetCodeField="简称",TargetNameField="全称",UpdateLead=true};
+            int shortBlocks=0;var planned=template.PreviewStructure(request,selected,false,false,delegate(CompanyWorkbookRecord row,string reason){if(row.Row==6&&reason.Contains("简称为空"))shortBlocks++;});Check(planned.Count==1&&shortBlocks==1,"native preflight blocks only missing-short-name item");Check(!System.IO.File.Exists(planned[0].OutputPath),"architecture template preflight creates no output");
+            template.Generate(request,planned[0],CompanyWorkbookHost.UpdateLead);
+            Check(!System.IO.File.Exists(System.IO.Path.Combine(session.DirectoryPath,tasks[3].FileName)),"blocked architecture task never produces output");
+            using(var bag=new ComBag())
+            {
+                dynamic books=bag.Own(((dynamic)application).Workbooks),book=bag.Own(books.Open(planned[0].OutputPath,0,true));
+                try{dynamic sheets=bag.Own(book.Worksheets),lead=bag.Own(sheets.Item("Lead")),name=bag.Own(lead.Range["A2"]),full=bag.Own(lead.Range["B2"]),sentinel=bag.Own(lead.Range["D5"]);Check(Convert.ToString(name.Value2)=="未保存简称"&&Convert.ToString(full.Value2)=="末级全称","architecture fields write directly without source summary sheet");Check(Convert.ToDouble(sentinel.Value2)==123,"template unrelated content preserved");}
+                finally{book.Close(false);}
+            }
+            bool blocked=false;try{template.PreviewStructure(request,selected,false,false);}catch(InvalidOperationException){blocked=true;}Check(blocked,"architecture generation never overwrites existing output");
+            Check(!Convert.ToBoolean(architecture.Saved),"original architecture remains open and unsaved after generation");
+        }
+        architecture.Close(false);architectureClosed=true;
+    }
     private static void FileBatch(object application, ProbeSession session)
     {
         string input = System.IO.Path.Combine(session.DirectoryPath, "inputs"), output = System.IO.Path.Combine(session.DirectoryPath, "outputs");
@@ -195,6 +231,7 @@ internal static class SingleSummaryLiveProbe
                         using(var refs=new ComBag()) { dynamic sheets=refs.Own(source.Worksheets), sheet=refs.Own(sheets.Item(1));sheet.Name="BS";dynamic cell=refs.Own(sheet.Range["A1"]);cell.Value2=25; }
                         source.SaveAs(session.Output(name+".xlsx"),51);source.Close(false);closed=true;
                     }
+                    if(Array.IndexOf(args,"--structure-only")>=0){StructureTemplates((object)app,session);Console.WriteLine("PASS: "+checks+" structure template checks");return session.Finish(0);}
                     if(Array.IndexOf(args,"--file-batch-only")>=0){FileBatch((object)app,session);Console.WriteLine("PASS: "+checks+" file batch checks");return session.Finish(0);}
                     if(Array.IndexOf(args,"--variables-only")>=0){VariableHeaders((object)app,session);Console.WriteLine("PASS: "+checks+" variable header checks");return session.Finish(0);}
                     dynamic book=books.Add();session.Own((object)book,delegate{book.Close(false);});

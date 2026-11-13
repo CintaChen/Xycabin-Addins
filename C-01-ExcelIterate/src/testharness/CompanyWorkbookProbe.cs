@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using Excel_Iterate;
@@ -16,6 +16,30 @@ internal static class CompanyWorkbookProbe
         {
             BatchProgressChecks.Run(Check);
             BatchPresetChecks.Run(folder, Check);
+            var tree = new List<CompanyStructureTask> {
+                new CompanyStructureTask{Row=3,Sequence="00-",Level="0级",FullName="总集团",FileName="00-总集团（合并）.xlsx"},
+                new CompanyStructureTask{Row=4,Sequence="03-",Level="1级",FullName="甲集团",FileName="03-甲（合并）.xlsx"},
+                new CompanyStructureTask{Row=5,Sequence="03-01-",Level="2级",FullName="甲本部",FileName="03-01-甲.xlsx"},
+                new CompanyStructureTask{Row=6,Sequence="03-08-",Level="2级",FullName="乙集团",FileName="03-08-乙（合并）.xlsx"},
+                new CompanyStructureTask{Row=7,Sequence="03-08-01-",Level="3级",FullName="乙子公司",FileName="03-08-01-乙.xlsx"},
+                new CompanyStructureTask{Row=8,Sequence="030-",Level="1级",FullName="其他公司",FileName="030-其他.xlsx"}
+            };
+            CompanyStructureTasks.Classify(tree,false);
+            Check(tree[0].Leaf&&!tree[1].Leaf&&tree[2].Leaf&&!tree[3].Leaf&&tree[4].Leaf&&tree[5].Leaf,"sequence segment hierarchy does not confuse 03 with 030");
+            CompanyStructureTasks.Classify(tree,true);Check(!tree[0].Leaf,"optional level zero identifies total group");
+            Reject(delegate{CompanyStructureTasks.Classify(new[]{new CompanyStructureTask{Row=1,Sequence="03-"},new CompanyStructureTask{Row=2,Sequence="3"}},false);},"normalized duplicate sequences block");
+            foreach(string text in new[]{"", "03--01", "公司03", "03/01"})Reject(delegate{CompanyStructureTasks.Key(text);},"invalid hierarchy "+text);
+            Check(CompanyStructureTasks.Key("03-01-")=="3-1","hierarchy accepts trailing separator and leading zeroes");
+            var files=CompanyStructureTasks.ResolveFiles(new[]{tree[4],tree[2]},folder);Check(Path.GetFileName(files[0])==tree[4].FileName&&Path.GetFileName(files[1])==tree[2].FileName,"architecture filename and selection order preserved");
+            Reject(delegate{CompanyStructureTasks.ResolveFiles(new[]{tree[2],tree[2]},folder);},"duplicate architecture output blocks");
+            using(var picker=new CompanyStructurePicker())
+            {
+                picker.SetTasks(tree);Check(picker.Selected().Count==3,"architecture picker defaults to leaves");
+                picker.Tasks.Rows[1].Cells[0].Value=true;Check(picker.Selected().Count==4&&!(bool)picker.Tasks.Rows[3].Cells[0].Value,"manual parent selection does not cascade to other parent");
+                var selected=picker.Selected();selected[0].FileName="changed";Check(picker.Selected()[0].FileName!="changed","architecture selection snapshots are detached");
+                int changes=0;picker.Changed+=delegate{changes++;};picker.Report(5,"阻止：简称为空");Check(changes==0&&Convert.ToString(picker.Tasks.Rows[2].Cells["status"].Value).Contains("简称为空"),"status updates do not change task selection or invalidate plan");
+                var configuration=picker.Configuration();configuration["structureFirst"]="8";configuration["structureShort"]="G";picker.ApplyConfiguration(configuration);Check(picker.Configuration()["structureFirst"]=="8"&&picker.Configuration()["structureShort"]=="G"&&picker.Selected().Count==0,"architecture mapping presets restore without retaining stale company data");
+            }
             CompanyWorkbookSelectionRules.Validate("data", 3, 1, 8, 4, false, 2);
             Check(true, "data rectangle supplies row interval independent of chosen columns");
             Reject(delegate { CompanyWorkbookSelectionRules.Validate("data", 2, 1, 5, 4, false, 2); }, "data excludes header");

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Excel_Iterate
 {
@@ -19,6 +20,20 @@ namespace Excel_Iterate
         internal readonly string TemplateSource;
         internal readonly List<string> Sheets = new List<string>();
         internal CompanyWorkbookHost(object application, string template) : this(application, template, null) { }
+        internal static CompanyWorkbookHost FromOpenOrDisk(object application, string path)
+        {
+            string full = Path.GetFullPath(path);
+            using (var refs = new ComBag())
+            {
+                dynamic books = refs.Own(((dynamic)application).Workbooks);
+                for (int i = 1; i <= Convert.ToInt32(books.Count); i++)
+                {
+                    dynamic current = refs.Own(books.Item(i));
+                    if (string.Equals(Convert.ToString(current.FullName), full, StringComparison.OrdinalIgnoreCase)) return new CompanyWorkbookHost(application, full, (object)current);
+                }
+            }
+            return new CompanyWorkbookHost(application, full);
+        }
         internal static CompanyWorkbookHost FromCurrent(object application)
         {
             using (var refs = new ComBag())
@@ -76,6 +91,61 @@ namespace Excel_Iterate
         internal Dictionary<string, int> Headers(string name, int row)
         {
             using (var bag = new ComBag()) return HeadersOn(Sheet(name, bag), row);
+        }
+        internal List<CompanyStructureTask> StructureRows(string name, CompanyStructureColumns columns)
+        {
+            var result = new List<CompanyStructureTask>();
+            var selected = new[] { columns.Sequence, columns.ShortName, columns.FullName, columns.FileName, columns.Level };
+            if (columns.FirstRow < 1 || selected.Any(c => c < 1 || c > 16384) || selected.Distinct().Count() != selected.Length) throw new InvalidOperationException("架构表的来源列须有效且互不重复。");
+            using (var bag = new ComBag())
+            {
+                dynamic sheet = Sheet(name, bag), used = bag.Own(sheet.UsedRange), usedRows = bag.Own(used.Rows);
+                int last = Convert.ToInt32(used.Row) + Convert.ToInt32(usedRows.Count) - 1;
+                if ((long)last - columns.FirstRow > 100000) throw new InvalidOperationException("架构表范围过大，请整理实际数据范围。");
+                object cells = bag.Own(sheet.Cells);
+                for (int row = columns.FirstRow; row <= last; row++)
+                {
+                    try
+                    {
+                        string full = Read(cells,row,columns.FullName), file = Read(cells,row,columns.FileName), code = Read(cells,row,columns.ShortName);
+                        if (string.IsNullOrWhiteSpace(full) && string.IsNullOrWhiteSpace(file) && string.IsNullOrWhiteSpace(code)) continue;
+                        result.Add(new CompanyStructureTask { Row=row, Sequence=Read(cells,row,columns.Sequence), ShortName=code, FullName=full, FileName=file, Level=Read(cells,row,columns.Level) });
+                    }
+                    catch (Exception error) { throw new InvalidOperationException("架构表第"+row+"行："+error.Message,error); }
+                }
+            }
+            if (result.Count == 0) throw new InvalidOperationException("所选架构表范围没有公司任务。");
+            return result;
+        }
+        internal List<CompanyWorkbookRecord> PreviewStructure(CompanyWorkbookRequest request, IList<CompanyWorkbookRecord> rows, bool namesOnly, bool allowEmptyShortName, Action<CompanyWorkbookRecord,string> blocked = null)
+        {
+            if (!Directory.Exists(request.Output)) throw new InvalidOperationException("请选择已存在的输出文件夹。");
+            if (!namesOnly)
+            {
+                if (!request.UpdateLead || request.TargetHeaderRow < 1 || request.TargetRow <= request.TargetHeaderRow || string.IsNullOrWhiteSpace(request.TargetSheet) || string.IsNullOrWhiteSpace(request.TargetCodeField) || string.IsNullOrWhiteSpace(request.TargetNameField)) throw new InvalidOperationException("请选择模板中简称、全称的目标字段、表头行及写入行。");
+                using (var bag = new ComBag()) CheckTarget(Sheet(request.TargetSheet,bag), request);
+            }
+            var duplicates = new HashSet<string>(rows.GroupBy(r=>r.Name,StringComparer.OrdinalIgnoreCase).Where(g=>g.Count()>1).Select(g=>g.Key),StringComparer.OrdinalIgnoreCase);
+            var valid = new List<CompanyWorkbookRecord>();
+            foreach (var row in rows)
+            {
+                try
+                {
+                    string file = CompanyWorkbookRules.FileName(row.Name);
+                    if (!string.Equals(Path.GetExtension(file),Path.GetExtension(Snapshot),StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("过程表文件名后缀须与模板一致，不会自动修改架构表中的文件名。");
+                    if (duplicates.Contains(file)) throw new InvalidOperationException("过程表文件名称重复："+file);
+                    if (string.IsNullOrWhiteSpace(row.FullName)) throw new InvalidOperationException("公司全称为空。");
+                    if (!allowEmptyShortName && string.IsNullOrWhiteSpace(row.Code)) throw new InvalidOperationException("简称为空，请补齐架构表后重新读取。");
+                    row.OutputPath = Path.Combine(Path.GetFullPath(request.Output),file);
+                    if(row.OutputPath.Length>=240)throw new InvalidOperationException("输出路径过长。");
+                    if(File.Exists(row.OutputPath)||Directory.Exists(row.OutputPath))throw new InvalidOperationException("同名输出已存在，不会覆盖："+row.OutputPath);
+                    valid.Add(row);
+                }
+                catch(Exception error){if(blocked!=null)blocked(row,error.Message);else throw new InvalidOperationException("架构表第"+row.Row+"行："+error.Message,error);}
+            }
+            if(rows.Count==0)throw new InvalidOperationException("请勾选需要生成的公司。");
+            if(valid.Count==0)throw new InvalidOperationException("没有通过预检的架构任务；请查看任务状态和运行日志，修正后重新读取。");
+            return valid;
         }
         internal CompanyWorkbookSelection Pick(string kind, CompanyWorkbookRequest request, Func<object, object> picker = null, Action<string> preparation = null)
         {

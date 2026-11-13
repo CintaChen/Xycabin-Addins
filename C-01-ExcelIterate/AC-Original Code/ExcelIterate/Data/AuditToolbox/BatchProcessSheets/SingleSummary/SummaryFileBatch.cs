@@ -23,6 +23,8 @@ namespace Excel_Iterate
         private List<DataGridViewRow> queue;
         private BatchPreset preset;
         private BatchPreset chosenPreset;
+        private List<CompanyStructureTask> structureTasks;
+        internal bool StructureUsesLevel = true;
         private string destination, sourceSheet, sourceCell, scratch, workingFile, loadedInput;
         private int position;
         private bool writing, stopping, inTick;
@@ -59,6 +61,15 @@ namespace Excel_Iterate
             var chooseOutput = Ui.Button("选择输出文件夹", 155);
             chooseOutput.Click += delegate { string path = HostDialogService.Folder(dialog, "选择结果输出文件夹", true); if (!string.IsNullOrEmpty(path)) output.Text = path; };
             AddRow("输入文件夹", input, chooseInput, loadInput); AddRow("使用预设", presetPath, choosePreset, importPreset); AddRow("输出文件夹", output, chooseOutput);
+            var chooseStructure=Ui.Button("从架构表读取",155);var resetStructure=Ui.Button("使用文件夹名单",135);
+            chooseStructure.Click+=delegate{Attempt(delegate{
+                var tasks=CompanyStructurePicker.Choose(dialog,delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(app,path);},StructureUsesLevel);
+                if(tasks==null)return;CompanyStructureTasks.ResolveFiles(tasks,Path.GetTempPath());structureTasks=tasks;files.Rows.Clear();loadedInput=null;
+                Message("已选择架构任务"+tasks.Count+"项；按过程表文件名称精确匹配，各文件仍使用自己的Lead。");
+                if(Directory.Exists(input.Text.Trim().Trim('"')))LoadFiles();else Message("请输入数据文件夹，然后读取文件。");
+            });};
+            resetStructure.Click+=delegate{Attempt(delegate{structureTasks=null;files.Rows.Clear();loadedInput=null;LoadFiles();});};
+            AddRow("任务名单",new Label{Text="默认选择末级公司，可手动补选其他公司",AutoSize=true},chooseStructure,resetStructure);
             AddRow("路径来源工作表", pathSheet); AddRow("路径来源单元格", pathCell);
             files.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "处理", Width = 60 });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "文件", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
@@ -85,11 +96,11 @@ namespace Excel_Iterate
         {
             if (queue != null) return;
             string path = CellPath(input.Text);
-            var found = Directory.GetFiles(path).Where(IsWorkbook).Where(p => !Path.GetFileName(p).StartsWith("~$", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
+            var found = structureTasks==null?Directory.GetFiles(path).Where(IsWorkbook).Where(p => !Path.GetFileName(p).StartsWith("~$", StringComparison.Ordinal)).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray():CompanyStructureTasks.ResolveFiles(structureTasks,path).ToArray();
             input.Text = path; files.Rows.Clear();
-            foreach (string file in found) { int row = files.Rows.Add(DefaultSelected(file), Path.GetFileName(file), "待预检"); files.Rows[row].Tag = file; }
+            foreach (string file in found) { int row = files.Rows.Add(structureTasks!=null||DefaultSelected(file), Path.GetFileName(file), File.Exists(file)?"待预检":"未找到文件"); files.Rows[row].Tag = file; }
             loadedInput = path;
-            Message("已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。");
+            Message(structureTasks==null?"已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。":"已按架构表顺序匹配"+found.Length+"个任务；未找到的文件会明确报告，不使用近似名称替代。");
         }
         internal static bool IsWorkbook(string file)
         { string extension = Path.GetExtension(file); return string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase); }
