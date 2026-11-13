@@ -157,6 +157,14 @@ internal static class SummaryAreaChecks
         try
         {
             System.IO.File.WriteAllText(System.IO.Path.Combine(scanFolder,"甲（合并）.xlsx"), "fixture");
+            string snapshotSource=System.IO.Path.Combine(scanFolder,"甲（合并）.xlsx"),snapshotTarget=System.IO.Path.Combine(scanFolder,"snapshot.tmp");
+            using(var writer=new System.IO.FileStream(snapshotSource,System.IO.FileMode.Open,System.IO.FileAccess.ReadWrite,System.IO.FileShare.ReadWrite))
+                SummaryFileBatch.CopyInputSnapshot(snapshotSource,snapshotTarget);
+            check("批文件允许读取其他进程共享打开的稳定文件",System.IO.File.ReadAllText(snapshotTarget)=="fixture","shared writer incorrectly blocks snapshot");
+            System.IO.File.Delete(snapshotTarget);
+            using(var exclusive=new System.IO.FileStream(snapshotSource,System.IO.FileMode.Open,System.IO.FileAccess.ReadWrite,System.IO.FileShare.None))
+            {bool locked=false;try{SummaryFileBatch.CopyInputSnapshot(snapshotSource,snapshotTarget);}catch(System.IO.IOException error){locked=error.Message.Contains("OneDrive");}check("独占锁仍明确失败而不绕过",locked,"exclusive file lock bypassed");}
+            using(var released=new System.IO.FileStream(snapshotSource,System.IO.FileMode.Open,System.IO.FileAccess.ReadWrite,System.IO.FileShare.None))check("快照读取释放源文件句柄",released.Length==7,"snapshot handle leaked");
             System.IO.File.WriteAllText(System.IO.Path.Combine(scanFolder,"乙.xlsx"), "fixture");
             using (var batch = (SummaryFileBatch)Activator.CreateInstance(typeof(SummaryFileBatch), BindingFlags.Instance|BindingFlags.NonPublic, null, new object[] { new SummaryAreaFakeApp() }, null))
             {

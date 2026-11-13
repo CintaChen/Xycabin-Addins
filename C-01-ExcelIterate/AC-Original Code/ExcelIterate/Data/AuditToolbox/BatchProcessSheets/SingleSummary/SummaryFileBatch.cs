@@ -187,8 +187,7 @@ namespace Excel_Iterate
                     break;
                 }
             }
-            if (!copiedOpen) using (var source = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var target = new FileStream(workingFile, FileMode.CreateNew, FileAccess.Write)) source.CopyTo(target);
+            if (!copiedOpen) CopyInputSnapshot(inputFile,workingFile);
             refs = new ComBag();
             using (var quiet = new CompanyWorkbookQuiet(app))
             {
@@ -208,7 +207,39 @@ namespace Excel_Iterate
             List<CompanyStructureTask> required=null;
             if(parentChildren!=null&&!parentChildren.TryGetValue(inputFile,out required))throw new InvalidOperationException("该父公司缺少架构任务分组，请重新读取架构表。");
             worker.PrepareBatchFile(Rebind(preset, workingFile, folder),required);
-            if (writing) { worker.StartBatchFile();currentStarted=true; }
+            if (writing) { InWorkingWindow(delegate{worker.StartBatchFile();});currentStarted=true; }
+        }
+        internal static void CopyInputSnapshot(string inputFile,string targetFile)
+        {
+            // Another Excel instance or sync client may hold a writer handle.
+            // Permit shared reads, but reject a file that changes during copying.
+            var before=new FileInfo(inputFile);long length=before.Length;DateTime modified=before.LastWriteTimeUtc;
+            try
+            {
+                using(var source=new FileStream(inputFile,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
+                using(var target=new FileStream(targetFile,FileMode.CreateNew,FileAccess.Write))source.CopyTo(target);
+                var after=new FileInfo(inputFile);
+                if(after.Length!=length||after.LastWriteTimeUtc!=modified)throw new IOException("输入文件在读取期间发生变化，请等待保存或同步完成后重试。");
+            }
+            catch(IOException error){throw new IOException("无法读取稳定的工作簿副本，请等待其他Excel进程或OneDrive同步完成后重试："+inputFile+"；"+error.Message,error);}
+        }
+        private void InWorkingWindow(Action action)
+        {
+            // Worksheet.Copy/Activate can fail when every workbook window is
+            // hidden. Show only our private copy during the native operation;
+            // restore its visibility and the user's active workbook afterwards.
+            using(var quiet=new CompanyWorkbookQuiet(app))using(var bag=new ComBag())
+            {
+                dynamic windows=bag.Own(((dynamic)workBook).Windows);
+                var hidden=new List<object>();
+                try
+                {
+                    for(int i=1;i<=Convert.ToInt32(windows.Count);i++)
+                    {dynamic window=bag.Own(windows.Item(i));if(!Convert.ToBoolean(window.Visible)){hidden.Add((object)window);window.Visible=true;}}
+                    ((dynamic)workBook).Activate();action();
+                }
+                finally{foreach(object window in hidden)((dynamic)window).Visible=false;}
+            }
         }
         private void Advance()
         {
@@ -224,7 +255,8 @@ namespace Excel_Iterate
                         queue[position].Cells[2].Value = "预检中"; OpenCurrent();
                         if (writing) { queue[position].Cells[2].Value = "执行中"; return; }
                     }
-                    else if (writing && !worker.StepBatchFile()) return;
+                    else if (writing)
+                    {bool complete=false;InWorkingWindow(delegate{complete=worker.StepBatchFile();});if(!complete)return;}
                     if (writing)
                     {
                         worker.FinishBatchFile();
