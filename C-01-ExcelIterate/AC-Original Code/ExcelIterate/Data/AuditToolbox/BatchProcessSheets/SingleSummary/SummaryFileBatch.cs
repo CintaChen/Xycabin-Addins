@@ -10,7 +10,12 @@ namespace Excel_Iterate
     // Sequential STA controller. Only private disk copies are ever opened or saved.
     internal sealed class SummaryFileBatch : IDisposable
     {
-        private readonly object app;
+        private object app;
+        private readonly object sourceApp;
+        private ComBag applicationRefs;
+        private bool ownsApplication;
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr window,out uint process);
         private readonly Form dialog = new Form();
         private readonly TableLayoutPanel settings = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 4, Margin = new Padding(0, 0, 0, 12) };
         private readonly TextBox input = new TextBox { Dock = DockStyle.Fill, ShortcutsEnabled = true, AccessibleDescription = "输入或粘贴文件夹路径，按 Enter 或点击读取文件。" }, output = new TextBox { Dock = DockStyle.Fill }, presetPath = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
@@ -40,7 +45,7 @@ namespace Excel_Iterate
         }
         private SummaryFileBatch(object application)
         {
-            app = application; dialog.Text = "合并批量链接 · 多文件";
+            sourceApp = app = application; dialog.Text = "合并批量链接 · 多文件";
             DialogSizing.Prepare(dialog, "summary.single", "table", Ui.Blue);
             settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); settings.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             var chooseInput = Ui.Button("选择文件夹", 155);
@@ -176,24 +181,26 @@ namespace Excel_Iterate
             bool copiedOpen = false;
             using (var bag = new ComBag())
             {
-                dynamic books = bag.Own(((dynamic)app).Workbooks);
+                dynamic books = bag.Own(((dynamic)sourceApp).Workbooks);
                 for (int i = 1; i <= Convert.ToInt32(books.Count); i++)
                 {
                     dynamic existing = bag.Own(books.Item(i));
                     if (!string.Equals(Convert.ToString(existing.FullName), Path.GetFullPath(inputFile), StringComparison.OrdinalIgnoreCase)) continue;
-                    using (var quiet = new CompanyWorkbookQuiet(app)) existing.SaveCopyAs(workingFile);
+                    using (var quiet = new CompanyWorkbookQuiet(sourceApp)) existing.SaveCopyAs(workingFile);
                     copiedOpen = true;
                     Message("读取已打开工作簿的当前内容（包含未保存修改）：" + inputFile + "；不保存、不关闭原工作簿。");
                     break;
                 }
             }
             if (!copiedOpen) CopyInputSnapshot(inputFile,workingFile);
+            EnsureHiddenApplication();
             refs = new ComBag();
             using (var quiet = new CompanyWorkbookQuiet(app))
             {
                 dynamic books = refs.Own(((dynamic)app).Workbooks); workBook = refs.Own(books.Open(workingFile, 0, false));
                 if (workBook == null) throw new InvalidOperationException("无法打开工作副本。");
-                MigrationWindowScope.SetOwnedVisible(workBook, false);
+                // Keep the workbook's own window eligible for Worksheet.Copy.
+                // The entire dedicated application stays invisible instead.
             }
             string folder;
             using (var bag = new ComBag())
@@ -207,7 +214,7 @@ namespace Excel_Iterate
             List<CompanyStructureTask> required=null;
             if(parentChildren!=null&&!parentChildren.TryGetValue(inputFile,out required))throw new InvalidOperationException("该父公司缺少架构任务分组，请重新读取架构表。");
             worker.PrepareBatchFile(Rebind(preset, workingFile, folder),required);
-            if (writing) { InWorkingWindow(delegate{worker.StartBatchFile();});currentStarted=true; }
+            if (writing) { worker.StartBatchFile();currentStarted=true; }
         }
         internal static void CopyInputSnapshot(string inputFile,string targetFile)
         {
@@ -223,25 +230,32 @@ namespace Excel_Iterate
             }
             catch(IOException error){throw new IOException("无法读取稳定的工作簿副本，请等待其他Excel进程或OneDrive同步完成后重试："+inputFile+"；"+error.Message,error);}
         }
-        private void InWorkingWindow(Action action)
+        private void EnsureHiddenApplication()
         {
-            // Only the initial Worksheet.Copy backup needs a visible window.
-            // Never call this for each Area: toggling Visible and Activate on
-            // every timer tick repeatedly exposes the temporary workbook.
-            // Show only our private copy during the backup operation;
-            // restore its visibility and the user's active workbook afterwards.
-            using(var quiet=new CompanyWorkbookQuiet(app))using(var bag=new ComBag())
+            if(ownsApplication)return;
+            var held=new ComBag();object candidate=null;bool independent=false;
+            try
             {
-                dynamic windows=bag.Own(((dynamic)workBook).Windows);
-                var hidden=new List<object>();
-                try
-                {
-                    for(int i=1;i<=Convert.ToInt32(windows.Count);i++)
-                    {dynamic window=bag.Own(windows.Item(i));if(!Convert.ToBoolean(window.Visible)){hidden.Add((object)window);window.Visible=true;}}
-                    ((dynamic)workBook).Activate();action();
-                }
-                finally{foreach(object window in hidden)((dynamic)window).Visible=false;}
+                string name=Convert.ToString(((dynamic)sourceApp).Name);
+                string progId=name.IndexOf("Excel",StringComparison.OrdinalIgnoreCase)>=0?"Excel.Application":"ket.Application";
+                Type type=Type.GetTypeFromProgID(progId);if(type==null)throw new InvalidOperationException("无法创建后台表格进程。");
+                candidate=held.Own(Activator.CreateInstance(type));uint originalProcess,workerProcess;
+                GetWindowThreadProcessId(new IntPtr(Convert.ToInt64(((dynamic)sourceApp).Hwnd)),out originalProcess);
+                GetWindowThreadProcessId(new IntPtr(Convert.ToInt64(((dynamic)candidate).Hwnd)),out workerProcess);
+                if(originalProcess==0||workerProcess==0||originalProcess==workerProcess)throw new InvalidOperationException("当前宿主未提供独立后台进程；已停止，避免隐藏或关闭你的Excel窗口。");
+                independent=true;((dynamic)candidate).Visible=false;
+                ((dynamic)candidate).DisplayAlerts=false;((dynamic)candidate).EnableEvents=false;
+                ((dynamic)candidate).AskToUpdateLinks=false;((dynamic)candidate).AutomationSecurity=3;
+                app=candidate;applicationRefs=held;ownsApplication=true;
+                Message("已连接独立隐藏表格进程；临时工作簿不会显示在操作窗口中。");
             }
+            catch{try{if(independent&&candidate!=null)((dynamic)candidate).Quit();}finally{held.Dispose();}throw;}
+        }
+        private void ReleaseHiddenApplication()
+        {
+            if(!ownsApplication)return;
+            try{((dynamic)app).Quit();}
+            finally{ownsApplication=false;app=sourceApp;var held=applicationRefs;applicationRefs=null;if(held!=null)held.Dispose();}
         }
         private void Advance()
         {
@@ -281,7 +295,7 @@ namespace Excel_Iterate
             finally { inTick = false; if (queue != null) timer.Start(); }
         }
         private void End()
-        { timer.Stop(); queue = null; settings.Enabled = files.Enabled = preview.Enabled = execute.Enabled = true; stop.Enabled = false; Message("本轮结束；成功输出保留，失败原因见文件列表及日志。原文件未修改。"); }
+        { timer.Stop(); queue = null; ReleaseHiddenApplication(); settings.Enabled = files.Enabled = preview.Enabled = execute.Enabled = true; stop.Enabled = false; Message("本轮结束；成功输出保留，失败原因见文件列表及日志。原文件未修改。"); }
         private void VerifyNoTemporaryLinks()
         {
             object links = ((dynamic)workBook).LinkSources(1);
@@ -304,6 +318,6 @@ namespace Excel_Iterate
             if (scratch != null && Directory.Exists(scratch)) Directory.Delete(scratch, false);
             workingFile = scratch = null;
         }
-        public void Dispose() { timer.Stop(); timer.Dispose(); try { Cleanup(); } finally { dialog.Dispose(); } }
+        public void Dispose() { timer.Stop(); timer.Dispose(); try { Cleanup(); } finally { try{ReleaseHiddenApplication();}finally{dialog.Dispose();} } }
     }
 }

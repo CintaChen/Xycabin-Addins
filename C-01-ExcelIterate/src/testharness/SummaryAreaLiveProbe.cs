@@ -176,7 +176,15 @@ internal static class SingleSummaryLiveProbe
         }
         using (var batch = create(true))
         {
-            int guard = 0; while(Get(batch,"queue") != null && guard++ < 100) Call(batch,"Advance");
+            bool sawWorker=false,stayedHidden=true;
+            int guard = 0; while(Get(batch,"queue") != null && guard++ < 100)
+            {
+                Call(batch,"Advance");
+                if(Convert.ToBoolean(Get(batch,"ownsApplication")))
+                {sawWorker=true;stayedHidden=stayedHidden&&!Convert.ToBoolean(((dynamic)Get(batch,"app")).Visible);}
+            }
+            Check(sawWorker&&stayedHidden,"dedicated batch application stays invisible through backup and every area write");
+            Check(!Convert.ToBoolean(Get(batch,"ownsApplication"))&&Get(batch,"applicationRefs")==null,"dedicated application quits and releases COM ownership at batch end");
             Check(Get(batch,"queue")==null,"batch execution terminates");
             var grid=(DataGridView)Get(batch,"files");for(int i=0;i<3;i++)Console.WriteLine("BATCH STATUS "+i+": "+grid.Rows[i].Cells[2].Value);
             Console.WriteLine(((RichTextBox)Get(batch,"log")).Text);
