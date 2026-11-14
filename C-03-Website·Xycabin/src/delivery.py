@@ -137,3 +137,4 @@ def publish(updates, replace=os.replace):
 def fingerprints(paths):
     return {str(p): {'bytes': p.stat().st_size, 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
             for p in paths}
+

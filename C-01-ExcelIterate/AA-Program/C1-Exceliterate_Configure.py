@@ -194,7 +194,7 @@ BUTTONS = [
         "size": "large",
         "icon": None,
         "builtin_icon": "table",
-        "screentip": "审计辅助工具集合：表头匹配合并、合并抵消、批量迁移数据",
+        "screentip": "审计辅助工具集合：表头匹配合并、合并抵消、批量复制数据",
         "supertip": (
             "表头匹配：按表头列名（忽略大小写与首尾空格）匹配列，"
             "\r\n把来源工作簿的列数据合并到目标工作簿同名列下。"
@@ -250,9 +250,9 @@ BUTTONS = [
             },
             {
                 "id": "btnDataMigration",
-                "label": "批量迁移数据",
+                "label": "批量复制数据",
                 "builtin_icon": "table",
-                "screentip": "把源区域迁移到多个目标工作簿的指定位置",
+                "screentip": "把源区域复制到多个目标工作簿的指定位置",
                 "supertip": "内部相对引用随目标位置平移，第三方外链来源及地址不变。\r\n复制公式、固定值、样式及完整合并区域；预检名称与覆盖内容。\r\n默认校验后更新目标原文件并自动备份，也可另存副本。",
                 "action": "feature",
                 "callback": "OnDataMigration",
@@ -291,6 +291,15 @@ BUTTONS = [
                         "supertip": "读 Lead 表的「编码&简称」「全称」列，勾选状态按实际行回写「选用」。默认每家公司一列；可选开始至结束年度，每家公司占年度数的列，每列重复公司名，下方指定行显示年度，默认倒序。年度模式只按指定目录段换年份和模板公司文件名，月日、工作表、地址与其他公司引用保留。执行前预检来源及覆盖范围，备份后生成，可整批还原，不自动保存。",
                         "action": "feature",
                         "callback": "OnSingleSummary",
+                    },
+                    {
+                        "id": "btnNotesLinks",
+                        "label": "Notes 批量链接",
+                        "builtin_icon": "table",
+                        "screentip": "按Lead直系公司名单链接Notes区域",
+                        "supertip": "统一来源区域，两个粘贴起点计算固定槽位；预检后在隐藏进程写入真实外链，保留合并及样式，备份后更新父公司，可还原。",
+                        "action": "feature",
+                        "callback": "OnNotesLinks",
                     },
                 ],
             },

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -143,16 +143,24 @@ namespace Excel_Iterate
     internal sealed class MigrationPreset
     {
         internal const string Format = "xycabin.migration-preset", Extension = ".xymigration.json";
-        internal const int Version = 1;
+        internal const int Version = 2;
         internal string FilePath = "", Name = "";
         internal DateTime Saved;
         internal Dictionary<string, object> Data;
         internal int Sources, Targets, Mappings;
         internal static string Library
-        { get { return System.IO.Path.Combine(DialogSizeStore.RootOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), typeof(Connect).Assembly.GetName().Name, "迁移预设"); } }
+        {
+            get
+            {
+                string root = System.IO.Path.Combine(DialogSizeStore.RootOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), typeof(Connect).Assembly.GetName().Name);
+                string folder = System.IO.Path.Combine(root, "复制预设"), old = System.IO.Path.Combine(root, "迁移预设");
+                try { if (!Directory.Exists(folder) && Directory.Exists(old)) Directory.Move(old, folder); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                return Directory.Exists(folder) || !Directory.Exists(old) ? folder : old;
+            }
+        }
         internal static MigrationPreset From(Dictionary<string, object> data, string file)
         {
-            if (data == null || MigrationJson.Str(data, "format") != Format) throw new InvalidOperationException("不是批量迁移数据的预设文件");
+            if (data == null || MigrationJson.Str(data, "format") != Format) throw new InvalidOperationException("不是批量复制数据的预设文件");
             long version = MigrationJson.Num(data, "version");
             if (version < 1) throw new InvalidOperationException("预设文件缺少版本号");
             if (version > Version) throw new InvalidOperationException("预设由更新版本的加载项创建（格式版本 " + version + "），请先升级加载项");
@@ -262,7 +270,7 @@ namespace Excel_Iterate
                 if (source == null) head.Add(PresetDetailKind.Dim, "（未配对）"); else head.Add(PresetDetailKind.Text, place(source)).Add(PresetDetailKind.Dim, "　" + books(source));
                 var to = line(false, 2).Add(PresetDetailKind.Label, "目标　");
                 if (target == null) to.Add(PresetDetailKind.Dim, "（未配对）"); else to.Add(PresetDetailKind.Text, place(target)).Add(PresetDetailKind.Dim, "　" + (trigger != null ? "按文件名匹配" : books(target)));
-                var tags = line(false, 2).Add(PresetDetailKind.Tag, MigrationPair.ModeText(trigger != null || MigrationJson.Flag(mapping, "valuesOnly", false), MigrationJson.Flag(mapping, "keepFormat", true), trigger == null && MigrationJson.Flag(mapping, "formatOnly", false)));
+                var tags = line(false, 2).Add(PresetDetailKind.Tag, MigrationPair.ModeText(trigger != null || MigrationJson.Flag(mapping, "valuesOnly", false), MigrationJson.Flag(mapping, "keepFormat", true), trigger == null && MigrationJson.Flag(mapping, "formatOnly", false), trigger == null && MigrationJson.Flag(mapping, "pasteLinks", false)));
                 if (!MigrationJson.Flag(mapping, "enabled", true)) tags.Add(PresetDetailKind.Dim, "　·　").Add(PresetDetailKind.Warn, "未启用");
                 if (trigger != null) tags.Add(PresetDetailKind.Dim, "　·　").Add(PresetDetailKind.Tag, "逐行重算 ")
                     .Add(PresetDetailKind.Dim, MigrationJson.Str(trigger, "values") + " → " + MigrationJson.Str(trigger, "cell") + "，目标文件区域 " + MigrationJson.Str(trigger, "nameColumn")
@@ -312,7 +320,7 @@ namespace Excel_Iterate
             var mappings = pairs.Select(p => (object)MigrationJson.Obj(
                 "source", p.Source.Used ? (object)("s" + (sources.IndexOf(p.Source) + 1)) : null,
                 "target", p.Target.Used ? (object)("t" + (targets.IndexOf(p.Target) + 1)) : null,
-                "enabled", p.Enabled, "valuesOnly", p.ValuesOnly, "keepFormat", p.KeepFormat, "formatOnly", p.FormatOnly)).ToList();
+                "enabled", p.Enabled, "valuesOnly", p.ValuesOnly, "keepFormat", p.KeepFormat, "formatOnly", p.FormatOnly, "pasteLinks", p.PasteLinks && p.Source.Trigger == null)).ToList();
             return MigrationJson.Obj(
                 "format", MigrationPreset.Format, "version", (long)MigrationPreset.Version, "name", name,
                 "saved", DateTime.Now.ToString("s", CultureInfo.InvariantCulture), "root", root,
@@ -354,10 +362,12 @@ namespace Excel_Iterate
             foreach (var item in MigrationJson.Maps(data, "mappings"))
             {
                 // Presets saved before 写入方式 had four choices always copied formats.
-                var pair = new MigrationPair { Enabled = MigrationJson.Flag(item, "enabled", true), ValuesOnly = MigrationJson.Flag(item, "valuesOnly", false), KeepFormat = MigrationJson.Flag(item, "keepFormat", true), FormatOnly = MigrationJson.Flag(item, "formatOnly", false) };
+                var pair = new MigrationPair { Enabled = MigrationJson.Flag(item, "enabled", true), ValuesOnly = MigrationJson.Flag(item, "valuesOnly", false), KeepFormat = MigrationJson.Flag(item, "keepFormat", true), FormatOnly = MigrationJson.Flag(item, "formatOnly", false), PasteLinks = MigrationJson.Flag(item, "pasteLinks", false) };
                 MigrationSide side;
                 if (sides.TryGetValue("S:" + MigrationJson.Str(item, "source"), out side)) pair.Source = side;
                 if (sides.TryGetValue("T:" + MigrationJson.Str(item, "target"), out side)) pair.Target = side;
+                if (pair.Source.Trigger != null) pair.SelectMode(pair.KeepFormat ? MigrationPair.ModeValuesFormat : MigrationPair.ModeValues);
+                else if (pair.PasteLinks) pair.SelectMode(MigrationPair.ModeLinks);
                 if (pair.Source.Used || pair.Target.Used) pairs.Add(pair);
             }
             Func<string, List<MigrationBook>> books = key => MigrationJson.Maps(data, key).Select(pathOf).Where(p => p.Length > 0).Select(p => new MigrationBook { Path = Path.GetFullPath(p) }).ToList();
@@ -384,4 +394,3 @@ namespace Excel_Iterate
         }
     }
 }
-

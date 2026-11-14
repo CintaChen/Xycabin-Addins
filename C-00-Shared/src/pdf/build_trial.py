@@ -46,3 +46,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True)
     print(build(parser.parse_args().output))
+

@@ -423,3 +423,4 @@ namespace Excel_Iterate
         internal static void CloseFileNames() {if(fileNames!=null&&!fileNames.IsDisposed)fileNames.CancelForShutdown();}
     }
 }
+

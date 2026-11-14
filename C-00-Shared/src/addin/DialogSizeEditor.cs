@@ -31,7 +31,7 @@ namespace Excel_Iterate
             {"btnEliminationReceivable","elimination.receivable"},{"btnEliminationRevenueCost","elimination.revenuecost"},
             {"btnDataMigration","migration.data"},
             {"btnTextExtractFilter","conversion.text"},{"btnReferenceStyleConversion","formula.references"},
-            {"btnConsolidatedWorkbooks","company.consolidated"},{"btnCompanyWorkbooks","company.workbooks"},{"btnSingleSummary","summary.single"},
+            {"btnNotesLinks","notes.links"},{"btnConsolidatedWorkbooks","company.consolidated"},{"btnCompanyWorkbooks","company.workbooks"},{"btnSingleSummary","summary.single"},
             {"btnCurrentPdf","file.pdf.current"},{"btnConvertPdf","file.pdf.convert"},{"btnWatermarkPdf","file.pdf.watermark"},{"btnSplitPdf","file.pdf.split"},{"btnMergePdf","file.pdf.merge"},
             {"btnViewLinks","word.links"},{"btnAgentReadme","agent.developer"},{"btnAgentUserGuide","agent.user"},
             {"btnAgentSort","agent.sort"},{"btnAgentNames","agent.name"},{"btnAgentFormats","agent.format"},{"btnAgentRequirements","agent.notes"},{"btnFileNames","file.names"},{"btnAgentDialogSizes","agent.dialogsizes"}

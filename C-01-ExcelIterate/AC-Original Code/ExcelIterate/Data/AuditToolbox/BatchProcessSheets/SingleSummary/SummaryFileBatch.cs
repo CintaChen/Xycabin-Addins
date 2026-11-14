@@ -12,10 +12,8 @@ namespace Excel_Iterate
     {
         private object app;
         private readonly object sourceApp;
-        private ComBag applicationRefs;
+        private HiddenWorkbookApplication applicationRefs;
         private bool ownsApplication;
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr window,out uint process);
         private readonly Form dialog = new Form();
         private readonly TableLayoutPanel settings = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 4, Margin = new Padding(0, 0, 0, 12) };
         private readonly TextBox input = new TextBox { Dock = DockStyle.Fill, ShortcutsEnabled = true, AccessibleDescription = "输入或粘贴文件夹路径，按 Enter 或点击读取文件。" }, output = new TextBox { Dock = DockStyle.Fill }, presetPath = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
@@ -233,29 +231,14 @@ namespace Excel_Iterate
         private void EnsureHiddenApplication()
         {
             if(ownsApplication)return;
-            var held=new ComBag();object candidate=null;bool independent=false;
-            try
-            {
-                string name=Convert.ToString(((dynamic)sourceApp).Name);
-                string progId=name.IndexOf("Excel",StringComparison.OrdinalIgnoreCase)>=0?"Excel.Application":"ket.Application";
-                Type type=Type.GetTypeFromProgID(progId);if(type==null)throw new InvalidOperationException("无法创建后台表格进程。");
-                candidate=held.Own(Activator.CreateInstance(type));uint originalProcess,workerProcess;
-                GetWindowThreadProcessId(new IntPtr(Convert.ToInt64(((dynamic)sourceApp).Hwnd)),out originalProcess);
-                GetWindowThreadProcessId(new IntPtr(Convert.ToInt64(((dynamic)candidate).Hwnd)),out workerProcess);
-                if(originalProcess==0||workerProcess==0||originalProcess==workerProcess)throw new InvalidOperationException("当前宿主未提供独立后台进程；已停止，避免隐藏或关闭你的Excel窗口。");
-                independent=true;((dynamic)candidate).Visible=false;
-                ((dynamic)candidate).DisplayAlerts=false;((dynamic)candidate).EnableEvents=false;
-                ((dynamic)candidate).AskToUpdateLinks=false;((dynamic)candidate).AutomationSecurity=3;
-                app=candidate;applicationRefs=held;ownsApplication=true;
-                Message("已连接独立隐藏表格进程；临时工作簿不会显示在操作窗口中。");
-            }
-            catch{try{if(independent&&candidate!=null)((dynamic)candidate).Quit();}finally{held.Dispose();}throw;}
+            applicationRefs=new HiddenWorkbookApplication(sourceApp);app=applicationRefs.Application;ownsApplication=true;
+            Message("已连接独立隐藏表格进程；临时工作簿不会显示在操作窗口中。");
         }
         private void ReleaseHiddenApplication()
         {
             if(!ownsApplication)return;
-            try{((dynamic)app).Quit();}
-            finally{ownsApplication=false;app=sourceApp;var held=applicationRefs;applicationRefs=null;if(held!=null)held.Dispose();}
+            try{if(applicationRefs!=null)applicationRefs.Dispose();}
+            finally{ownsApplication=false;app=sourceApp;applicationRefs=null;}
         }
         private void Advance()
         {

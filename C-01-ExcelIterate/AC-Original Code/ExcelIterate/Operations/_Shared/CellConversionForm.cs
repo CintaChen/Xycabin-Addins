@@ -225,3 +225,4 @@ namespace Excel_Iterate
         { if (disposing && previewTimer != null) previewTimer.Dispose(); base.Dispose(disposing); }
     }
 }
+

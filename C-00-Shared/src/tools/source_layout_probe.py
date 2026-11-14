@@ -126,3 +126,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project-root', type=Path, required=True)
     verify(parser.parse_args().project_root)
+

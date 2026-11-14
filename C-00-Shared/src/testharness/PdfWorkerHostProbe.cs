@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reflection;
 
 // No COM activation: verify the gate used before opening an Office source.

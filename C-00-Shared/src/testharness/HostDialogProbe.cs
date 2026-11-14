@@ -119,3 +119,4 @@ internal static class HostDialogProbe
         finally{if(success&&Path.GetDirectoryName(Path.GetFullPath(sandbox))==Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar))Directory.Delete(sandbox,true);}
     }
 }
+

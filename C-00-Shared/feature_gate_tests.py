@@ -183,3 +183,4 @@ def run(repository):
     finally:
         sys.path[:] = original_sys_path
     return checks
+

@@ -319,3 +319,4 @@ namespace WordUpdater
         public IPictureDisp GetImage_menuBatchProcessing(object control) { return GetButtonImageCore("menuBatchProcessing"); }
     }
 }
+

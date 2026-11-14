@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -54,13 +54,14 @@ namespace Excel_Iterate
             new DialogDefinition("audit.batch.progress", "批量任务进度", "数据 / 审计工具箱 / 批量生成过程表 / 批量任务进度",840,600,640,460),
             new DialogDefinition("batch.preset.name", "单体预设名称", "数据 / 审计工具箱 / 批量生成过程表 / 预设",460,170,380,170),
             new DialogDefinition("batch.preset.manager", "单体预设管理", "数据 / 审计工具箱 / 批量生成过程表 / 预设",980,600,720,440),
+            new DialogDefinition("notes.links", "Notes 批量链接", "数据 / 审计工具箱 / 批量生成过程表 / Notes 批量链接",1280,860,1050,660),
             new DialogDefinition("company.consolidated", "合并模板生成", "数据 / 审计工具箱 / 批量生成过程表 / 合并模板生成",1180,820,950,680),
             new DialogDefinition("company.workbooks", "单体模板生成", "数据 / 审计工具箱 / 批量生成过程表 / 单体模板生成",1180,900,950,680),
             new DialogDefinition("summary.single", "单体汇总批量链接", "数据 / 审计工具箱 / 批量生成过程表 / 单体汇总批量链接",1180,760,900,600),
-            new DialogDefinition("migration.data", "批量迁移数据", "数据 / 审计工具箱 / 批量迁移数据",1180,760,900,560),
-            new DialogDefinition("migration.preset.name", "预设名称", "数据 / 审计工具箱 / 批量迁移数据 / 预设",460,170,380,170),
-            new DialogDefinition("migration.preset.manager", "预设管理", "数据 / 审计工具箱 / 批量迁移数据 / 预设",980,600,720,440),
-            new DialogDefinition("migration.preset.relocate", "定位缺失的工作簿", "数据 / 审计工具箱 / 批量迁移数据 / 预设",860,460,620,360),
+            new DialogDefinition("migration.data", "批量复制数据", "数据 / 审计工具箱 / 批量复制数据",1180,760,900,560),
+            new DialogDefinition("migration.preset.name", "预设名称", "数据 / 审计工具箱 / 批量复制数据 / 预设",460,170,380,170),
+            new DialogDefinition("migration.preset.manager", "预设管理", "数据 / 审计工具箱 / 批量复制数据 / 预设",980,600,720,440),
+            new DialogDefinition("migration.preset.relocate", "定位缺失的工作簿", "数据 / 审计工具箱 / 批量复制数据 / 预设",860,460,620,360),
             new DialogDefinition("elimination.receivable", "往来抵消", "数据 / 合并抵消 / 往来抵消",1180,700,900,580),
             new DialogDefinition("elimination.revenuecost", "收入成本抵消", "数据 / 合并抵消 / 收入成本抵消",1180,700,900,580),
 #endif

@@ -82,3 +82,4 @@ internal static partial class CellConversionProbe
             Check(prompt.Positive.Text == "继续并转为文本" && prompt.Negative.Text == "取消" && prompt.CancelButton == prompt.Negative && prompt.AcceptButton == null && prompt.DismissResult == System.Windows.Forms.DialogResult.Cancel, "real confirmation control uses explicit continuation and cancel-safe default");
     }
 }
+

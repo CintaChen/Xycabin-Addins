@@ -530,3 +530,4 @@ namespace WordUpdater
         // 隐藏源程序（et.exe）清理逻辑已抽取至 EtCleanup.cs（与 LinkPasteEngine 共用）。
     }
 }
+

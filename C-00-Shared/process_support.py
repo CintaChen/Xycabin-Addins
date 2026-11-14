@@ -165,3 +165,4 @@ class FocusTrace:
         return dict(status='error' if self.errors else 'observed' if self.thread else 'not_collected',
                     path=str(self.path.resolve()) if self.thread else None,
                     events=self.count, errors=self.errors, attribution='observation_only')
+

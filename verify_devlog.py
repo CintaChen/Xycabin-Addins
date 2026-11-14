@@ -571,3 +571,4 @@ if __name__ == '__main__':
     except (OSError, ValueError, AssertionError) as error:
         print('FAIL: ' + str(error), flush=True)
         sys.exit(1)
+

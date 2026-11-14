@@ -239,7 +239,13 @@
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/CompanyStructurePicker.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/ConsolidatedWorkbooks/ConsolidatedWorkbookEngine.cs",
     "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/ConsolidatedWorkbooks/ConsolidatedWorkbookForm.cs",
-    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/ConsolidatedWorkbooks/Connect.ConsolidatedWorkbooks.Entry.cs"
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/ConsolidatedWorkbooks/Connect.ConsolidatedWorkbooks.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/Connect.NotesLinks.Entry.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesLinkExecution.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesLinkModel.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesLinksForm.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesSheetFacts.cs",
+    "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/HiddenWorkbookApplication.cs"
   ],
   "tools": [
     {
@@ -614,6 +620,18 @@
       "source": "@shared/src/testharness/PdfWorkerHostProbe.cs",
       "references": [],
       "offline": false
+    },
+    {
+      "name": "NotesLinksProbe",
+      "source": "src/testharness/NotesLinksProbe.cs",
+      "references": [
+        "@addin",
+        "System.Windows.Forms.dll",
+        "System.Drawing.dll"
+      ],
+      "additional_sources": [
+        "@shared/src/tools/LiveProbeSafety.cs"
+      ]
     }
   ],
   "pdf_worker": true,
@@ -782,7 +800,8 @@
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryFileBatch.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaView.cs",
         "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/CompanyStructureTasks.cs",
-        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/CompanyStructurePicker.cs"
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/CompanyStructurePicker.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/HiddenWorkbookApplication.cs"
       ],
       "tests": [
         "src/testharness/SingleSummaryProbe.cs",
@@ -1632,6 +1651,32 @@
       "tests": [
         "src/testharness/CompanyWorkbookProbe.cs"
       ]
+    },
+    "btnNotesLinks": {
+      "directory": "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks",
+      "entry": "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/Connect.NotesLinks.Entry.cs",
+      "implementation": [
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesLinkModel.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesSheetFacts.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesLinkExecution.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/NotesLinks/NotesLinksForm.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/HiddenWorkbookApplication.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/_Shared/CompanyStructureTasks.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/CompanyWorkbooks/CompanyWorkbookEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryAreaEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/BatchProcessSheets/SingleSummary/SummaryFileBatch.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationEngine.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/DataMigrationHost.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationModels.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPlanner.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationSheetSnapshot.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationOutputTransaction.cs",
+        "AC-Original Code/ExcelIterate/Data/AuditToolbox/DataMigration/MigrationPresets.cs"
+      ],
+      "tests": [
+        "src/testharness/NotesLinksProbe.cs"
+      ]
     }
   },
   "source_aliases": {
@@ -1937,6 +1982,7 @@
     "menuFormulaFormat": "FormulaFormat",
     "btnRestoreTextFormula": "RestoreTextFormula",
     "btnBatchInsertTrimDelete": "BatchInsertTrimDelete",
-    "btnConsolidatedWorkbooks": "ConsolidatedWorkbooks"
+    "btnConsolidatedWorkbooks": "ConsolidatedWorkbooks",
+    "btnNotesLinks": "NotesLinks"
   }
 }

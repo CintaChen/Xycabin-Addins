@@ -360,3 +360,4 @@ public sealed class ConversionHostProvider : Microsoft.Office.Tools.IHostItemPro
     public object GetHostExtender(Type type, string cookie) { return null; }
     public void SetHostObjectOnExtender(string primaryCookie, string extenderCookie, object extender) { }
 }
+

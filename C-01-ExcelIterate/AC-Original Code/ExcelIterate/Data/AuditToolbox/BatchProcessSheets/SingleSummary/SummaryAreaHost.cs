@@ -885,6 +885,7 @@ namespace Excel_Iterate
             dynamic range=bag.Own(sheet.Range[SummaryAreaEngine.Address(array.Area)]),anchor=bag.Own(sheet.Range[CellAddress.Name(array.Area.Row,array.Area.Column)]);
             if(array.Dynamic)anchor.ClearContents();else range.ClearContents();
         }
+        internal const string AmountNumberFormat = "#,##0.00;-#,##0.00;\"-\";@";
         internal static bool PreserveNumberFormat(string format)
         {
             string f=System.Text.RegularExpressions.Regex.Replace(format??"",@"""[^""]*""|\\.","").ToLowerInvariant();
@@ -905,14 +906,14 @@ namespace Excel_Iterate
         {
             foreach(var part in targets)using(var one=new ComBag()){
                 dynamic range=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);object format=range.NumberFormat;
-                if(format!=null&&format!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(format)))range.NumberFormat="#,##0.00";}
+                if(format!=null&&format!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(format)))range.NumberFormat=AmountNumberFormat;}
                 else {object values=range.Value2;for(int r=0;r<part.Rows;r++)using(var rowBag=new ComBag()){
                     dynamic rowRange=rowBag.Own(sheet.Range[CellAddress.Name(part.Row+r,part.Column)+":"+CellAddress.Name(part.Row+r,part.Column+part.Columns-1)]);object rowFormat=rowRange.NumberFormat;
-                    if(rowFormat!=null&&rowFormat!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(rowFormat)))rowRange.NumberFormat="#,##0.00";continue;}
+                    if(rowFormat!=null&&rowFormat!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(rowFormat)))rowRange.NumberFormat=AmountNumberFormat;continue;}
                     for(int c=0;c<part.Columns;c++){
 
                     object value=SummaryArrays.Pick(values,r,part.Rows,c,part.Columns);if(!(value is double||value is int||value is decimal)||SummaryAreaEngine.IsError(value))continue;
-                    using(var cellBag=new ComBag()){dynamic cell=cellBag.Own(sheet.Range[CellAddress.Name(part.Row+r,part.Column+c)]);if(!PreserveNumberFormat(Convert.ToString(cell.NumberFormat)))cell.NumberFormat="#,##0.00";}
+                    using(var cellBag=new ComBag()){dynamic cell=cellBag.Own(sheet.Range[CellAddress.Name(part.Row+r,part.Column+c)]);if(!PreserveNumberFormat(Convert.ToString(cell.NumberFormat)))cell.NumberFormat=AmountNumberFormat;}
                 }}}
             }
             // Like LinkAssistant: measure after final number formats. Fit only

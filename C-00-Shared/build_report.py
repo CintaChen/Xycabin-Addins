@@ -307,3 +307,4 @@ def write_json(path, data):
     temporary = path.with_name(path.name + '.tmp-' + uuid.uuid4().hex)
     temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     os.replace(temporary, path)
+

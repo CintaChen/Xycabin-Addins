@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -70,6 +70,7 @@ namespace Excel_Iterate
                     CloseDataMigrationForm();
                     CloseCompanyWorkbookForm();
                     CloseConsolidatedWorkbookForm();
+                    CloseNotesLinksForm();
                     RestoreFormulaStatus();
                     if (_directoryNavigation != null) { try { _directoryNavigation.Dispose(); } catch (Exception ex) { Log("目录事件解绑：" + ex.Message); } _directoryNavigation = null; }
                     if (_linkForm != null && !_linkForm.IsDisposed) _linkForm.Close();

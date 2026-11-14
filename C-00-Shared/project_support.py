@@ -141,3 +141,4 @@ def verify_layout(source_only=True):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.verify(ROOT.parent, source_only=source_only, folders=(ROOT.name, SITE_ROOT.name))
+

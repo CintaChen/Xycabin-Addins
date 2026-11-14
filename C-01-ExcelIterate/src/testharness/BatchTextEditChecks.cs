@@ -85,3 +85,4 @@ internal static partial class CellConversionProbe
         BatchTextAdapterChecks();
     }
 }
+

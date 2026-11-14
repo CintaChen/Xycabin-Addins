@@ -78,3 +78,4 @@ namespace Excel_Iterate
         internal static void CloseAll() { ConversionWindowThread[] copy; lock (registry) copy = windows.ToArray(); foreach (var window in copy) window.Close(); }
     }
 }
+

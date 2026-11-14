@@ -189,3 +189,4 @@ public sealed class BatchFixtureApp
     public object Union(object first, object second)
     { return new BatchFixtureRange(((BatchFixtureRange)first).Worksheet, ((BatchFixtureRange)first).Address + "," + ((BatchFixtureRange)second).Address); }
 }
+

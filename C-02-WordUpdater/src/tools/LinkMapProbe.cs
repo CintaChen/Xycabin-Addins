@@ -610,3 +610,4 @@ internal static class LinkMapProbe
         return LinkPasteGeometry.FlattenTarget(r).Count;
     }
 }
+

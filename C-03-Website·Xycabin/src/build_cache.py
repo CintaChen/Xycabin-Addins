@@ -225,3 +225,4 @@ def build_lock():
             msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
     finally:
         stream.close()
+

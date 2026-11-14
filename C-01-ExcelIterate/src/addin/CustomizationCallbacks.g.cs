@@ -18,7 +18,9 @@ namespace Excel_Iterate
         public string GetLabel_btnDataMigration(object control) { return RibbonCustomization.Label("btnDataMigration"); }
         public string GetLabel_menuBatchProcessSheets(object control) { return RibbonCustomization.Label("menuBatchProcessSheets"); }
         public string GetLabel_btnCompanyWorkbooks(object control) { return RibbonCustomization.Label("btnCompanyWorkbooks"); }
+        public string GetLabel_btnConsolidatedWorkbooks(object control) { return RibbonCustomization.Label("btnConsolidatedWorkbooks"); }
         public string GetLabel_btnSingleSummary(object control) { return RibbonCustomization.Label("btnSingleSummary"); }
+        public string GetLabel_btnNotesLinks(object control) { return RibbonCustomization.Label("btnNotesLinks"); }
         public string GetLabel_menuOneClickConversion(object control) { return RibbonCustomization.Label("menuOneClickConversion"); }
         public string GetContent_menuOneClickConversion(object control) { return RibbonCustomization.Content("menuOneClickConversion"); }
         public string GetLabel_btnTextExtractFilter(object control) { return RibbonCustomization.Label("btnTextExtractFilter"); }
@@ -63,10 +65,7 @@ namespace Excel_Iterate
         public string GetLabel_btnFileNames(object control) { return RibbonCustomization.Label("btnFileNames"); }
         public string GetLabel_menuFileConversion(object control) { return RibbonCustomization.Label("menuFileConversion"); }
         public string GetLabel_btnCurrentPdf(object control) { return RibbonCustomization.Label("btnCurrentPdf"); }
-        public string GetLabel_btnConvertPdf(object control) { return RibbonCustomization.Label("btnConvertPdf"); }
         public string GetLabel_btnWatermarkPdf(object control) { return RibbonCustomization.Label("btnWatermarkPdf"); }
-        public string GetLabel_btnSplitPdf(object control) { return RibbonCustomization.Label("btnSplitPdf"); }
-        public string GetLabel_btnMergePdf(object control) { return RibbonCustomization.Label("btnMergePdf"); }
         public string GetLabel_btnLinkAssistant(object control) { return RibbonCustomization.Label("btnLinkAssistant"); }
         public string GetLabel_btnGenerateDirectory(object control) { return RibbonCustomization.Label("btnGenerateDirectory"); }
         public string GetLabel_btnFeedback(object control) { return RibbonCustomization.Label("btnFeedback"); }

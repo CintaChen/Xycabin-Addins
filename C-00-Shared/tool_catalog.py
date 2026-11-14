@@ -54,3 +54,4 @@ def validation(project, background, render_ui, context):
         tests.append((item['name'], [arg.format_map(context) for arg in arguments]))
     cacheable = {item['name'] for item in project['tools'] if item.get('offline') and 'background' in item}
     return tests, pending, cacheable
+

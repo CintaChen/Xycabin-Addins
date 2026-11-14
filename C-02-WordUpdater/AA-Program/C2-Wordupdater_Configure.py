@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 C2-Wordupdater_Configure.py —— 「WordUpdater」按钮集中配置生成器
 

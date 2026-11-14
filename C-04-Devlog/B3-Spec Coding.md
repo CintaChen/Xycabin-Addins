@@ -198,3 +198,4 @@ H-01～H-13 是人工清单，不映射 G、不自动执行、不生成自动通
 ## 3. 统一交付与失败恢复
 
 **R-24** 两 DLL 内嵌 WpsShared.Agent.Home.html 必须逐字节相同，移除独立页 installer-assets 后比较网页正文；两个 DLL 含不同宿主业务，不要求 DLL 字节相同。编译只接受空包数据区，防安装包包含自身；网站产品按独立身份映射，不将 Excel 宿主等同 Excel-Iterate 产品。
+

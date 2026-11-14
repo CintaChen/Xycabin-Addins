@@ -6,3 +6,4 @@ namespace Excel_Iterate
         public IPictureDisp GetImage_btnBatchInsertTrimDelete(object control) { return GetButtonImageCore("btnBatchInsertTrimDelete"); }
     }
 }
+

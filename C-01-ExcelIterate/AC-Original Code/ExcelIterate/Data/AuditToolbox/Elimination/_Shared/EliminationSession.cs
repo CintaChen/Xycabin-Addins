@@ -130,3 +130,4 @@ namespace Excel_Iterate
         public void Dispose(){try{if(!KeepMonitor)watch.Dispose();}finally{identity.Dispose();}}
     }
 }
+

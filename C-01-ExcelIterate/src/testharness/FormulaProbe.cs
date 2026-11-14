@@ -712,3 +712,4 @@ public sealed class InvalidSelectionApp
 public sealed class FakeTables { public List<FakeTable> Items=new List<FakeTable>(); public int Count{get{return Items.Count;}} public FakeTable Item(int i){return Items[i-1];} }
 public sealed class FakeTable { public string Name="Table1"; public FakeRange Range; public FakeRange HeaderRowRange{get{return new FakeRange(Range.Worksheet,Range.Row,Range.Column,1,Range.Columns.Count);}} }
 public sealed class FakeFilter { public FakeRange Range; }
+

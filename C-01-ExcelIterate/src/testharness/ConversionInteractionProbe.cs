@@ -272,3 +272,4 @@ internal static class ConversionInteractionProbe
         finally { ConversionInteraction.Shutdown(); ConversionWindowThread.CreatedForProbe = null; ConversionInteraction.ResultForProbe = null; }
     }
 }
+
