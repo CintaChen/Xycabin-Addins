@@ -101,7 +101,20 @@ namespace Excel_Iterate
                 {
                     if(!string.Equals(Convert.ToString(SummaryArrays.Pick(actual,r,area.Rows,c,area.Columns)),Convert.ToString(expected[r,c]),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("公式读回不一致："+CellAddress.Name(area.Row+r,area.Column+c));
                 }
-                object formula=range.HasFormula;if(formula==null||formula==DBNull.Value||!Convert.ToBoolean(formula))throw new InvalidOperationException("存在未写成真实公式的单元格："+area.Address);
+                // Some hosts return an unreliable aggregate HasFormula for a rectangle.
+                // Formula text equality above is necessary but cannot distinguish formula-looking text.
+                // Count actual formula cells through the native cell-type query as an independent check.
+                object formula=range.HasFormula;
+                if(!(formula is bool && (bool)formula))
+                {
+                    object formulas=null;
+                    try{formulas=bag.Own(range.SpecialCells(-4123));}
+                    catch(Exception error){throw new InvalidOperationException("无法确认公式单元格类型："+area.Address+"；"+error.Message,error);}
+                    dynamic intersection=bag.Own(((dynamic)hidden.Application).Intersect(range,formulas));
+                    if(intersection==null)throw new InvalidOperationException("区域中未找到真实公式："+area.Address);
+                    dynamic cells=bag.Own(intersection.Cells);
+                    if(Convert.ToInt64(cells.Count)!=(long)area.Rows*area.Columns)throw new InvalidOperationException("区域公式数量不足："+area.Address+"；应有 "+((long)area.Rows*area.Columns)+"，实际 "+Convert.ToInt64(cells.Count));
+                }
                 if(values)
                 {
                     object data=range.Value2;var errors=new System.Text.StringBuilder();
