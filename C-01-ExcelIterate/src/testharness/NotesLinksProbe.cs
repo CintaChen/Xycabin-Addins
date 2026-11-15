@@ -32,6 +32,13 @@ internal static class NotesLinksProbe
         var facts=new NotesSheetFacts{Snapshot=new MigrationSheetSnapshot()};var task=new NotesLinkTask{Target=MigrationArea.Parse("AV1:BP3")};task.SourceMerges.Add(MigrationArea.Parse("D2:X2"));facts.Snapshot.Merges.Add(MigrationArea.Parse("AV2:BP2"));NotesLinkRules.MapMerges(task,MigrationArea.Parse("D1:X3"),facts);Check(task.Anchors.Count==1&&task.Skipped==20,"aligned merged row uses one anchor without changing merge structure");
         var bad=new NotesLinkTask{Target=MigrationArea.Parse("AV1:BP3")};Reject(()=>NotesLinkRules.MapMerges(bad,MigrationArea.Parse("D1:X3"),facts),"target merge cannot swallow unrelated source cells");
         using(var form=new NotesLinksForm())Check(form.Text=="Notes 批量链接","Notes form constructs independently without an Excel connection");
+        using(var form=new NotesLinksForm())
+        {
+            Func<string,object> field=n=>typeof(NotesLinksForm).GetField(n,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(form);
+            var range=(System.Windows.Forms.TextBox)field("sourceRange");var rows=(System.Windows.Forms.NumericUpDown)field("sourceRows");
+            range.Text="E3:Y102";Check(rows.Value==100,"manual source range synchronizes row count");rows.Value=200;Check(range.Text=="E3:Y202","advanced row count preserves source columns and first row");
+        }
+
     }
     private static void MakeSource(object application,ProbeSession session,string path,string sheetName,int mergeRow,double value)
     {
