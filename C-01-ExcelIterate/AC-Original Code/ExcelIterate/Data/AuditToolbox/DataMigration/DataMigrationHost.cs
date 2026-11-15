@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -219,6 +219,7 @@ namespace Excel_Iterate
             // never saves it. The normal preflight still requires saved inputs.
             // Closed files are shown through our readonly disposable copy.
             var handle = open ? gateway.Resolve(full, sheetName, true) : ResolveOriginal(full, sheetName, null, true);
+            MigrationWindowScope.SetOwnedVisible(handle.Book, true);
             ((dynamic)handle.Book).Activate(); ((dynamic)handle.Sheet).Activate();
             object initial = Type.Missing;
             if (!string.IsNullOrWhiteSpace(current)) try { initial = MigrationArea.Parse(current).Address; } catch (InvalidOperationException) { }
