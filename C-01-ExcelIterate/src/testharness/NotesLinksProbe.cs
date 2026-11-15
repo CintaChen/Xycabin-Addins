@@ -32,6 +32,15 @@ internal static class NotesLinksProbe
         var facts=new NotesSheetFacts{Snapshot=new MigrationSheetSnapshot()};var task=new NotesLinkTask{Target=MigrationArea.Parse("AV1:BP3")};task.SourceMerges.Add(MigrationArea.Parse("D2:X2"));facts.Snapshot.Merges.Add(MigrationArea.Parse("AV2:BP2"));NotesLinkRules.MapMerges(task,MigrationArea.Parse("D1:X3"),facts);Check(task.Anchors.Count==1&&task.Skipped==20,"aligned merged row uses one anchor without changing merge structure");
         var bad=new NotesLinkTask{Target=MigrationArea.Parse("AV1:BP3")};Reject(()=>NotesLinkRules.MapMerges(bad,MigrationArea.Parse("D1:X3"),facts),"target merge cannot swallow unrelated source cells");
         using(var form=new NotesLinksForm())Check(form.Text=="Notes 批量链接","Notes form constructs independently without an Excel connection");
+        {
+            var src=MigrationArea.Parse("D1:G1");var dst=MigrationArea.Parse("AV1:AY1");
+            var parentFacts=new NotesSheetFacts{Snapshot=new MigrationSheetSnapshot()};parentFacts.Snapshot.Merges.Add(dst);
+            var emptyFacts=new NotesSheetFacts();var emptyTask=new NotesLinkTask{Target=dst};
+            NotesLinkRules.MapMerges(emptyTask,src,parentFacts,emptyFacts);
+            Check(emptyTask.Blocks.Count==0&&emptyTask.Anchors.Count==1&&emptyTask.Skipped==3,"empty unmerged source maps only target merge anchor");
+            emptyFacts.Contents[MigrationSheetSnapshot.Key(1,5)]="formula:1";
+            Reject(()=>NotesLinkRules.MapMerges(new NotesLinkTask{Target=dst},src,parentFacts,emptyFacts),"source formula prevents merge mismatch data loss");
+        }
         using(var form=new NotesLinksForm())
         {
             Func<string,object> field=n=>typeof(NotesLinksForm).GetField(n,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(form);
