@@ -446,6 +446,9 @@ PDF入口迁移自feat/pdf-tools-shared-20261029的8685ec5：仅保留转为PDF�
 | 源码链接 | [本轮精确提交](https://github.com/Xymircai/Xycabin-Addins/tree/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae)及[对应源码 ZIP](https://github.com/Xymircai/Xycabin-Addins/archive/bfccdecb9bc3dab0af0030def01d1f9aac6a07ae.zip)；既有版本标签保持历史指向，自动 Source code 附件仍是旧标签源码 |
 | 验收边界 | 实际 WPS 点击、宿主交互、安装效果、焦点与跨屏待实机验收；本轮未安装、连接或关闭 WPS，未重置用户配置 |
 
+
+报表模板生成统一单体与合并入口：配置架构工作簿、工作表及序号／简称／全称／完整文件名列，两类模板及各自Lead名称与四个位置、输出目录。末级生成单体，父级生成合并并写入直系子公司，保留模板千分位等数字格式；字段位置重叠、输出重名、合并单元格及保护状态阻断。序号可带前导感叹号，文件名使用架构表原值。12个合并与59个单体仅为样本核对数量，不硬编码。正式DLL编译及184项模块离线检查通过；缺少固定签名证书，未发布安装包，真实模板与宿主交互待验收。
+
 # 三. WordUpdater 项目档案
 
 ## 1. 定位与输出

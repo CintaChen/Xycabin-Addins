@@ -88,6 +88,17 @@ namespace Excel_Iterate
             dynamic sheets = bag.Own(((dynamic)book).Worksheets);
             return bag.Own(sheets.Item(name));
         }
+        internal List<string[]> ReportRows(string name,int[] columns)
+        {
+            var result=new List<string[]>();using(var bag=new ComBag())
+            {dynamic sheet=Sheet(name,bag),used=bag.Own(sheet.UsedRange),rows=bag.Own(used.Rows);int last=Convert.ToInt32(used.Row)+Convert.ToInt32(rows.Count)-1;if(last>100000)throw new InvalidOperationException("架构表超过十万行，请整理实际数据范围。");object cells=bag.Own(sheet.Cells);
+             for(int r=1;r<=last;r++)result.Add(new[]{r.ToString(),Read(cells,r,columns[0]),Read(cells,r,columns[1]),Read(cells,r,columns[2]),Read(cells,r,columns[3])});}return result;
+        }
+        internal void ValidateReportArea(string name,MigrationArea area)
+        {
+            using(var bag=new ComBag()){dynamic sheet=Sheet(name,bag),range=bag.Own(sheet.Range[area.Address]);object merge=range.MergeCells,array=range.HasArray;
+            if(Convert.ToBoolean(sheet.ProtectContents)||merge==null||merge==DBNull.Value||Convert.ToBoolean(merge)||array==null||array==DBNull.Value||Convert.ToBoolean(array))throw new InvalidOperationException("Lead写入位置受保护或含合并、数组公式："+area.Address);}
+        }
         internal Dictionary<string, int> Headers(string name, int row)
         {
             using (var bag = new ComBag()) return HeadersOn(Sheet(name, bag), row);
@@ -357,6 +368,7 @@ namespace Excel_Iterate
                             if (outputBook == null || Convert.ToBoolean(((dynamic)outputBook).ReadOnly)) throw new InvalidOperationException("输出副本无法以可写方式打开。");
                             update(outputBook, request, record);
                             if (progress != null) progress("保存工作簿：" + Path.GetFileName(record.OutputPath));
+                            MigrationWindowScope.SetOwnedVisible(outputBook,true);
                             ((dynamic)outputBook).Save();
                             ((dynamic)outputBook).Close(false); closed = true;
                             if (progress != null) progress("重新打开并核验字段与工作表：" + Path.GetFileName(record.OutputPath));

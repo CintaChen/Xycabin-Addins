@@ -268,6 +268,7 @@ BUTTONS = [
                     {
                         "id": "btnCompanyWorkbooks",
                         "label": "单体模板生成",
+                        "hidden": True,
                         "builtin_icon": "table",
                         "screentip": "完整复制模板，按来源行命名并填写 Lead",
                         "supertip": "选择 xlsx/xls 模板，配置来源字段、数据行范围及 Lead 唯一写入行；预检后逐公司生成完整副本，保留原模板且不覆盖已有文件。可选只复制模式。",
@@ -276,10 +277,10 @@ BUTTONS = [
                     },
                     {
                         "id": "btnConsolidatedWorkbooks",
-                        "label": "合并模板生成",
+                        "label": "报表模板生成",
                         "builtin_icon": "table",
-                        "screentip": "按架构表为合并主体生成模板并填写Lead",
-                        "supertip": "选择合并模板和架构表，默认勾选有下属公司的主体；写入本部及全部直系子公司，保留公式，原文件不变，同名输出不覆盖。",
+                        "screentip": "按股权架构批量生成单体及合并报表模板",
+                        "supertip": "配置架构表四个字段、两类模板的Lead名称与四个写入位置、输出目录。末级生成单体，父级按直系子公司名单生成合并模板；保留模板数字格式，同名输出不覆盖。",
                         "action": "feature",
                         "callback": "OnConsolidatedWorkbooks",
                     },

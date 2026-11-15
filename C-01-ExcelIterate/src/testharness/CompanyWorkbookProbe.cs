@@ -16,6 +16,10 @@ internal static class CompanyWorkbookProbe
         try
         {
             BatchProgressChecks.Run(Check);
+            Check(ConsolidatedWorkbookForm.SequenceKey("！00-")=="0"&&ConsolidatedWorkbookForm.SequenceKey("!01-02-")=="1-2","report sequence prefix and hierarchy normalization");
+            var mapping=typeof(ConsolidatedWorkbookForm).GetMethod("Areas",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
+            var mapped=(MigrationArea[])mapping.Invoke(null,new object[]{"K3,L3,M3,N3",15,true});Check(mapped[0].Address=="K3:K17"&&mapped[3].Address=="N3:N17","report child row expansion");
+            bool collision=false;try{mapping.Invoke(null,new object[]{"L3,L3,M3,N3",15,true});}catch(System.Reflection.TargetInvocationException e){collision=e.InnerException is InvalidOperationException;}Check(collision,"report overlapping identity destinations rejected");
             BatchPresetChecks.Run(folder, Check);
             var tree = new List<CompanyStructureTask> {
                 new CompanyStructureTask{Row=3,Sequence="00-",Level="0级",FullName="总集团",FileName="00-总集团（合并）.xlsx"},
