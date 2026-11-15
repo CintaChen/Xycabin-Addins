@@ -145,7 +145,7 @@ namespace Excel_Iterate
                     task.Target=NotesLinkRules.Target(source,cfg.FirstStart,cfg.SecondStart,task.Slot);
                     if(facts.Arrays.Any(a=>NotesLinkRules.Intersects(a,task.Target)))throw new InvalidOperationException("目标含数组／溢出公式，不能安全覆盖。");
                     facts.ValidateNumberFormats(task.Target);
-                    NotesLinkRules.MapMerges(task,source,facts);
+                    NotesLinkRules.MapMerges(task,source,facts,NotesSheetFacts.Load(task.File,task.Sheet));
                     foreach(var block in task.Blocks.Concat(task.Anchors))for(int rowNumber=block.Row;rowNumber<block.Row+block.Rows;rowNumber++)for(int col=block.Column;col<block.Column+block.Columns;col++)if(facts.Snapshot.Value(rowNumber,col).Length==0)estimatedCells++;
                     if(estimatedCells>MigrationSheetSnapshot.CellLimit)throw new InvalidOperationException("预计结果Notes超过读取器60万非空单元格上限，请缩小行数或减少任务；本批未写入。");
                     for(int r=task.Target.Row;r<task.Target.Row+task.Target.Rows;r++)for(int c=task.Target.Column;c<task.Target.Column+task.Target.Columns;c++)if(facts.Occupied(r,c))task.Occupied++;
