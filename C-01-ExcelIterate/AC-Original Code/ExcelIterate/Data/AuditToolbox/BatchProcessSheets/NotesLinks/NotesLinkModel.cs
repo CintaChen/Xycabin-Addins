@@ -128,7 +128,7 @@ namespace Excel_Iterate
             }
             return result;
         }
-        internal static void MapMerges(NotesLinkTask task,MigrationArea source,NotesSheetFacts parent)
+        internal static void MapMerges(NotesLinkTask task,MigrationArea source,NotesSheetFacts parent,NotesSheetFacts sourceFacts=null)
         {
             var excluded=new bool[source.Rows,source.Columns];
             foreach(var merge in task.SourceMerges.Where(m=>Intersects(m,source)))
@@ -149,7 +149,15 @@ namespace Excel_Iterate
             {
                 if(!task.Target.Contains(merge))throw new InvalidOperationException("目标合并区域跨越公司边界或选区："+merge.Address);
                 var original=new MigrationArea{Row=source.Row+merge.Row-task.Target.Row,Column=source.Column+merge.Column-task.Target.Column,Rows=merge.Rows,Columns=merge.Columns};
-                if(!task.SourceMerges.Any(m=>Same(m,original)))throw new InvalidOperationException("目标合并区域会丢失多个来源值："+merge.Address);
+                if(!task.SourceMerges.Any(m=>Same(m,original)))
+                {
+                    bool empty=sourceFacts!=null;
+                    for(int r=original.Row;r<original.Row+original.Rows&&empty;r++)for(int c=original.Column;c<original.Column+original.Columns;c++)if(sourceFacts.Occupied(r,c)){empty=false;break;}
+                    if(!empty)throw new InvalidOperationException("目标合并结构与来源不一致：目标 "+merge.Address+" 对应来源 "+original.Address+"；来源含内容或公式，不能忽略来源格。");
+                    for(int r=merge.Row;r<merge.Row+merge.Rows;r++)for(int c=merge.Column;c<merge.Column+merge.Columns;c++)
+                    {if(r==merge.Row&&c==merge.Column)continue;excluded[r-task.Target.Row,c-task.Target.Column]=true;task.Skipped++;}
+                }
+
                 excluded[merge.Row-task.Target.Row,merge.Column-task.Target.Column]=true;
                 task.Anchors.Add(new MigrationArea{Row=merge.Row,Column=merge.Column,Rows=1,Columns=1});
             }
