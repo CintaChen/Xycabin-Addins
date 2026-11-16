@@ -52,15 +52,15 @@ namespace Excel_Iterate
             Row("处理方式",batchMode,addFolder,removeFiles);
             var chooseFolder=Ui.Button("选择文件夹",125);chooseFolder.Click+=delegate{string path=HostDialogService.Folder(this,"子公司工作簿所在目录",true);if(!string.IsNullOrEmpty(path))folder.Text=path;};
             Row("汇总文件",parent,chooseParent);Row("明细文件夹",folder,chooseFolder);
-            Row("工作表",Label("从明细文件取"),sourceSheet,SheetPick(sourceSheet,SampleFile),Label("放到汇总文件"),targetSheet,SheetPick(targetSheet,delegate{return parent.Text;}));
-            Row("每家取数范围",sourceRange,Pick("来源",SampleFile,SampleSheet,delegate(MigrationArea a){sourceRange.Text=a.Address;SyncRange();}));
-            Row("第一家放在",firstStart,Pick("第一起点",delegate{return parent.Text;},delegate{return targetSheet.Text;},delegate(MigrationArea a){TargetAnchor(a);firstStart.Text=CellAddress.Name(a.Row,a.Column);}));
+            Row("工作表",Label("从明细文件取"),sourceSheet,SheetPick(sourceSheet,SampleFile),Label("放到汇总文件"),targetSheet,SheetPick(targetSheet,ParentFileForPick));
+            Row("每家取数范围",sourceRange,Pick("明细取数范围",SampleFile,SampleSheet,delegate(MigrationArea a){sourceRange.Text=a.Address;SyncRange();},()=>sourceRange.Text,"在明细文件中选"));
+            Row("第一家放在",firstStart,Pick("汇总表放置起点",ParentFileForPick,delegate{return targetSheet.Text;},delegate(MigrationArea a){TargetAnchor(a);firstStart.Text=CellAddress.Name(a.Row,a.Column);},()=>firstStart.Text,"在汇总文件中选"));
             Row("列间距",columnSpacing,Label("相邻两家公司的起始列相差多少列。例：AV到BR填22，不是中间留空的列数。"));
             Row("放置预览",placementHint);
             var advanced=Ui.Button("高级设置 ▼",150);Row("",advanced);int advancedStart=settings.Controls.Count;
             Row("公司名单表",leadSheet);
-            Row("名单信息位置",Label("汇总公司编码在"),parentCode,Pick("父编码",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea a){Single(a);parentCode.Text=CellAddress.Name(a.Row,a.Column);}),Label("公司编码列"),codeColumn,ColumnPick(codeColumn),Label("公司名称列"),nameColumn,ColumnPick(nameColumn),Label("完整文件名列"),fileColumn,ColumnPick(fileColumn));
-            Row("名单从哪行读",Label("起始"),firstRow,Label("结束（0自动）"),lastRow,Pick("名单行",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea a){firstRow.Value=a.Row;lastRow.Value=a.Row+a.Rows-1;}),Label("默认N列为带编码的完整文件名，不使用O列的无编码文件名。"));
+            Row("名单信息位置",Label("汇总公司编码在"),parentCode,Pick("汇总公司编码",ParentFileForPick,delegate{return leadSheet.Text;},delegate(MigrationArea a){Single(a);parentCode.Text=CellAddress.Name(a.Row,a.Column);},()=>parentCode.Text,"选汇总公司编码"),Label("公司编码列"),codeColumn,ColumnPick(codeColumn),Label("公司名称列"),nameColumn,ColumnPick(nameColumn),Label("完整文件名列"),fileColumn,ColumnPick(fileColumn));
+            Row("名单从哪行读",Label("起始"),firstRow,Label("结束（0自动）"),lastRow,Pick("名单行",ParentFileForPick,delegate{return leadSheet.Text;},delegate(MigrationArea a){firstRow.Value=a.Row;lastRow.Value=a.Row+a.Rows-1;},()=>codeColumn.Text+firstRow.Value+":"+codeColumn.Text+(lastRow.Value==0?firstRow.Value:lastRow.Value),"选名单行"),Label("默认N列为带编码的完整文件名，不使用O列的无编码文件名。"));
             Row("每家取多少行",sourceRows,Label("与上方取数范围联动，例如D1:X1700共1700行。"));
             Row("批量特殊表格",batchConfirmed);
             var advancedRows=settings.Controls.Cast<Control>().Skip(advancedStart).ToArray();foreach(var item in advancedRows)item.Visible=false;advanced.Click+=delegate{bool expand=advanced.Text.EndsWith("▼");foreach(var item in advancedRows)item.Visible=expand;advanced.Text=expand?"高级设置 ▲":"高级设置 ▼";};
@@ -320,14 +320,24 @@ namespace Excel_Iterate
         private void TargetAnchor(MigrationArea area)
         {
             if(area.Rows==1&&area.Columns==1)return;
-            string sheet=NotesLinkRules.Resolve(DataMigrationHost.PackageSheets(parent.Text),targetSheet.Text);
-            if(!MigrationSheetSnapshot.Load(parent.Text,sheet).Merges.Any(m=>NotesLinkRules.Same(m,area)))throw new InvalidOperationException("起点请选择一个单元格或一个完整合并单元格。");
+            string sheet=NotesLinkRules.Resolve(DataMigrationHost.PackageSheets(ParentFileForPick()),targetSheet.Text);
+            if(!MigrationSheetSnapshot.Load(ParentFileForPick(),sheet).Merges.Any(m=>NotesLinkRules.Same(m,area)))throw new InvalidOperationException("起点请选择一个单元格或一个完整合并单元格。");
         }
         private static void Single(MigrationArea area){if(area.Rows!=1||area.Columns!=1)throw new InvalidOperationException("请选择一个单元格。");}
-        private RoundedButton ColumnPick(TextBox field){return Pick("Lead字段",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea area){if(area.Columns!=1)throw new InvalidOperationException("请选择单列中的单元格或区域。");field.Text=CellAddress.ColumnLetters(area.Column);});}
-        private RoundedButton Pick(string role,Func<string> file,Func<string> sheet,Action<MigrationArea> apply)
+        private RoundedButton ColumnPick(TextBox field){return Pick("名单字段列",ParentFileForPick,delegate{return leadSheet.Text;},delegate(MigrationArea area){if(area.Columns!=1)throw new InvalidOperationException("请选择单列中的单元格或区域。");field.Text=CellAddress.ColumnLetters(area.Column);},()=>field.Text+((int)firstRow.Value).ToString(),"选择此列");}
+        private string ParentFileForPick()
         {
-            var button=Ui.Button("在Excel中选择",130);button.Click+=delegate{Attempt(delegate{string path=file(),name=NotesLinkRules.Resolve(DataMigrationHost.PackageSheets(path),sheet());string address=null;bool previousTop=TopMost;TopMost=false;Hide();try{using(var host=new DataMigrationHost(Application))address=host.PickSourceRange(path,name,"A1",null,role,delegate(Action restore){MigrationForeground.Bring(MigrationForeground.ActiveFrame(Application,IntPtr.Zero));});}finally{TopMost=previousTop;Show();Activate();}if(address!=null)apply(MigrationArea.Parse(address));});};return button;
+            string path=parent.Text.Trim().Trim('"');
+            if(batchMode.Checked)
+            {
+                var current=SelectedBatchItem();path=NotesLinkBatch.PickerParent(Config(),batchItems,current==null?path:current.Parent);
+                loading=true;try{parent.Text=path;foreach(DataGridViewRow row in batchGrid.Rows)if(string.Equals(((NotesLinkBatchItem)row.Tag).Parent,path,StringComparison.OrdinalIgnoreCase)){batchGrid.CurrentCell=row.Cells[1];break;}}finally{loading=false;}
+            }
+            NotesLinkRules.RequireWorkbook(path);return path;
+        }
+        private RoundedButton Pick(string role,Func<string> file,Func<string> sheet,Action<MigrationArea> apply,Func<string> current=null,string caption=null)
+        {
+            var button=Ui.Button(caption??"在Excel中选择",145);button.Click+=delegate{Attempt(delegate{string path=file(),name=NotesLinkRules.Resolve(DataMigrationHost.PackageSheets(path),sheet());string initial=current==null?"A1":current();Append("选取"+role+"｜"+Path.GetFileName(path)+"｜"+name+"!"+initial);string address=null;bool previousTop=TopMost;TopMost=false;Hide();try{using(var host=new DataMigrationHost(Application))address=host.PickSourceRange(path,name,initial,null,role,delegate(Action restore){MigrationForeground.Bring(MigrationForeground.ActiveFrame(Application,IntPtr.Zero));restore();});}finally{TopMost=previousTop;Show();Activate();}if(address!=null)apply(MigrationArea.Parse(address));});};return button;
         }
         private RoundedButton Current(string role,Func<string> file,Func<string> expectedSheet,Action<MigrationArea> apply)
         {

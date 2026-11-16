@@ -236,13 +236,16 @@ namespace Excel_Iterate
                 }
             }
             catch (Exception) { }
-            if (ready != null)
-                ready(delegate
-                {
-                    if (string.IsNullOrEmpty(restore)) return;
-                    try { using (var bag = new ComBag()) { dynamic range = bag.Own(((dynamic)handle.Sheet).Range[restore]); range.Select(); } }
-                    catch (Exception) { }
-                });
+            Action restoreSelection = delegate
+            {
+                ((dynamic)handle.Book).Activate(); ((dynamic)handle.Sheet).Activate();
+                if (!string.IsNullOrEmpty(restore)) using (var bag = new ComBag())
+                { dynamic range = bag.Own(((dynamic)handle.Sheet).Range[restore]); range.Select(); }
+            };
+            if (ready != null) ready(restoreSelection);
+            // Foreground activation may switch an SDI host to the previous workbook.
+            // Rebind the exact requested book/sheet before showing the range picker.
+            restoreSelection();
             using (var refs = new ComBag())
             {
                 object chosen = picker != null ? picker(handle.Sheet) : ((dynamic)app).InputBox(

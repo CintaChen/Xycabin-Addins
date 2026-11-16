@@ -62,6 +62,27 @@ namespace Excel_Iterate
             foreach(var path in paths){string full=Path.GetFullPath(path);string name=Path.GetFileName(full),ext=Path.GetExtension(full);if(name.StartsWith("~$",StringComparison.Ordinal)||name.StartsWith(".xy-",StringComparison.OrdinalIgnoreCase))continue;if(!ext.Equals(".xlsx",StringComparison.OrdinalIgnoreCase)&&!ext.Equals(".xlsm",StringComparison.OrdinalIgnoreCase))continue;if(seen.Add(full))result.Add(full);}
             return result;
         }
+        internal static string PickerParent(NotesLinkConfig shared,IEnumerable<NotesLinkBatchItem> input,string preferred)
+        {
+            var selected=input.Where(i=>i.Selected).ToList();
+            if(selected.Count==0)throw new InvalidOperationException("请先在列表中勾选汇总文件，再选择参数位置。");
+            var ordered=selected.OrderBy(i=>string.Equals(i.Parent,preferred,StringComparison.OrdinalIgnoreCase)?0:1).ToList();
+            // Prepared plans already identify actual summary workbooks without reopening files.
+            var ready=ordered.FirstOrDefault(i=>i.Ready);if(ready!=null)return ready.Parent;
+            foreach(var item in ordered)
+            {
+                var cfg=shared.Copy();cfg.Parent=item.Parent;
+                try{if(NotesLinkRules.ReadLead(cfg).Count>0)return item.Parent;}catch(InvalidOperationException){}catch(IOException){}
+            }
+            // A mispicked header must still be correctable: only the reference-file
+            // identification uses the standard owner row, never the execution config.
+            foreach(var item in ordered)
+            {
+                var cfg=shared.Copy();cfg.Parent=item.Parent;cfg.ParentCodeCell=CellAddress.Name(2,MigrationPlanner.ColumnIndex(cfg.CodeColumn));
+                try{if(NotesLinkRules.ReadLead(cfg).Count>0)return item.Parent;}catch(InvalidOperationException){}catch(IOException){}
+            }
+            throw new InvalidOperationException("没有找到可用的汇总文件。请检查是否只添加了子公司明细文件，并核对Lead的编码列和名单起始行。");
+        }
         internal static List<NotesLinkBatchItem> Prepare(NotesLinkConfig shared,IEnumerable<NotesLinkBatchItem> input,bool confirmed,Action<string> log,Func<bool> cancelled,IDictionary<string,string> blockers=null)
         {
             var result=new List<NotesLinkBatchItem>();
@@ -73,6 +94,7 @@ namespace Excel_Iterate
                 {
                     string error;if(blockers!=null&&blockers.TryGetValue(item.Parent,out error))throw new InvalidOperationException(error);
                     var cfg=shared.Copy();cfg.Parent=item.Parent;
+                    if(log!=null)log(Path.GetFileName(item.Parent)+"｜名单设置："+cfg.LeadSheet+"；汇总公司编码在 "+cfg.ParentCodeCell+"；编码列 "+cfg.CodeColumn+"；从第 "+cfg.FirstRow+" 行读至 "+(cfg.LastRow==0?"末行（自动）":cfg.LastRow.ToString()));
                     var rows=NotesLinkRules.ReadLead(cfg);foreach(var row in rows)row.Confirmed=confirmed;
                     next.Plan=NotesLinkPlanner.Build(cfg,rows,message=>{if(log!=null)log(Path.GetFileName(item.Parent)+"｜"+message);},cancelled);
                     int blocked=next.Plan.Tasks.Count(t=>!t.Status.StartsWith("通过",StringComparison.Ordinal));
@@ -177,18 +199,27 @@ namespace Excel_Iterate
         {var list=Candidates(names,requested);if(list.Count!=1)throw new InvalidOperationException(list.Count==0?"找不到工作表“"+requested+"”，请手动选择。":"存在多个候选表，请明确选择："+string.Join("、",list));return list[0];}
         internal static bool IsDirect(string parent,string child)
         {string p=CompanyStructureTasks.Key(parent),c=CompanyStructureTasks.Key(child);if(p==c)return false;int dash=c.LastIndexOf('-');return p=="0"?dash<0:dash>=0&&c.Substring(0,dash)==p;}
+        internal static string LeadCodeKey(string value,string sheet,string address,bool parent)
+        {
+            try{return CompanyStructureTasks.Key(value);}
+            catch(InvalidOperationException error)
+            {
+                string display=string.IsNullOrEmpty(value)?"（空白）":string.Concat(value.Take(120).Select(c=>char.IsControl(c)||char.GetUnicodeCategory(c)==System.Globalization.UnicodeCategory.Format?"[不可见字符U+"+((int)c).ToString("X4")+"]":c.ToString()));
+                throw new InvalidOperationException(sheet+"!"+address+"："+(parent?"汇总公司编码":"公司编码")+"读到“"+display+"”。"+error.Message+(parent?" 请检查“汇总公司编码在”，通常填K2。":" 请检查“公司编码列”和“名单从哪行读”；名单不包含标题行，通常从第3行开始。"),error);
+            }
+        }
         internal static List<NotesLinkTask> ReadLead(NotesLinkConfig cfg)
         {
             RequireWorkbook(cfg.Parent);var names=DataMigrationHost.PackageSheets(cfg.Parent);string lead=Resolve(names,cfg.LeadSheet);
             var data=MigrationSheetSnapshot.Load(cfg.Parent,lead);var p=MigrationArea.Parse(cfg.ParentCodeCell);if(p.Rows!=1||p.Columns!=1)throw new InvalidOperationException("父公司编码应选择一个单元格。");
-            string parent=data.Value(p.Row,p.Column);CompanyStructureTasks.Key(parent);
+            string parent=data.Value(p.Row,p.Column);LeadCodeKey(parent,lead,CellAddress.Name(p.Row,p.Column),true);
             int code=MigrationPlanner.ColumnIndex(cfg.CodeColumn),name=MigrationPlanner.ColumnIndex(cfg.NameColumn),file=MigrationPlanner.ColumnIndex(cfg.FileColumn);
             int last=cfg.LastRow==0?Math.Min(data.MaxRow,100000):cfg.LastRow;var seen=new HashSet<string>();var result=new List<NotesLinkTask>();
             for(int row=cfg.FirstRow;row<=last;row++)
             {
                 if(row==p.Row)continue;string value=data.Value(row,code),filename=data.Value(row,file);
                 if(string.IsNullOrWhiteSpace(value)){if(!string.IsNullOrWhiteSpace(filename))throw new InvalidOperationException("Lead第"+row+"行有文件名但缺少编码，请检查列和名单范围。");continue;}
-                string key=CompanyStructureTasks.Key(value);if(!seen.Add(key))throw new InvalidOperationException("Lead编码重复："+value+"（第"+row+"行）。");
+                string key=LeadCodeKey(value,lead,CellAddress.Name(row,code),false);if(!seen.Add(key))throw new InvalidOperationException("Lead编码重复："+value+"（第"+row+"行）。");
                 if(!IsDirect(parent,value))continue;
                 var task=new NotesLinkTask{LeadRow=row,Slot=result.Count,Code=value,Name=data.Value(row,name)};
                 try{string safe=CompanyWorkbookRules.FileName(filename);if(Path.GetExtension(safe).Length==0)safe+=".xlsx";task.File=Path.Combine(cfg.Folder,safe);}

@@ -30,6 +30,10 @@ internal static class NotesLinksProbe
         var blocked=new NotesLinkBatchItem{Parent=Path.Combine(batchRoot,"bad.xlsx")};var uncheckedFile=node("unchecked.xlsx","leaf.xlsx");uncheckedFile.Selected=false;
         Check(NotesLinkBatch.Order(new[]{blocked,lower,uncheckedFile}).SequenceEqual(new[]{lower}),"blocked and unchecked batch files do not run");
         Reject(()=>NotesLinkBatch.Order(new[]{node("cycle-a.xlsx","cycle-b.xlsx"),node("cycle-b.xlsx","cycle-a.xlsx")}),"cycles among selected parent files blocked before writes");
+        try{NotesLinkRules.LeadCodeKey("编码","Lead","K1",false);throw new Exception("header should be rejected");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!K1")&&e.Message.Contains("编码")&&e.Message.Contains("标题行"),"invalid child code identifies its cell and header range remedy");}
+        try{NotesLinkRules.LeadCodeKey("","Lead","K1",true);throw new Exception("empty parent should be rejected");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!K1")&&e.Message.Contains("空白")&&e.Message.Contains("汇总公司编码在"),"invalid parent identity identifies its actual configured cell");}
+        try{NotesLinkRules.LeadCodeKey("03-\u200b","Lead","K3",false);throw new Exception("hidden marker should be rejected");}catch(InvalidOperationException e){Check(e.Message.Contains("U+200B"),"invisible character is made visible in the diagnostic instead of silently removed");}
+        Reject(()=>NotesLinkBatch.PickerParent(new NotesLinkConfig(),new[]{new NotesLinkBatchItem{Parent="unchecked.xlsx",Selected=false}},"unchecked.xlsx"),"parent picker does not use an unchecked file as a reference");
         var map=typeof(ConsolidatedWorkbookForm).GetMethod("Areas",BindingFlags.NonPublic|BindingFlags.Static);
         var planned=(MigrationArea[])map.Invoke(null,new object[]{"K3,L3,M3,N3",15,true});
         Check(planned[0].Address=="K3:K17"&&planned[3].Address=="N3:N17","report field anchors expand to actual child count");
@@ -148,6 +152,11 @@ internal static class NotesLinksProbe
         string first=make("批量两家公司",true),second=make("批量一家公司",false),fail=make("批量运行失败",false),missing=session.Output("批量缺失.xlsx");
         string firstHash=DataMigrationHost.Digest(first),secondHash=DataMigrationHost.Digest(second);
         var input=new[]{new NotesLinkBatchItem{Parent=missing},new NotesLinkBatchItem{Parent=fail},new NotesLinkBatchItem{Parent=first},new NotesLinkBatchItem{Parent=second}};
+        string childReference=Path.Combine(shared.Folder,"04-02-01-甲'公司.xlsx");
+        var referenceFiles=new[]{new NotesLinkBatchItem{Parent=childReference},new NotesLinkBatchItem{Parent=first},new NotesLinkBatchItem{Parent=second}};
+        Check(NotesLinkBatch.PickerParent(shared,referenceFiles,childReference)==first,"batch owner picker skips a selected child and resolves an actual summary workbook");
+        var mistakenHeader=shared.Copy();mistakenHeader.ParentCodeCell="K1";
+        Check(NotesLinkBatch.PickerParent(mistakenHeader,referenceFiles,childReference)==first&&mistakenHeader.ParentCodeCell=="K1","reference identification can recover from a wrong owner cell without changing execution settings");
         var prepared=NotesLinkBatch.Prepare(shared,input,false,Console.WriteLine,null);
         Check(prepared.Count==4&&prepared.Count(i=>i.Ready)==3&&!prepared[0].Ready,"batch preflight isolates missing parent without blocking valid files");
         Check(prepared.Single(i=>i.Parent==first).Plan.Tasks.Count==2&&prepared.Single(i=>i.Parent==second).Plan.Tasks.Count==1,"batch independently reads each parent company count under shared settings");
@@ -184,6 +193,7 @@ internal static class NotesLinksProbe
         {
             dynamic books=bag.Own(((dynamic)application).Workbooks),book=books.Add();bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
             dynamic sheets=bag.Own(book.Worksheets),notes=bag.Own(sheets.Item(1)),lead=bag.Own(sheets.Add());notes.Name="Notes";lead.Name="Lead";
+            ((dynamic)bag.Own(lead.Range["K1:N1"])).Value2=new object[,]{{"编码","简称","全称","文件名称"}};
             ((dynamic)bag.Own(lead.Range["K2:O6"])).Value2=new object[,]{{"04-02-","父公司","父公司","04-02-父公司（合并）.xlsx","父公司（合并）.xlsx"},{"04-02-01-","本部","本部",Path.GetFileName(a),"甲'公司.xlsx"},{"04-02-01-01-","孙公司","孙公司","孙公司.xlsx","孙公司.xlsx"},{"04-02-02-","缺少文件","缺少文件","04-02-02-缺少文件.xlsx","缺少文件.xlsx"},{"04-02-03-","乙公司","乙公司",Path.GetFileName(b),"乙.xlsx"}};
             ((dynamic)bag.Own(notes.Range["A1"])).Value2="范围外保留";((dynamic)bag.Own(notes.Range["AY1"])).Value2="公司间隔保留";((dynamic)bag.Own(notes.Range["AZ1"])).Value2="未勾选公司保留";
             ((dynamic)bag.Own(notes.Range["AV1"])).Value2=999;dynamic merge=bag.Own(notes.Range["AV2:AX2"]);merge.Merge();((dynamic)bag.Own(notes.Range["AV2"])).Value2="旧合并标题";
@@ -193,6 +203,13 @@ internal static class NotesLinksProbe
         }
         string original=DataMigrationHost.Digest(parent),sourceA=DataMigrationHost.Digest(a),sourceB=DataMigrationHost.Digest(b);
         var cfg=new NotesLinkConfig{Parent=parent,Folder=sources,SourceRange="D1:F4",FirstStart="AV1",ColumnSpacing=4};
+        var headerParent=cfg.Copy();headerParent.ParentCodeCell="K1";
+        try{NotesLinkRules.ReadLead(headerParent);throw new Exception("parent header must fail");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!K1")&&e.Message.Contains("汇总公司编码"),"production Lead reader locates wrong parent cell");}
+        var headerRange=cfg.Copy();headerRange.FirstRow=1;
+        try{NotesLinkRules.ReadLead(headerRange);throw new Exception("header row must fail");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!K1")&&e.Message.Contains("标题行"),"production Lead reader locates header included in company range");}
+        var wrongColumn=cfg.Copy();wrongColumn.CodeColumn="M";
+        try{NotesLinkRules.ReadLead(wrongColumn);throw new Exception("name column must fail");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!M3")&&e.Message.Contains("本部"),"production Lead reader locates company name mistaken for code");}
+
         var rows=NotesLinkRules.ReadLead(cfg);Check(rows.Count==3&&rows[0].Slot==0&&rows[2].Slot==2&&rows.All(t=>t.Code!="04-02-01-01-"),"Lead reader keeps direct order including body and excludes grandchild");
         var bad=NotesLinkPlanner.Build(cfg,rows,Console.WriteLine,null);Check(bad.Tasks.Count(t=>t.Status.StartsWith("阻止"))==1,"missing source reported in preflight");Check(DataMigrationHost.Digest(parent)==original,"preflight does not modify parent");
         rows[1].Selected=false;Func<NotesLinkPlan> prepare=()=>NotesLinkPlanner.Build(cfg,rows,Console.WriteLine,null);
@@ -207,6 +224,21 @@ internal static class NotesLinksProbe
         using(var sampleRefs=new ComBag()){dynamic books=sampleRefs.Own(((dynamic)application).Workbooks),sampleBook=sampleRefs.Own(books.Open(parent,0,true));try{dynamic sheets=sampleRefs.Own(sampleBook.Worksheets),tab=sampleRefs.Own(sheets.Item("Notes")),cell=sampleRefs.Own(tab.Range["AV4"]);originalAmountFormat=Convert.ToString(cell.NumberFormat);}finally{sampleBook.Close(false);}}
         object openSource;bool sourceClosed=false;
         using(var bag=new ComBag()){dynamic books=bag.Own(((dynamic)application).Workbooks);openSource=books.Open(a,0,false);session.Own(openSource,delegate{if(!sourceClosed)((dynamic)openSource).Close(false);});}
+        using(var pickerHost=new DataMigrationHost(application))
+        {
+            string selected=pickerHost.PickSourceRange(parent,"Lead","K2",target=>
+            {
+                using(var chosenRefs=new ComBag())
+                {
+                    dynamic activeSheet=chosenRefs.Own(((dynamic)application).ActiveSheet),selection=chosenRefs.Own(((dynamic)application).Selection);
+                    Check(WorksheetIdentity.SameObject((object)activeSheet,target),"picker reactivates exact parent worksheet after foreground callback activates child");
+                    Check(Convert.ToInt32(selection.Row)==2&&Convert.ToInt32(selection.Column)==11,"owner picker starts on K2 instead of header A1");
+                }
+                return ((dynamic)target).Range["K2"];
+            },"汇总公司编码",restore=>{((dynamic)openSource).Activate();using(var one=new ComBag()){dynamic sheets=one.Own(((dynamic)openSource).Worksheets),tab=one.Own(sheets.Item(1));tab.Activate();}});
+            Check(selected=="K2:K2","parent range selection returns owner cell coordinates");
+        }
+        Check(DataMigrationHost.Digest(parent)==original&&DataMigrationHost.Digest(a)==sourceA,"owner parameter picking does not modify parent or child files");
         using(var execution=new NotesLinkExecution(application,plan,Console.WriteLine))
         {
             foreach(var message in execution.Run()){Console.WriteLine(message);Check(Hidden(execution),"worker remains invisible");}
