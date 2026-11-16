@@ -7,7 +7,7 @@ using System.Linq;
 namespace Excel_Iterate
 {
     // STA iterator: UI gets control between bounded formula blocks. The parent
-    // on disk changes only after close/reopen verification and atomic commit.
+    // on disk changes only after saving the private copy and atomic commit.
     internal sealed class NotesLinkExecution : IDisposable
     {
         private readonly NotesLinkPlan plan;
@@ -57,72 +57,10 @@ namespace Excel_Iterate
         private void Close()
         {if(book!=null&&!closed){((dynamic)book).Close(false);closed=true;book=null;sheet=null;}}
         private IEnumerable<MigrationArea> Chunks(MigrationArea area)
-        {for(int r=0;r<area.Rows;r+=128)yield return new MigrationArea{Row=area.Row+r,Column=area.Column,Rows=Math.Min(128,area.Rows-r),Columns=area.Columns};}
+        {for(int r=0;r<area.Rows;r+=512)yield return new MigrationArea{Row=area.Row+r,Column=area.Column,Rows=Math.Min(512,area.Rows-r),Columns=area.Columns};}
         private object[,] Matrix(NotesLinkTask task,MigrationArea area)
         {
             return DataMigrationEngine.LinkMatrix(task.File,task.Sheet,plan.Source.Row+area.Row-task.Target.Row,plan.Source.Column+area.Column-task.Target.Column,area.Rows,area.Columns);
-        }
-        private void Format(MigrationArea area)
-        {
-            using(var bag=new ComBag())
-            {
-                dynamic range=bag.Own(((dynamic)sheet).Range[area.Address]);object uniform=range.NumberFormat;
-                if(uniform!=null&&uniform!=DBNull.Value){range.NumberFormat=NotesLinkRules.ZeroFormat(Convert.ToString(uniform));return;}
-            }
-            // Preserve border/font/alignment styles. Group format operations by
-            // original package style instead of fetching every cell through COM.
-            var groups=new Dictionary<int,List<MigrationArea>>();
-            for(int r=area.Row;r<area.Row+area.Rows;r++)for(int c=area.Column;c<area.Column+area.Columns;)
-            {
-                int style=plan.Original.Style(r,c),start=c++;while(c<area.Column+area.Columns&&plan.Original.Style(r,c)==style)c++;
-                List<MigrationArea> list;if(!groups.TryGetValue(style,out list))groups[style]=list=new List<MigrationArea>();list.Add(new MigrationArea{Row=r,Column=start,Rows=1,Columns=c-start});
-            }
-            foreach(var group in groups.Values)
-            {
-                string expected=null;
-                var chunks=new List<string>();string joined="";
-                foreach(var run in group){string item=run.Address;if(joined.Length+item.Length+1>200){chunks.Add(joined);joined="";}joined+=joined.Length==0?item:","+item;}if(joined.Length>0)chunks.Add(joined);
-                foreach(var address in chunks)using(var bag=new ComBag())
-                {
-                    dynamic range=bag.Own(((dynamic)sheet).Range[address]);object format=range.NumberFormat;
-                    if(format==null||format==DBNull.Value)throw new InvalidOperationException("无法安全处理混合数字格式："+address);
-                    string actual=Convert.ToString(format);if(expected==null)expected=actual;else if(actual!=expected)throw new InvalidOperationException("目标有效样式与预检不一致："+address);
-                }
-                string desired=NotesLinkRules.ZeroFormat(expected);
-                foreach(var address in chunks)using(var bag=new ComBag()){dynamic range=bag.Own(((dynamic)sheet).Range[address]);range.NumberFormat=desired;}
-            }
-        }
-        private void Verify(NotesLinkTask task,MigrationArea area,bool values)
-        {
-            using(var bag=new ComBag())
-            {
-                dynamic range=bag.Own(((dynamic)sheet).Range[area.Address]);object actual=range.Formula;var expected=Matrix(task,area);
-                for(int r=0;r<area.Rows;r++)for(int c=0;c<area.Columns;c++)
-                {
-                    if(!string.Equals(Convert.ToString(SummaryArrays.Pick(actual,r,area.Rows,c,area.Columns)),Convert.ToString(expected[r,c]),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("公式读回不一致："+CellAddress.Name(area.Row+r,area.Column+c));
-                }
-                // Some hosts return an unreliable aggregate HasFormula for a rectangle.
-                // Formula text equality above is necessary but cannot distinguish formula-looking text.
-                // Count actual formula cells through the native cell-type query as an independent check.
-                object formula=range.HasFormula;
-                if(!(formula is bool && (bool)formula))
-                {
-                    object formulas=null;
-                    try{formulas=bag.Own(range.SpecialCells(-4123));}
-                    catch(Exception error){throw new InvalidOperationException("无法确认公式单元格类型："+area.Address+"；"+error.Message,error);}
-                    dynamic intersection=bag.Own(((dynamic)hidden.Application).Intersect(range,formulas));
-                    if(intersection==null)throw new InvalidOperationException("区域中未找到真实公式："+area.Address);
-                    dynamic cells=bag.Own(intersection.Cells);
-                    if(Convert.ToInt64(cells.Count)!=(long)area.Rows*area.Columns)throw new InvalidOperationException("区域公式数量不足："+area.Address+"；应有 "+((long)area.Rows*area.Columns)+"，实际 "+Convert.ToInt64(cells.Count));
-                }
-                if(values)
-                {
-                    object data=range.Value2;var errors=new System.Text.StringBuilder();
-                    for(int r=0;r<area.Rows;r++)for(int c=0;c<area.Columns;c++)
-                    {object value=SummaryArrays.Pick(data,r,area.Rows,c,area.Columns);if(SummaryAreaEngine.IsError(value)){ValueErrors++;errors.AppendLine("数值异常｜"+task.Name+"｜"+plan.TargetSheet+"!"+CellAddress.Name(area.Row+r,area.Column+c)+"｜"+NotesLinkRules.ErrorText(value));}}
-                    if(errors.Length>0)log(errors.ToString().TrimEnd());
-                }
-            }
         }
         private void RestoreGeometry()
         {
@@ -154,46 +92,35 @@ namespace Excel_Iterate
             if(DataMigrationHost.Digest(PreBackup)!=plan.ParentHash)throw new InvalidOperationException("执行前备份核验失败，未写入父公司。");
             stage=Path.Combine(Path.GetDirectoryName(plan.Config.Parent),".xy-notes-"+Guid.NewGuid().ToString("N")+Path.GetExtension(plan.Config.Parent));manifest=Path.Combine(directory,"session.json");
             File.Copy(PreBackup,stage,false);File.SetAttributes(stage,FileAttributes.Normal);Record("Prepared");yield return "已建立执行前备份："+PreBackup;
-            Check();hidden=new HiddenWorkbookApplication(sourceApp);Open(false);Record("Writing");
+            Check();hidden=new HiddenWorkbookApplication(sourceApp);Open(false);
+            dynamic worker=hidden.Application;worker.Calculation=-4135;worker.CalculateBeforeSave=false;Record("Writing");
             plan.Original.StandardHeight=Convert.ToDouble(((dynamic)sheet).StandardHeight);plan.Original.StandardWidth=Convert.ToDouble(((dynamic)sheet).StandardWidth);
             foreach(var task in plan.Tasks)
             {
                 Check();if(DataMigrationHost.Digest(task.File)!=task.Hash)throw new InvalidOperationException("来源文件在预检后变化："+task.File);
                 task.Status="执行中";yield return "开始："+task.Code+task.Name+" → "+plan.TargetSheet+"!"+task.Target.Address;
+                var refresh=System.Diagnostics.Stopwatch.StartNew();
                 foreach(var part in task.Blocks.Concat(task.Anchors))foreach(var chunk in Chunks(part))
                 {
-                    Check();Format(chunk);
+                    Check();
                     using(var bag=new ComBag()){dynamic range=bag.Own(((dynamic)sheet).Range[chunk.Address]);DataMigrationEngine.AssignFormula((object)range,Matrix(task,chunk));}
-                    Verify(task,chunk,false);FormulaWrites+=chunk.Rows*chunk.Columns;yield return "写入："+task.Name+"｜"+chunk.Address+"｜累计公式 "+FormulaWrites;
+                    FormulaWrites+=chunk.Rows*chunk.Columns;
+                    if(refresh.ElapsedMilliseconds>=200){yield return "粘贴链接："+task.Name+"｜累计 "+FormulaWrites+" 格";refresh.Restart();}
                     if(FailureForProbe!=null&&FailureForProbe(FormulaWrites))throw new InvalidOperationException("测试注入的写入异常。");
                 }
-                Completed++;task.Status="公式已写入";
+                Completed++;task.Status="链接已粘贴";yield return "已粘贴："+task.Name+"｜累计 "+FormulaWrites+" 格";
             }
-            foreach(var task in plan.Tasks)
-            {
-                Check();yield return "更新链接："+task.Name;
-                try{((dynamic)book).UpdateLink(task.File,1);log("链接更新完成："+task.Name);}catch(Exception error){LinkWarnings++;log("链接更新警告："+task.Name+"｜"+error.Message);}
-            }
-            Check();yield return "正在重算并保存临时副本…";
-            try{((dynamic)sheet).Calculate();}catch(Exception error){LinkWarnings++;log("计算警告（保留真实公式）："+error.Message);}
-            RestoreGeometry();var macros=DataMigrationHost.MacroFingerprints(plan.Config.Parent);((dynamic)book).Save();Close();
-            CheckParent();
-            if(!DataMigrationHost.PackageSheets(stage).SequenceEqual(DataMigrationHost.PackageSheets(plan.Config.Parent)))throw new InvalidOperationException("副本工作表名称或顺序发生变化，未交付。");
-            var afterMacros=DataMigrationHost.MacroFingerprints(stage);if(!macros.OrderBy(x=>x.Key).SequenceEqual(afterMacros.OrderBy(x=>x.Key)))throw new InvalidOperationException("VBA内容发生变化，未交付。");
-            Record("Saved");yield return "重开副本核验公式、合并结构及样式…";Open(true);
-            var facts=NotesSheetFacts.Load(stage,plan.TargetSheet);facts.StandardWidth=Convert.ToDouble(((dynamic)sheet).StandardWidth);facts.StandardHeight=Convert.ToDouble(((dynamic)sheet).StandardHeight);facts.VerifyAgainst(plan.Original,plan.Tasks);
-            var links=((dynamic)book).LinkSources(1) as Array;
-            if(links!=null&&links.Cast<object>().Any(x=>Convert.ToString(x).IndexOf(Path.GetFileName(stage),StringComparison.OrdinalIgnoreCase)>=0))throw new InvalidOperationException("检测到指向临时副本的外链，未交付。");
-            foreach(var task in plan.Tasks)foreach(var part in task.Blocks.Concat(task.Anchors))foreach(var chunk in Chunks(part)){Check();Verify(task,chunk,true);yield return "核验："+task.Name+"｜"+chunk.Address;}
-            Close();foreach(var task in plan.Tasks)if(DataMigrationHost.Digest(task.File)!=task.Hash)throw new InvalidOperationException("来源文件在执行期间变化，未更新父公司："+task.File);
-            CheckParent();Record("Verified");yield return "核验完成，即将备份后更新父公司原文件…";CheckParent();
+            Check();yield return "正在保存链接，不更新外链或重新计算…";
+            RestoreGeometry();((dynamic)book).Save();Close();Record("Saved");
+            foreach(var task in plan.Tasks)if(DataMigrationHost.Digest(task.File)!=task.Hash)throw new InvalidOperationException("来源文件在执行期间变化，未更新汇总文件："+task.File);
+            CheckParent();yield return "链接已保存，即将更新汇总文件…";CheckParent();
             string verifiedHash=DataMigrationHost.Digest(stage);
             try{Backup=MigrationOutputTransaction.Commit(stage,plan.Config.Parent,plan.ParentHash,batch);}
             catch(Exception error){log("提交中止，请检查父公司及恢复记录："+manifest+"｜"+error.Message);throw;}
             Committed=true;CommittedHash=verifiedHash;
             try{Record("Committed");}catch(Exception error){log("父公司已更新，但提交记录写入失败；恢复备份："+Backup+"｜"+error.Message);}
-            foreach(var task in plan.Tasks)task.Status=LinkWarnings>0||ValueErrors>0?"已更新（有链接／数值警告）":"已更新";
-            yield return "已更新父公司｜公式 "+FormulaWrites+"；链接警告 "+LinkWarnings+"；数值异常 "+ValueErrors+"；恢复备份："+Backup;
+            foreach(var task in plan.Tasks)task.Status="链接已粘贴";
+            yield return "已更新汇总文件｜粘贴链接 "+FormulaWrites+" 格；未更新外链或检查数值；恢复备份："+Backup;
         }
         public void Dispose()
         {

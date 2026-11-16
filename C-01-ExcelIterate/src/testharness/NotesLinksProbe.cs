@@ -21,6 +21,15 @@ internal static class NotesLinksProbe
         Reject(()=>CompanyStructureTasks.Key("！"),"marker without a numeric code rejected");
         var marked=new CompanyStructureTask{Sequence="！03-08-01-",FileName="!03-08-01-sample.xlsx"};CompanyStructureTasks.Key(marked.Sequence);
         Check(marked.Sequence=="！03-08-01-"&&marked.FileName=="!03-08-01-sample.xlsx","comparison normalization preserves original code and file name");
+        string batchRoot=Path.Combine(Path.GetTempPath(),"notes-batch-unit");
+        var files=NotesLinkBatch.Files(new[]{Path.Combine(batchRoot,"parent.xlsx"),Path.Combine(batchRoot,"PARENT.xlsx"),Path.Combine(batchRoot,"~$lock.xlsx"),Path.Combine(batchRoot,".xy-notes-stage.xlsx"),Path.Combine(batchRoot,"source.txt"),Path.Combine(batchRoot,"other.xlsm")});
+        Check(files.Count==2&&files[1].EndsWith("other.xlsm"),"batch file selection deduplicates paths and excludes locks staging and non-workbooks");
+        Func<string,string,NotesLinkBatchItem> node=(file,sourceFile)=>{var plan=new NotesLinkPlan{Config=new NotesLinkConfig{Parent=Path.Combine(batchRoot,file)}};plan.Tasks.Add(new NotesLinkTask{Status="通过",File=Path.Combine(batchRoot,sourceFile)});return new NotesLinkBatchItem{Parent=plan.Config.Parent,Plan=plan};};
+        var lower=node("child.xlsx","leaf.xlsx");var upper=node("parent.xlsx","child.xlsx");
+        Check(NotesLinkBatch.Order(new[]{lower,upper}).SequenceEqual(new[]{upper,lower}),"batch processes a selected parent before its source workbook to avoid stale hashes");
+        var blocked=new NotesLinkBatchItem{Parent=Path.Combine(batchRoot,"bad.xlsx")};var uncheckedFile=node("unchecked.xlsx","leaf.xlsx");uncheckedFile.Selected=false;
+        Check(NotesLinkBatch.Order(new[]{blocked,lower,uncheckedFile}).SequenceEqual(new[]{lower}),"blocked and unchecked batch files do not run");
+        Reject(()=>NotesLinkBatch.Order(new[]{node("cycle-a.xlsx","cycle-b.xlsx"),node("cycle-b.xlsx","cycle-a.xlsx")}),"cycles among selected parent files blocked before writes");
         var map=typeof(ConsolidatedWorkbookForm).GetMethod("Areas",BindingFlags.NonPublic|BindingFlags.Static);
         var planned=(MigrationArea[])map.Invoke(null,new object[]{"K3,L3,M3,N3",15,true});
         Check(planned[0].Address=="K3:K17"&&planned[3].Address=="N3:N17","report field anchors expand to actual child count");
@@ -93,6 +102,20 @@ internal static class NotesLinksProbe
             Func<string,object> field=n=>typeof(NotesLinksForm).GetField(n,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(form);
             var range=(System.Windows.Forms.TextBox)field("sourceRange");var rows=(System.Windows.Forms.NumericUpDown)field("sourceRows");
             range.Text="E3:Y102";Check(rows.Value==100,"manual source range synchronizes row count");rows.Value=200;Check(range.Text=="E3:Y202","advanced row count preserves source columns and first row");
+            ((System.Windows.Forms.CheckBox)field("batchMode")).Checked=true;
+            typeof(NotesLinksForm).GetMethod("AddBatchFiles",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(form,new object[]{new[]{Path.Combine(Path.GetTempPath(),"sample-parent.xlsx"),Path.Combine(Path.GetTempPath(),"sample-other.xlsx")}});
+            var batchGrid=(System.Windows.Forms.DataGridView)field("batchGrid");
+            Check(batchGrid.Rows.Count==2&&batchGrid.Columns.Count==5,"batch form lists selected files with count status and backup columns");
+            Check(((System.Windows.Forms.TextBox)field("parent")).ReadOnly,"batch shared parameters cannot accidentally rename the selected parent path");
+            var items=(List<NotesLinkBatchItem>)field("batchItems");foreach(var item in items){item.Plan=new NotesLinkPlan{Config=new NotesLinkConfig{Parent=item.Parent}};item.Plan.Tasks.Add(new NotesLinkTask{Status="通过",File=Path.Combine(Path.GetTempPath(),"leaf.xlsx")});}
+            var batchKey=typeof(NotesLinksForm).GetMethod("BatchKey",BindingFlags.Instance|BindingFlags.NonPublic);
+            typeof(NotesLinksForm).GetField("batchPreparedKey",BindingFlags.Instance|BindingFlags.NonPublic).SetValue(form,batchKey.Invoke(form,null));
+            typeof(NotesLinksForm).GetMethod("SetBusy",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(form,new object[]{false});
+            Check(((System.Windows.Forms.Button)field("execute")).Enabled,"batch execution enables only with matching preflight settings");
+            ((System.Windows.Forms.NumericUpDown)field("columnSpacing")).Value=23;
+            Check(!((System.Windows.Forms.Button)field("execute")).Enabled,"changing shared spacing invalidates the whole prepared batch");
+
+
         }
 
     }
@@ -108,6 +131,44 @@ internal static class NotesLinksProbe
             dynamic fullWidth=bag.Own(sheet.Range["D"+(10+mergeRow)+":X"+(10+mergeRow)]);fullWidth.Merge();((dynamic)bag.Own(sheet.Range["D"+(10+mergeRow)])).Value2="横跨D至X的标题";
             book.SaveAs(path,51);book.Close(false);closed=true;
         }
+    }
+    private static void BatchLive(object application,ProbeSession session,string template,NotesLinkConfig shared)
+    {
+        Func<string,bool,string> make=(name,two)=>
+        {
+            string path=session.Output(name+".xlsx");File.Copy(template,path);
+            using(var bag=new ComBag())
+            {
+                dynamic books=bag.Own(((dynamic)application).Workbooks),book=books.Open(path,0,false);bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+                try{dynamic sheets=bag.Own(book.Worksheets),lead=bag.Own(sheets.Item("Lead"));((dynamic)bag.Own(lead.Range["K5:O5"])).ClearContents();if(!two)((dynamic)bag.Own(lead.Range["K6:O6"])).ClearContents();book.Save();}
+                finally{book.Close(false);closed=true;}
+            }
+            return path;
+        };
+        string first=make("批量两家公司",true),second=make("批量一家公司",false),fail=make("批量运行失败",false),missing=session.Output("批量缺失.xlsx");
+        string firstHash=DataMigrationHost.Digest(first),secondHash=DataMigrationHost.Digest(second);
+        var input=new[]{new NotesLinkBatchItem{Parent=missing},new NotesLinkBatchItem{Parent=fail},new NotesLinkBatchItem{Parent=first},new NotesLinkBatchItem{Parent=second}};
+        var prepared=NotesLinkBatch.Prepare(shared,input,false,Console.WriteLine,null);
+        Check(prepared.Count==4&&prepared.Count(i=>i.Ready)==3&&!prepared[0].Ready,"batch preflight isolates missing parent without blocking valid files");
+        Check(prepared.Single(i=>i.Parent==first).Plan.Tasks.Count==2&&prepared.Single(i=>i.Parent==second).Plan.Tasks.Count==1,"batch independently reads each parent company count under shared settings");
+        Check(DataMigrationHost.Digest(first)==firstHash&&DataMigrationHost.Digest(second)==secondHash,"unified batch preflight does not modify parent workbooks");
+        File.AppendAllText(fail,"changed-after-preflight");string failedHash=DataMigrationHost.Digest(fail);
+        var run=new NotesLinkBatchRun(application,prepared,Console.WriteLine);foreach(string message in run.Run())Console.WriteLine(message);
+        Check(run.Succeeded==2&&run.Failed==1&&run.Completed==3,"runtime failure continues to the next valid parent");
+        Check(DataMigrationHost.Digest(fail)==failedHash,"failed batch parent is not overwritten");
+        Check(prepared.Where(i=>i.Parent==first||i.Parent==second).All(i=>File.Exists(i.Backup)&&!string.IsNullOrEmpty(i.CommittedHash)),"each successful parent retains an independent recovery backup");
+        using(var bag=new ComBag())
+        {
+            dynamic books=bag.Own(((dynamic)application).Workbooks),book=books.Open(second,0,true);bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+            try{dynamic sheets=bag.Own(book.Worksheets),tab=bag.Own(sheets.Item("Notes"));Check(Convert.ToBoolean(((dynamic)bag.Own(tab.Range["AV1"])).HasFormula),"single-company batch output contains real link formula");Check(Convert.ToString(((dynamic)bag.Own(tab.Range["AZ1"])).Value2)=="未勾选公司保留","smaller company count cannot inherit the preceding parent write range");}
+            finally{book.Close(false);closed=true;}
+        }
+        var saved=prepared.Single(i=>i.Parent==first);MigrationOutputTransaction.Restore(first,saved.Backup,saved.CommittedHash);Check(DataMigrationHost.Digest(first)==firstHash,"one batch parent can be restored independently");
+        string cancelFirst=make("批量停止前完成",false),cancelNext=make("批量停止未执行",true),nextHash=DataMigrationHost.Digest(cancelNext);
+        var cancelPlans=NotesLinkBatch.Prepare(shared,new[]{new NotesLinkBatchItem{Parent=cancelFirst},new NotesLinkBatchItem{Parent=cancelNext}},false,Console.WriteLine,null);
+        var stopping=new NotesLinkBatchRun(application,cancelPlans,Console.WriteLine);foreach(string message in stopping.Run()){if(stopping.Succeeded==1)stopping.Cancelled=true;}
+        Check(stopping.Succeeded==1&&stopping.Failed==0&&DataMigrationHost.Digest(cancelNext)==nextHash,"stop between parents retains prior commit and leaves remaining file untouched");
+        Check(cancelPlans[1].Status.StartsWith("未执行"),"unstarted batch file has an explicit stopped status");
     }
     private static bool Hidden(NotesLinkExecution execution)
     {
@@ -142,14 +203,15 @@ internal static class NotesLinksProbe
         var structureCheck=NotesLinkPlanner.Build(noMarker,rows,Console.WriteLine,null);Check(structureCheck.Tasks.All(t=>t.Status.StartsWith("阻止")),"missing full-width structural marker requires explicit confirmation");
         var confirmed=rows.Select(t=>t.Copy()).ToList();foreach(var item in confirmed)item.Confirmed=true;
         Check(NotesLinkPlanner.Build(noMarker,confirmed,Console.WriteLine,null).Tasks.All(t=>t.Status.StartsWith("通过")),"manual structure confirmation allows a customized source range");
-        string backup,committedHash;
+        string backup,committedHash;string originalAmountFormat;
+        using(var sampleRefs=new ComBag()){dynamic books=sampleRefs.Own(((dynamic)application).Workbooks),sampleBook=sampleRefs.Own(books.Open(parent,0,true));try{dynamic sheets=sampleRefs.Own(sampleBook.Worksheets),tab=sampleRefs.Own(sheets.Item("Notes")),cell=sampleRefs.Own(tab.Range["AV4"]);originalAmountFormat=Convert.ToString(cell.NumberFormat);}finally{sampleBook.Close(false);}}
         object openSource;bool sourceClosed=false;
         using(var bag=new ComBag()){dynamic books=bag.Own(((dynamic)application).Workbooks);openSource=books.Open(a,0,false);session.Own(openSource,delegate{if(!sourceClosed)((dynamic)openSource).Close(false);});}
         using(var execution=new NotesLinkExecution(application,plan,Console.WriteLine))
         {
             foreach(var message in execution.Run()){Console.WriteLine(message);Check(Hidden(execution),"worker remains invisible");}
             Check(execution.Committed&&execution.FormulaWrites>0,"complete verified result committed");backup=execution.Backup;committedHash=execution.CommittedHash;
-            Check(execution.ValueErrors>0&&execution.LinkWarnings==0,"source calculation errors are reported separately from successful formula and link writes");
+            Check(execution.ValueErrors==0&&execution.LinkWarnings==0,"paste-only execution skips link refresh and value inspection");
             Check(File.Exists(execution.PreBackup)&&File.Exists(backup)&&DataMigrationHost.Digest(backup)==original,"pre-execution and atomic-commit backups preserve original bytes");
         }
         Check(Convert.ToBoolean(((dynamic)openSource).Saved)&&Convert.ToString(((dynamic)openSource).FullName)==a,"an already-open saved source remains open and unmodified");((dynamic)openSource).Close(false);sourceClosed=true;
@@ -160,8 +222,8 @@ internal static class NotesLinksProbe
             Check(Convert.ToString(((dynamic)bag.Own(notes.Range["BD1"])).Formula)==DataMigrationEngine.SourceLink(b,"nOtEs",1,4),"last company written under original fixed slot");
             Check(Convert.ToBoolean(((dynamic)bag.Own(notes.Range["AV2"])).MergeCells)&&!Convert.ToBoolean(((dynamic)bag.Own(notes.Range["AW2"])).HasFormula),"existing merge kept and follower not assigned a formula");
             Check(Convert.ToString(((dynamic)bag.Own(notes.Range["AY1"])).Value2)=="公司间隔保留"&&Convert.ToString(((dynamic)bag.Own(notes.Range["AZ1"])).Value2)=="未勾选公司保留"&&Convert.ToString(((dynamic)bag.Own(notes.Range["A1"])).Value2)=="范围外保留","gap unchecked company and outside cells untouched");
-            Check(Convert.ToString(((dynamic)bag.Own(notes.Range["AV4"])).Text)=="-"&&Convert.ToDouble(((dynamic)bag.Own(notes.Range["AV4"])).Value2)==0,"linked zero displays dash while keeping numeric zero");
-            Check(Convert.ToString(((dynamic)bag.Own(notes.Range["AW4"])).Text)=="-1,234.50"&&Convert.ToString(((dynamic)bag.Own(notes.Range["AX4"])).NumberFormat)=="0.00%","negative amount and percent display preserved");
+            Check(Convert.ToString(((dynamic)bag.Own(notes.Range["AV4"])).NumberFormat)==originalAmountFormat,"paste-only execution keeps original numeric format");
+            Check(Convert.ToString(((dynamic)bag.Own(notes.Range["AX4"])).NumberFormat)=="0.00%","negative amount and percent display preserved");
             Check(Convert.ToDouble(((dynamic)bag.Own(notes.Range["AV:AV"])).ColumnWidth)==18&&Convert.ToDouble(((dynamic)bag.Own(notes.Range["4:4"])).RowHeight)==24,"row height and column width unchanged");book.Close(false);closed=true;
         }
         MigrationOutputTransaction.Restore(parent,backup,committedHash);Check(DataMigrationHost.Digest(parent)==original,"restore recovers original parent byte for byte");
@@ -192,6 +254,7 @@ internal static class NotesLinksProbe
         {try{foreach(var ignored in execution.Run())if(execution.FormulaWrites>0)execution.Cancelled=true;}catch(OperationCanceledException){cancelled=true;}}
         Check(cancelled&&DataMigrationHost.Digest(parent)==original,"cancellation after first block discards all partial writes");
         Check(DataMigrationHost.Digest(a)==sourceA&&DataMigrationHost.Digest(b)==sourceB,"all source workbooks unchanged");Check(Directory.GetFiles(session.DirectoryPath,".xy-notes-*.xlsx").Length==0,"normal success failure and cancellation release staging files");
+        BatchLive(application,session,parent,cfg);
         if(scale)
         {
             foreach(var row in confirmed)row.Selected=row.Slot==0;
@@ -209,7 +272,18 @@ internal static class NotesLinksProbe
             {
                 Pure();scale=Array.IndexOf(args,"--scale")>=0;
                 if(Array.IndexOf(args,"--render")>=0)using(var form=new NotesLinksForm())
-                {form.ShowInTaskbar=false;form.Opacity=0;form.Size=new System.Drawing.Size(1280,860);form.Show();form.PerformLayout();System.Windows.Forms.Application.DoEvents();using(var bitmap=new System.Drawing.Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,new System.Drawing.Rectangle(0,0,form.Width,form.Height));string image=Path.Combine(session.DirectoryPath,"NotesLinksForm.png");bitmap.Save(image,System.Drawing.Imaging.ImageFormat.Png);Console.WriteLine("PREVIEW: "+image);}form.Hide();}
+                {
+                    if(Array.IndexOf(args,"--batch-render")>=0)
+                    {
+                        typeof(NotesLinksForm).GetField("batchMode",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(form).GetType().GetProperty("Checked").SetValue(typeof(NotesLinksForm).GetField("batchMode",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(form),true,null);
+                        typeof(NotesLinksForm).GetMethod("AddBatchFiles",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(form,new object[]{new[]{Path.Combine(session.DirectoryPath,"汇总文件A.xlsx"),Path.Combine(session.DirectoryPath,"汇总文件B.xlsx"),Path.Combine(session.DirectoryPath,"汇总文件C.xlsx")}});
+                        var items=(List<NotesLinkBatchItem>)typeof(NotesLinksForm).GetField("batchItems",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(form);
+                        for(int i=0;i<items.Count;i++){items[i].Status=i==2?"阻止：缺少一个明细文件":"通过｜公司 "+(i+1)+" 家";if(i<2){items[i].Plan=new NotesLinkPlan();for(int n=0;n<=i;n++)items[i].Plan.Tasks.Add(new NotesLinkTask{Status="通过"});}}
+                        typeof(NotesLinksForm).GetMethod("RefreshBatchRows",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(form,null);
+                    }
+                    form.ShowInTaskbar=false;form.Opacity=0;form.Size=new System.Drawing.Size(1280,860);form.Show();form.PerformLayout();System.Windows.Forms.Application.DoEvents();
+                    using(var bitmap=new System.Drawing.Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,new System.Drawing.Rectangle(0,0,form.Width,form.Height));string image=Path.Combine(session.DirectoryPath,"NotesLinksForm.png");bitmap.Save(image,System.Drawing.Imaging.ImageFormat.Png);Console.WriteLine("PREVIEW: "+image);}form.Hide();
+                }
                 if(Array.IndexOf(args,"--live")>=0)
                 {
                     Type type=Type.GetTypeFromProgID("Excel.Application",false);if(type==null){Console.WriteLine("SKIP Excel.Application unavailable");return session.Finish(2);}

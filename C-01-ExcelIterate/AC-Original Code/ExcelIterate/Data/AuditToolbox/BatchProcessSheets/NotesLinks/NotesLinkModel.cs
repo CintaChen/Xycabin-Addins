@@ -47,6 +47,96 @@ namespace Excel_Iterate
         internal readonly List<NotesLinkTask> Tasks=new List<NotesLinkTask>();
         internal int Occupied {get{return Tasks.Sum(t=>t.Occupied);}}
     }
+    internal sealed class NotesLinkBatchItem
+    {
+        internal string Parent,Status="待预检",Backup,CommittedHash;
+        internal bool Selected=true;
+        internal NotesLinkPlan Plan;
+        internal bool Ready {get{return Plan!=null&&Plan.Tasks.Count>0&&Plan.Tasks.All(t=>t.Status.StartsWith("通过",StringComparison.Ordinal));}}
+    }
+    internal static class NotesLinkBatch
+    {
+        internal static List<string> Files(IEnumerable<string> paths)
+        {
+            var result=new List<string>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach(var path in paths){string full=Path.GetFullPath(path);string name=Path.GetFileName(full),ext=Path.GetExtension(full);if(name.StartsWith("~$",StringComparison.Ordinal)||name.StartsWith(".xy-",StringComparison.OrdinalIgnoreCase))continue;if(!ext.Equals(".xlsx",StringComparison.OrdinalIgnoreCase)&&!ext.Equals(".xlsm",StringComparison.OrdinalIgnoreCase))continue;if(seen.Add(full))result.Add(full);}
+            return result;
+        }
+        internal static List<NotesLinkBatchItem> Prepare(NotesLinkConfig shared,IEnumerable<NotesLinkBatchItem> input,bool confirmed,Action<string> log,Func<bool> cancelled,IDictionary<string,string> blockers=null)
+        {
+            var result=new List<NotesLinkBatchItem>();
+            foreach(var item in input.Where(i=>i.Selected))
+            {
+                if(cancelled!=null&&cancelled())throw new OperationCanceledException("已停止预检，未修改文件。");
+                var next=new NotesLinkBatchItem{Parent=item.Parent,Backup=item.Backup,CommittedHash=item.CommittedHash};result.Add(next);
+                try
+                {
+                    string error;if(blockers!=null&&blockers.TryGetValue(item.Parent,out error))throw new InvalidOperationException(error);
+                    var cfg=shared.Copy();cfg.Parent=item.Parent;
+                    var rows=NotesLinkRules.ReadLead(cfg);foreach(var row in rows)row.Confirmed=confirmed;
+                    next.Plan=NotesLinkPlanner.Build(cfg,rows,message=>{if(log!=null)log(Path.GetFileName(item.Parent)+"｜"+message);},cancelled);
+                    int blocked=next.Plan.Tasks.Count(t=>!t.Status.StartsWith("通过",StringComparison.Ordinal));
+                    next.Status=blocked==0?"通过｜公司 "+rows.Count+" 家，覆盖 "+next.Plan.Occupied+" 格":"阻止｜公司 "+rows.Count+" 家，其中 "+blocked+" 项未通过";
+                }
+                catch(OperationCanceledException){throw;}
+                catch(Exception error){next.Plan=null;next.Status="阻止："+error.Message;}
+                if(log!=null)log(Path.GetFileName(next.Parent)+"｜"+next.Status);
+            }
+            return result;
+        }
+        // Process a parent before another selected workbook that it references.
+        // No link refresh is needed, and later writes cannot invalidate an earlier source hash.
+        internal static List<NotesLinkBatchItem> Order(IEnumerable<NotesLinkBatchItem> input)
+        {
+            var remaining=input.Where(i=>i.Selected&&i.Ready).ToList();var result=new List<NotesLinkBatchItem>();
+            while(remaining.Count>0)
+            {
+                var next=remaining.FirstOrDefault(i=>!remaining.Any(other=>other!=i&&other.Plan.Tasks.Any(t=>string.Equals(Path.GetFullPath(t.File),Path.GetFullPath(i.Parent),StringComparison.OrdinalIgnoreCase))));
+                if(next==null)throw new InvalidOperationException("所选汇总文件之间存在循环引用，请取消其中一个文件后重新预检。");
+                result.Add(next);remaining.Remove(next);
+            }
+            return result;
+        }
+    }
+    internal sealed class NotesLinkBatchRun
+    {
+        private readonly object application;
+        private readonly List<NotesLinkBatchItem> items;
+        private readonly Action<string> log;
+        internal bool Cancelled;
+        internal int Completed,Succeeded,Failed;
+        internal NotesLinkBatchRun(object app,IEnumerable<NotesLinkBatchItem> prepared,Action<string> output)
+        {application=app;items=NotesLinkBatch.Order(prepared);log=output??delegate{};}
+        internal IEnumerable<string> Run()
+        {
+            foreach(var item in items)
+            {
+                if(Cancelled)break;
+                item.Status="正在粘贴链接";
+                using(var execution=new NotesLinkExecution(application,item.Plan,message=>log(Path.GetFileName(item.Parent)+"｜"+message)))
+                using(var steps=execution.Run().GetEnumerator())
+                {
+                    Exception failure=null;
+                    while(true)
+                    {
+                        bool more=false;string message=null;
+                        try{execution.Cancelled=Cancelled;more=steps.MoveNext();if(more)message=steps.Current;}
+                        catch(Exception error){failure=error;}
+                        if(failure!=null||!more)break;
+                        yield return Path.GetFileName(item.Parent)+"｜"+message;
+                    }
+                    if(execution.Committed)
+                    {item.Backup=execution.Backup;item.CommittedHash=execution.CommittedHash;item.Status=failure==null?"已完成｜公司 "+item.Plan.Tasks.Count+" 家":"已更新，有后处理提示："+failure.Message;Succeeded++;Completed++;}
+                    else if(failure is OperationCanceledException||Cancelled){item.Status="已停止｜未更新";Cancelled=true;}
+                    else{item.Status="失败｜未更新："+(failure==null?"未完成提交":failure.Message);Failed++;Completed++;}
+                    if(failure!=null)log(Path.GetFileName(item.Parent)+"｜"+item.Status);
+                }
+                yield return Path.GetFileName(item.Parent)+"｜"+item.Status;
+                if(Cancelled)break;
+            }
+            if(Cancelled)foreach(var item in items.Where(i=>i.Status.StartsWith("通过",StringComparison.Ordinal)))item.Status="未执行｜已停止";
+        }
+    }
     internal static class NotesLinkRules
     {
         internal static void RequireWorkbook(string file)
