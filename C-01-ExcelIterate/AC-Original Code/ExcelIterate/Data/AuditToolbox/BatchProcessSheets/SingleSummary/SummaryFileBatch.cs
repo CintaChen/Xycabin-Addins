@@ -36,6 +36,11 @@ namespace Excel_Iterate
             AddRow(kind=="repeat"?"重复变量（表名!地址）":"年度变量（表名!地址）",line);item.Row=line.Parent;groups.Add(item);
             remove.Click+=delegate{settings.Controls.Remove(item.Row);item.Row.Dispose();groups.Remove(item);};
         }
+        private readonly Timer refreshTimer=new Timer{Interval=2000};
+        private readonly System.Text.StringBuilder pendingLog=new System.Text.StringBuilder();
+        private readonly Label progressText=new Label{AutoSize=true,Dock=DockStyle.Top};
+        private readonly HashSet<string> warningMessages=new HashSet<string>(),errorFiles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private string currentProgress="";
         private List<DataGridViewRow> queue;
         private BatchPreset preset;
         private BatchPreset chosenPreset;
@@ -96,10 +101,10 @@ namespace Excel_Iterate
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute,360)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,0)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent,100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var actions = Ui.ActionBar(); actions.Controls.AddRange(new Control[] { preview, execute, stop });
-            var scroll=new Panel{Dock=DockStyle.Fill,AutoScroll=true};scroll.Controls.Add(settings);root.Controls.Add(scroll, 0, 0);  root.Controls.Add(progress, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
+            var scroll=new Panel{Dock=DockStyle.Fill,AutoScroll=true};scroll.Controls.Add(settings);root.Controls.Add(scroll, 0, 0);  var progressPanel=new Panel{Dock=DockStyle.Top,AutoSize=true};progressPanel.Controls.Add(progress);progressPanel.Controls.Add(progressText);root.Controls.Add(progressPanel, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
             preview.Click += delegate { Attempt(delegate { Begin(false); }); }; execute.Click += delegate { Attempt(delegate { Begin(true); }); };
             stop.Enabled = false; stop.Click += delegate { stopping = true; Message("正在停止；当前临时副本将丢弃，已经输出的成功文件保留。"); };
-            timer.Tick += delegate { Advance(); };
+            timer.Tick += delegate { Advance(); };refreshTimer.Tick+=delegate{FlushUi();};refreshTimer.Start();
             dialog.FormClosing += delegate(object sender, FormClosingEventArgs e) { if (queue != null) { e.Cancel = true; stopping = true; Message("正在停止，请等待当前操作结束后关闭。"); } };
         }
         private void AddRow(string label, Control value, Control action = null, Control secondary = null)
@@ -190,7 +195,15 @@ namespace Excel_Iterate
             v["extraGroups"]=string.Join(";",extra);v["headersEnabled"]=(active>0).ToString();v["variableHeaders"]="True";v["headersFormula"]="True";
             SummaryAreaSettings.Read(value);return value;
         }
-        private void Message(string text) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); log.Update(); files.Update(); }
+        private void Message(string text)
+        {pendingLog.Append(DateTime.Now.ToString("HH:mm:ss")).Append("  ").AppendLine(text);if(queue==null)FlushUi();}
+        private void FlushUi()
+        {
+            if(dialog.IsDisposed)return;
+            if(pendingLog.Length>0){log.AppendText(pendingLog.ToString());pendingLog.Clear();log.SelectionStart=log.TextLength;log.ScrollToCaret();}
+            progress.Value=Math.Min(progress.Maximum,position);
+            progressText.Text=queue==null?currentProgress:"已完成 "+position+" / "+queue.Count+" 个文件；"+currentProgress;
+        }
         private void Attempt(Action action) { try { action(); } catch (Exception error) { Message("失败：" + error.Message); } }
         private void Begin(bool save)
         {
@@ -202,7 +215,7 @@ namespace Excel_Iterate
             string directory = Path.GetFullPath(output.Text.Trim()); if (!Directory.Exists(directory)) throw new InvalidOperationException("请选择已存在的输出文件夹。");
             if (!System.Text.RegularExpressions.Regex.IsMatch(pathCell.Text.Trim(), @"^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,6}$") || string.IsNullOrWhiteSpace(pathSheet.Text)) throw new InvalidOperationException("请填写路径来源表和一个单元格地址，例如 A1。");
             if (save && UiDialog.Show(dialog, "将逐文件重新预检，并覆盖各临时副本中预设指定的目标区域及表头；成功后自动保存到输出文件夹，原文件保持不变，同名输出不覆盖。失败文件跳过，其他文件继续。确认执行？", "批量输出确认", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
-            preset = selectedPreset; destination = directory; sourceSheet = pathSheet.Text.Trim(); sourceCell = pathCell.Text.Trim(); writing = save; stopping = false; position = 0; queue = selected;
+            preset = selectedPreset; destination = directory; sourceSheet = pathSheet.Text.Trim(); sourceCell = pathCell.Text.Trim(); writing = save; stopping = false; position = 0; queue = selected;errorFiles.Clear();warningMessages.Clear();currentProgress="准备中";
             foreach (var row in queue) row.Cells[2].Value = "等待";
             settings.Enabled = files.Enabled = preview.Enabled = execute.Enabled = false; stop.Enabled = true; progress.Maximum = queue.Count; progress.Value = 0;
             Message((save ? "开始执行" : "开始只读预检") + "，共 " + queue.Count + " 个文件；每个文件重新读取自己的数据，预检不保存任何工作簿。"); timer.Start();
@@ -248,7 +261,7 @@ namespace Excel_Iterate
                 if(!Directory.Exists(folder))Message("提示：链接目录暂不可用："+folder+"；保留原路径，未创建目录。严格检查关闭时继续生成链接，来源恢复前不能保证显示值。");
             }
             workerForm = new SingleSummaryForm(true); var view = (SummaryAreaView)workerForm.Controls[0];
-            view.LogSink = delegate(string text) { Message(Path.GetFileName(inputFile) + "｜" + text); };
+            warningMessages.Clear();view.LogSink = delegate(string text) { if((text.StartsWith("提示：")||text.StartsWith("重新计算失败："))&&warningMessages.Add(text))Message(Path.GetFileName(inputFile)+"｜"+text); };
             worker = new SummaryAreaHost(app, workerForm, view, null, delegate { return true; });
             List<CompanyStructureTask> required=null;
             if(parentChildren!=null&&!parentChildren.TryGetValue(inputFile,out required))throw new InvalidOperationException("该父公司缺少架构任务分组，请重新读取架构表。");
@@ -292,34 +305,35 @@ namespace Excel_Iterate
                 {
                     if (worker == null)
                     {
-                        queue[position].Cells[2].Value = "预检中"; OpenCurrent();
+                        currentProgress=Path.GetFileName(Convert.ToString(queue[position].Tag))+"｜预检中";queue[position].Cells[2].Value = "预检中"; OpenCurrent();
                         if (writing) { queue[position].Cells[2].Value = "执行中"; return; }
                     }
                     else if (writing)
                     {
                         bool complete=worker.StepBatchFile();
-                        queue[position].Cells[2].Value="执行中："+worker.BatchProgressText;files.Update();
+                        currentProgress=Path.GetFileName(Convert.ToString(queue[position].Tag))+"｜"+worker.BatchProgressText;
                         if(!complete)return;
                     }
                     if (writing)
                     {
+                        int workerErrorCount=worker.BatchValueErrorCount;
                         worker.FinishBatchFile();
                         VerifyNoTemporaryLinks();
                         using (var quiet = new CompanyWorkbookQuiet(app)) ((dynamic)workBook).Save();
                         string temporary = workingFile, final = Path.Combine(destination, Path.GetFileName(Convert.ToString(queue[position].Tag)));
                         CloseObjects(); File.Move(temporary, final);
-                        Message("已输出：" + final);
+                        if(workerErrorCount>0){errorFiles.Add(final);Message("数值错误文件："+final+"（链接已生成并输出）");}else Message("已输出："+final);
                     }
                     queue[position].Cells[2].Value = writing ? "已输出" : "预检通过";
                 }
-                catch (Exception error) { string state=parentChildren!=null&&!currentStarted?"阻止：":"失败：";queue[position].Cells[2].Value = state + error.Message; Message(Convert.ToString(queue[position].Tag) + "｜"+state+error.Message); }
-                Cleanup(); position++; progress.Value = position;
+                catch (Exception error) { errorFiles.Add(Convert.ToString(queue[position].Tag));string state=parentChildren!=null&&!currentStarted?"阻止：":"失败：";queue[position].Cells[2].Value = state + error.Message; Message(Convert.ToString(queue[position].Tag) + "｜"+state+error.Message); }
+                Cleanup(); position++;
             }
             catch (Exception error) { Message("批处理停止：" + error.Message); End(); }
             finally { inTick = false; if (queue != null) timer.Start(); }
         }
         private void End()
-        { timer.Stop(); queue = null; ReleaseHiddenApplication(); settings.Enabled = files.Enabled = preview.Enabled = execute.Enabled = true; stop.Enabled = false; Message("本轮结束；成功输出保留，失败原因见文件列表及日志。原文件未修改。"); }
+        { timer.Stop();int total=queue==null?position:queue.Count;queue = null;currentProgress="本轮结束：已处理 "+position+" / "+total+"；错误文件 "+errorFiles.Count+" 个。"; ReleaseHiddenApplication(); settings.Enabled = files.Enabled = preview.Enabled = execute.Enabled = true; stop.Enabled = false; Message("本轮结束；成功输出保留，失败原因见文件列表及日志。原文件未修改。"); }
         private void VerifyNoTemporaryLinks()
         {
             object links = ((dynamic)workBook).LinkSources(1);
@@ -342,7 +356,7 @@ namespace Excel_Iterate
             if (scratch != null && Directory.Exists(scratch)) Directory.Delete(scratch, false);
             workingFile = scratch = null;
         }
-        public void Dispose() { timer.Stop(); timer.Dispose(); try { Cleanup(); } finally { try{ReleaseHiddenApplication();}finally{dialog.Dispose();} } }
+        public void Dispose() { refreshTimer.Stop();refreshTimer.Dispose();FlushUi();timer.Stop(); timer.Dispose(); try { Cleanup(); } finally { try{ReleaseHiddenApplication();}finally{dialog.Dispose();} } }
     }
 }
 

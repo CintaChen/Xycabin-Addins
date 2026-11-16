@@ -94,6 +94,7 @@ namespace Excel_Iterate
             ApplyPreset(preset);structureChildren=requiredChildren==null?null:new List<CompanyStructureTask>(requiredChildren);Preview();
         }
         internal void StartBatchFile() { Start(); timer.Stop(); }
+        internal int BatchValueErrorCount {get;private set;}
         internal string BatchProgressText { get { return step+"/"+targets.Count+" 个区域"; } }
         internal bool StepBatchFile()
         {
@@ -598,10 +599,11 @@ namespace Excel_Iterate
                             object values = range.Value2;
                             for (int r = 0; r < area.Rows; r++) for (int c = 0; c < area.Columns; c++)
                                 if (SummaryAreaEngine.IsError(SummaryArrays.Pick(values, r, area.Rows, c, area.Columns))) {
-                                    errors++;using(var fault=new ComBag()){dynamic cell=fault.Own(sheet.Range[CellAddress.Name(area.Row+r,area.Column+c)]);var owner=picked[areaIndex/areas.Count];
+                                    errors++;if(view.LogSink==null)using(var fault=new ComBag()){dynamic cell=fault.Own(sheet.Range[CellAddress.Name(area.Row+r,area.Column+c)]);var owner=picked[areaIndex/areas.Count];
                                     view.Message("数据异常｜"+owner.Name+"｜"+templateSheet+"!"+CellAddress.Name(area.Row+r,area.Column+c)+"｜"+Convert.ToString(cell.Text));}
                                 }
                         }
+                        BatchValueErrorCount=errors;
                         FormatAndFitOutput(sheet,bag);
                         EndCalculation();
                         view.Message("批量公式提交 " + bulkWrites + " 次；备份及执行耗时 " + executionClock.Elapsed.TotalSeconds.ToString("F2", CultureInfo.InvariantCulture) + " 秒。");

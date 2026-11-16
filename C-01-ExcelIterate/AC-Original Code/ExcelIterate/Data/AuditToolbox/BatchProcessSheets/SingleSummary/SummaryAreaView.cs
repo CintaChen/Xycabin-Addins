@@ -153,7 +153,7 @@ namespace Excel_Iterate
             parameters.Controls.Add(actions.Header(new Label { Text = "", AutoSize = true }), 0, 0); parameters.ResumeLayout(true);
         }
         internal void InvalidatePlan() { execute.Enabled = false; if (Changed != null) Changed(); }
-        internal void Message(string value) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); if (LogSink != null) LogSink(value); }
+        internal void Message(string value) { if(LogSink!=null){LogSink(value);return;} log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + value + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); if (LogSink != null) LogSink(value); }
         internal void SetState(bool running, bool pending, bool ready)
         { foreach (var c in inputs) c.Enabled = !running && !pending; if (presets != null) presets.Gear.Enabled = !running && !pending; Companies.Enabled = !running && !pending; ReferenceSources.Enabled = !running && !pending; preview.Enabled = !running && !pending; execute.Enabled = !running && !pending && ready; undo.Enabled = confirm.Enabled = !running && pending; }
     }

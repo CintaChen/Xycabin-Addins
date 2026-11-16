@@ -9,6 +9,11 @@ internal static class SummaryAreaChecks
     internal static void Run(Action<string, bool, string> check)
     {
         Action<Action, string> rejects = delegate(Action action, string name) { bool rejected = false; try { action(); } catch (InvalidOperationException) { rejected = true; } check(name, rejected, "invalid input accepted"); };
+        using(var routedView=new SummaryAreaView()){
+            string received=null;routedView.LogSink=text=>received=text;routedView.Message("文件级输出");
+            var internalLog=(RichTextBox)typeof(SummaryAreaView).GetField("log",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(routedView);
+            check("批处理消息不再写入隐藏窗口日志",received=="文件级输出"&&internalLog.TextLength==0,"hidden log duplicated");
+        }
         check("年度期间解析",SummaryPeriodOrder.Parse("2027年度","2027年度",false)==new DateTime(2027,1,1),"");
         check("点分日期解析",SummaryPeriodOrder.Parse("2027.2.3","2027.2.3",false)==new DateTime(2027,2,3),"");
         check("真实日期序列解析",SummaryPeriodOrder.Parse(46388.0,"1/1/2027",false)==DateTime.FromOADate(46388),"");
@@ -153,6 +158,16 @@ internal static class SummaryAreaChecks
         check("N盘绝对路径不要求挂载",SummaryFileBatch.CellPath(@"N:\EASDATA\SZYSKG_20261231\",false)==@"N:\EASDATA\SZYSKG_20261231\","N drive path changed");
         using(var batch=(SummaryFileBatch)Activator.CreateInstance(typeof(SummaryFileBatch),BindingFlags.Instance|BindingFlags.NonPublic,null,new object[]{new object()},null))
         {
+            var batchFlags=BindingFlags.Instance|BindingFlags.NonPublic;
+            var refresh=(Timer)typeof(SummaryFileBatch).GetField("refreshTimer",batchFlags).GetValue(batch);
+            check("批量进度刷新间隔为两秒",refresh.Interval==2000,"progress refresh not throttled");
+            var batchLog=(RichTextBox)typeof(SummaryFileBatch).GetField("log",batchFlags).GetValue(batch);int initialLogLength=batchLog.TextLength;
+            typeof(SummaryFileBatch).GetField("queue",batchFlags).SetValue(batch,new List<DataGridViewRow>());
+            var message=typeof(SummaryFileBatch).GetMethod("Message",batchFlags);message.Invoke(batch,new object[]{"文件一"});message.Invoke(batch,new object[]{"文件二"});
+            check("执行中日志先缓存而非立即追加",batchLog.TextLength==initialLogLength,"log appended synchronously");
+            typeof(SummaryFileBatch).GetMethod("FlushUi",batchFlags).Invoke(batch,null);
+            check("日志按批次刷新且不丢记录",batchLog.Text.Contains("文件一")&&batchLog.Text.Contains("文件二"),"buffered messages lost");
+            typeof(SummaryFileBatch).GetField("queue",batchFlags).SetValue(batch,null);
             var capture=typeof(SummaryFileBatch).GetMethod("ManualPreset",BindingFlags.Instance|BindingFlags.NonPublic);
             var manual=(BatchPreset)capture.Invoke(batch,null);var manualSettings=SummaryAreaSettings.Read(manual);
             check("多文件不选预设也可设置坐标",manualSettings.Paste.Column==12&&manualSettings.Paste.Row==3&&!manualSettings.CheckFiles,"manual defaults invalid");
