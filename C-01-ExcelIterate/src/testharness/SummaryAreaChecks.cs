@@ -146,6 +146,19 @@ internal static class SummaryAreaChecks
         check("批文件重绑定不修改原预设", preset.Context != rebound.Context && preset.Values["projectFolder"] != rebound.Values["projectFolder"], "preset mutated");
         check("批文件保持多区域坐标", rebound.Values["templateAreas"] == preset.Values["templateAreas"], "template coordinates changed");
         check("路径单元格兼容外层引号", SummaryFileBatch.CellPath("  \"" + System.IO.Path.GetTempPath() + "\"  ") == System.IO.Path.GetTempPath(), "cell path trim failed");
+        string offlinePath=System.IO.Path.Combine(System.IO.Path.GetTempPath(),"Unavailable-"+Guid.NewGuid().ToString("N"));
+        check("虚拟绝对目录可仅生成链接",SummaryFileBatch.CellPath(offlinePath,false)==offlinePath,"missing path rejected");
+        rejects(delegate{SummaryFileBatch.CellPath(offlinePath,true);},"严格模式拒绝不存在目录");
+        rejects(delegate{SummaryFileBatch.CellPath(@"N:relative",false);},"虚拟路径仍拒绝盘符相对路径");
+        check("N盘绝对路径不要求挂载",SummaryFileBatch.CellPath(@"N:\EASDATA\SZYSKG_20261231\",false)==@"N:\EASDATA\SZYSKG_20261231\","N drive path changed");
+        using(var batch=(SummaryFileBatch)Activator.CreateInstance(typeof(SummaryFileBatch),BindingFlags.Instance|BindingFlags.NonPublic,null,new object[]{new object()},null))
+        {
+            var capture=typeof(SummaryFileBatch).GetMethod("ManualPreset",BindingFlags.Instance|BindingFlags.NonPublic);
+            var manual=(BatchPreset)capture.Invoke(batch,null);var manualSettings=SummaryAreaSettings.Read(manual);
+            check("多文件不选预设也可设置坐标",manualSettings.Paste.Column==48&&!manualSettings.CheckFiles,"manual defaults invalid");
+            manual.Values["leadAreas"]="4,14,3,1";manual.Values["templateAreas"]="2,4,5,2";batch.UsePreset(manual,"测试：");
+            var changed=(BatchPreset)capture.Invoke(batch,null);check("预设坐标回填再保存不丢失",changed.Values["leadAreas"]==manual.Values["leadAreas"]&&changed.Values["templateAreas"]==manual.Values["templateAreas"],"preset roundtrip lost coordinates");
+        }
         rejects(delegate { SummaryFileBatch.CellPath(123); }, "路径单元格拒绝数字");
         rejects(delegate { SummaryFileBatch.CellPath(""); }, "路径单元格拒绝空白");
         rejects(delegate { SummaryFileBatch.CellPath("relative"); }, "路径单元格拒绝相对路径");

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -23,6 +23,9 @@ namespace Excel_Iterate
         private readonly ProgressBar progress = new ProgressBar { Dock = DockStyle.Top };
         private readonly RoundedButton preview = Ui.Button("批量预检", 120), execute = Ui.Button("执行并另存", 135), stop = Ui.Button("停止", 90);
         private readonly Timer timer = new Timer { Interval = 40 };
+        private readonly TextBox templateName=new TextBox{Text="单体数据汇总"},templateArea=new TextBox{Text="D1:X1700"},leadName=new TextBox{Text="Lead"},leadArea=new TextBox{Text="N3:N17"},pasteStart=new TextBox{Text="AV1"};
+        private readonly CheckBox strictFiles=new CheckBox{Text="严格检查目录及来源文件存在（虚拟路径暂不可用时请取消）",AutoSize=true},headers=new CheckBox{Text="启用公司及年度表头变量",AutoSize=true};
+        private readonly Dictionary<string,TextBox> variableFields=new Dictionary<string,TextBox>();
         private List<DataGridViewRow> queue;
         private BatchPreset preset;
         private BatchPreset chosenPreset;
@@ -86,14 +89,22 @@ namespace Excel_Iterate
             });};
             AddRow("父子链接",new Label{Text="按架构分组，只链接到直属父公司",AutoSize=true},parentLinks);
             AddRow("路径来源工作表", pathSheet); AddRow("路径来源单元格", pathCell);
+            AddRow("模板工作表",templateName);AddRow("模板已编制区域",templateArea);AddRow("第一粘贴起点",pasteStart);
+            AddRow("Lead工作表",leadName);AddRow("Lead公司范围",leadArea);
+            foreach(var pair in new Dictionary<string,string>{{"companyHeader","公司表头目标"},{"yearSource","年度来源"},{"yearTarget","年度目标起点"},{"repeatSource","Lead重复变量来源"},{"repeatTarget","重复变量目标"}})
+            {var box=new TextBox();variableFields.Add(pair.Key,box);AddRow(pair.Value+"（表名!地址）",box);}
+            AddRow("表头与路径校验",headers,strictFiles);
+            var presetActions=new BatchPresetActions(dialog,"summary",ManualPreset,value=>UsePreset(value,"已应用："),delegate{return queue==null;},Message);
+            AddRow("保存／管理预设",presetActions.Header(new Label{Text="可直接填写，也可载入预设后修改；多区域用分号分隔。",AutoSize=true}));
+
             files.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "处理", Width = 60 });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "文件", ReadOnly = true, AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", ReadOnly = true, Width = 200 }); Ui.StyleGrid(files);
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(16) };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute,360)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var actions = Ui.ActionBar(); actions.Controls.AddRange(new Control[] { preview, execute, stop });
-            root.Controls.Add(settings, 0, 0); root.Controls.Add(files, 0, 1); root.Controls.Add(progress, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
+            var scroll=new Panel{Dock=DockStyle.Fill,AutoScroll=true};scroll.Controls.Add(settings);root.Controls.Add(scroll, 0, 0); root.Controls.Add(files, 0, 1); root.Controls.Add(progress, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
             preview.Click += delegate { Attempt(delegate { Begin(false); }); }; execute.Click += delegate { Attempt(delegate { Begin(true); }); };
             stop.Enabled = false; stop.Click += delegate { stopping = true; Message("正在停止；当前临时副本将丢弃，已经输出的成功文件保留。"); };
             timer.Tick += delegate { Advance(); };
@@ -130,12 +141,15 @@ namespace Excel_Iterate
             string name = Path.GetFileNameWithoutExtension(file);
             return name.Contains("（合并）") || name.Contains("(合并)");
         }
-        internal static string CellPath(object value)
+        internal static string CellPath(object value){return CellPath(value,true);}
+        internal static string CellPath(object value,bool requireExists)
         {
             string text = value as string;
             if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("路径来源单元格为空、错误或不是文字。");
             text = text.Trim(); if (text.Length > 1 && text[0] == '"' && text[text.Length - 1] == '"') text = text.Substring(1, text.Length - 2);
-            if (!Path.IsPathRooted(text) || !Directory.Exists(text)) throw new InvalidOperationException("路径来源单元格中的文件夹不存在或不是完整路径：" + text);
+            if (!System.Text.RegularExpressions.Regex.IsMatch(text,@"^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)")) throw new InvalidOperationException("路径来源单元格不是完整绝对路径："+text);
+            try{Path.GetFullPath(text);}catch(Exception error){throw new InvalidOperationException("路径格式无效："+text,error);}
+            if(requireExists&&!Directory.Exists(text))throw new InvalidOperationException("文件夹不存在："+text);
             return text;
         }
         internal static BatchPreset Rebind(BatchPreset original, string file, string folder)
@@ -146,8 +160,22 @@ namespace Excel_Iterate
             var snapshot = BatchPresetStore.Decode(BatchPresetStore.Encode(value), "summary");
             SummaryAreaSettings.Read(snapshot);
             chosenPreset = snapshot; presetPath.Text = prefix + snapshot.Name;
+            var cfg=SummaryAreaSettings.Read(snapshot);templateName.Text=cfg.Template[0].Sheet;templateArea.Text=string.Join(";",cfg.Template.Select(a=>a.Address));pasteStart.Text=cfg.Paste.Address;leadName.Text=cfg.Lead[0].Sheet;leadArea.Text=string.Join(";",cfg.Lead.Select(a=>a.Address));strictFiles.Checked=cfg.CheckFiles;headers.Checked=cfg.HeadersEnabled;
+            foreach(var entry in variableFields){var part=SummaryAreaSettings.OptionalHeader(snapshot.Values,entry.Key);entry.Value.Text=part==null?"":part.Sheet+"!"+part.Address;string multi;if(part!=null&&snapshot.Values.TryGetValue(entry.Key+"Multi",out multi))entry.Value.Text=part.Sheet+"!"+string.Join(";",SummaryAreaSettings.Decode(multi,part.Sheet).Select(a=>a.Address));}
+
+            string saved;if(snapshot.Values.TryGetValue("batchPathSheet",out saved))pathSheet.Text=saved;if(snapshot.Values.TryGetValue("batchPathCell",out saved))pathCell.Text=saved;
             foreach (DataGridViewRow row in files.Rows) row.Cells[2].Value = "待预检";
             Message("已选择预设“" + snapshot.Name + "”；仅使用坐标配置，各文件读取自己的数据，无需原预设工作簿存在。");
+        }
+        private static string EncodeAddresses(string text,string sheet)
+        {var parts=text.Split(';','；').Select(t=>MigrationArea.Parse(t.Trim())).Select(a=>new SummaryAreaPlan{Sheet=sheet,Row=a.Row,Column=a.Column,Rows=a.Rows,Columns=a.Columns});return SummaryAreaSettings.Encode(parts);}
+        private BatchPreset ManualPreset()
+        {
+            var value=chosenPreset==null?new BatchPreset{Feature="summary",Name="多文件自定义",Context="",Values=new Dictionary<string,string>()}:BatchPresetStore.Decode(BatchPresetStore.Encode(chosenPreset),"summary");
+            var v=value.Values;v["mode"]="area-mvp";v["templateSheet"]=templateName.Text.Trim();v["templateAreas"]=EncodeAddresses(templateArea.Text,v["templateSheet"]);v["pasteSheet"]=v["templateSheet"];v["pasteArea"]=EncodeAddresses(pasteStart.Text,v["templateSheet"]);v["leadSheet"]=leadName.Text.Trim();v["leadAreas"]=EncodeAddresses(leadArea.Text,v["leadSheet"]);v["projectFolder"]=Path.GetTempPath();v["checkFiles"]=strictFiles.Checked.ToString();v["headersEnabled"]=headers.Checked.ToString();v["batchPathSheet"]=pathSheet.Text;v["batchPathCell"]=pathCell.Text;
+            if(chosenPreset==null){v["headersFormula"]="True";v["headersRepeat"]="True";v["variableHeaders"]="False";}
+            foreach(var entry in variableFields){string text=entry.Value.Text.Trim();if(text.Length==0){v[entry.Key]="";v[entry.Key+"Sheet"]="";v.Remove(entry.Key+"Multi");continue;}int split=text.LastIndexOf('!');if(split<1)throw new InvalidOperationException("变量请填写 工作表!地址："+entry.Key);string name=text.Substring(0,split).Trim().Trim('\'');v[entry.Key+"Sheet"]=name;v[entry.Key]=EncodeAddresses(text.Substring(split+1),name);if(entry.Key=="repeatSource"){var parts=SummaryAreaSettings.Decode(v[entry.Key],name);v[entry.Key+"Multi"]=v[entry.Key];v[entry.Key]=SummaryAreaSettings.Encode(parts.Take(1));v["variableHeaders"]="True";}}
+            SummaryAreaSettings.Read(value);return value;
         }
         private void Message(string text) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); log.Update(); files.Update(); }
         private void Attempt(Action action) { try { action(); } catch (Exception error) { Message("失败：" + error.Message); } }
@@ -157,8 +185,7 @@ namespace Excel_Iterate
             if (loadedInput == null) throw new InvalidOperationException("输入路径后，请先按 Enter 或点击读取文件，再勾选工作簿。");
             var selected = files.Rows.Cast<DataGridViewRow>().Where(r => object.Equals(r.Cells[0].Value, true)).ToList();
             if (selected.Count == 0) throw new InvalidOperationException("请勾选需要处理的文件。");
-            if (chosenPreset == null) throw new InvalidOperationException("请选择已保存预设，或导入一个预设文件。");
-            var selectedPreset = BatchPresetStore.Decode(BatchPresetStore.Encode(chosenPreset), "summary"); SummaryAreaSettings.Read(selectedPreset);
+            var selectedPreset=ManualPreset();SummaryAreaSettings.Read(selectedPreset);
             string directory = Path.GetFullPath(output.Text.Trim()); if (!Directory.Exists(directory)) throw new InvalidOperationException("请选择已存在的输出文件夹。");
             if (!System.Text.RegularExpressions.Regex.IsMatch(pathCell.Text.Trim(), @"^\$?[A-Za-z]{1,3}\$?[1-9][0-9]{0,6}$") || string.IsNullOrWhiteSpace(pathSheet.Text)) throw new InvalidOperationException("请填写路径来源表和一个单元格地址，例如 A1。");
             if (save && UiDialog.Show(dialog, "将逐文件重新预检，并覆盖各临时副本中预设指定的目标区域及表头；成功后自动保存到输出文件夹，原文件保持不变，同名输出不覆盖。失败文件跳过，其他文件继续。确认执行？", "批量输出确认", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.OK) return;
@@ -204,7 +231,8 @@ namespace Excel_Iterate
             using (var bag = new ComBag())
             {
                 dynamic sheets = bag.Own(((dynamic)workBook).Worksheets), sheet = bag.Own(sheets.Item(sourceSheet)), cell = bag.Own(sheet.Range[sourceCell]);
-                folder = CellPath((object)cell.Value2);
+                folder = CellPath((object)cell.Value2,false);
+                if(!Directory.Exists(folder))Message("提示：链接目录暂不可用："+folder+"；保留原路径，未创建目录。严格检查关闭时继续生成链接，来源恢复前不能保证显示值。");
             }
             workerForm = new SingleSummaryForm(true); var view = (SummaryAreaView)workerForm.Controls[0];
             view.LogSink = delegate(string text) { Message(Path.GetFileName(inputFile) + "｜" + text); };

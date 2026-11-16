@@ -397,7 +397,9 @@ namespace Excel_Iterate
             if (running || pending) return; ready = false; CheckBook();
             if (areas.Count == 0 || paste == null || lead == null) throw new InvalidOperationException("请完成三组选区。");
             if (templateSheet != pasteSheet) throw new InvalidOperationException("已编制区域和粘贴起点必须属于同一工作表。");
-            if (!Directory.Exists(view.ProjectFolder)) throw new InvalidOperationException("项目文件夹不存在。");
+            SummaryFileBatch.CellPath(view.ProjectFolder,false);
+            if (!Directory.Exists(view.ProjectFolder))
+            {if(view.CheckFiles.Checked)throw new InvalidOperationException("严格检查：项目文件夹不存在。请连接来源目录，或关闭来源文件存在检查后仅生成链接。");view.Message("提示：项目文件夹暂不可用，按配置路径生成链接；未验证来源文件或显示值。");}
             using (var bag = new ComBag())
             {
                 if (Bool(((dynamic)book).ReadOnly) || Bool(((dynamic)book).ProtectStructure)) throw new InvalidOperationException("工作簿只读或结构受保护，不能执行及备份。");
