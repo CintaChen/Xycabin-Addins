@@ -155,9 +155,12 @@ internal static class SummaryAreaChecks
         {
             var capture=typeof(SummaryFileBatch).GetMethod("ManualPreset",BindingFlags.Instance|BindingFlags.NonPublic);
             var manual=(BatchPreset)capture.Invoke(batch,null);var manualSettings=SummaryAreaSettings.Read(manual);
-            check("多文件不选预设也可设置坐标",manualSettings.Paste.Column==48&&!manualSettings.CheckFiles,"manual defaults invalid");
+            check("多文件不选预设也可设置坐标",manualSettings.Paste.Column==12&&manualSettings.Paste.Row==3&&!manualSettings.CheckFiles,"manual defaults invalid");
+            check("默认区域与指定预设一致",manual.Values["templateAreas"]=="3,1,4,5;8,1,201,5"&&manual.Values["leadAreas"]=="3,12,15,1"&&manual.Values["yearSource"]=="5,10,2,1"&&manual.Values["repeatTarget"]=="2,12,1,1","default preset coordinates changed");
             manual.Values["leadAreas"]="4,14,3,1";manual.Values["templateAreas"]="2,4,5,2";batch.UsePreset(manual,"测试：");
             var changed=(BatchPreset)capture.Invoke(batch,null);check("预设坐标回填再保存不丢失",changed.Values["leadAreas"]==manual.Values["leadAreas"]&&changed.Values["templateAreas"]==manual.Values["templateAreas"],"preset roundtrip lost coordinates");
+            var initialGroups=(System.Collections.IEnumerable)typeof(SummaryFileBatch).GetField("groups",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(batch);
+            foreach(object initialItem in initialGroups){var initialType=initialItem.GetType();((TextBox)initialType.GetField("Source",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(initialItem)).Text="";((TextBox)initialType.GetField("Target",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(initialItem)).Text="";}
             var add=typeof(SummaryFileBatch).GetMethod("AddVariable",BindingFlags.Instance|BindingFlags.NonPublic);
             add.Invoke(batch,new object[]{"repeat","Lead!L3:L18","单体数据汇总!AV1"});
             add.Invoke(batch,new object[]{"repeat","Lead!M3:M18","单体数据汇总!AV2"});

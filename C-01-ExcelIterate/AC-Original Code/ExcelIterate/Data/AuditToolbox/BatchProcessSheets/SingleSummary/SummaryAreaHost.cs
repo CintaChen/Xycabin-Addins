@@ -796,10 +796,11 @@ namespace Excel_Iterate
             if(variables&&(selectedParts.Any(a=>a.Sheet!=leadSheet)||repeatSource.Sheet!=leadSheet)||periods&&yearSource.Sheet!=leadSheet)throw new InvalidOperationException("重复变量及年度必须来自当前Lead工作表。");
             if(variables&&(repeatTarget.Sheet!=templateSheet||repeatTarget.Columns!=1||repeatTarget.Rows!=selectedColumns.Count)||periods&&yearTarget.Sheet!=templateSheet)throw new InvalidOperationException("变量目标须在模板工作表；重复变量每个来源字段对应一个目标行。");
             int width=areas.Max(a=>a.Column+a.Columns)-areas.Min(a=>a.Column);
-            if(periods){if(yearSource.Rows!=1&&yearSource.Columns!=1)throw new InvalidOperationException("年度来源须为单行或单列。");if(Math.Max(yearSource.Rows,yearSource.Columns)!=width)throw new InvalidOperationException("年度数量须等于模板区域横向跨度。");}
+            int periodCount=periods?Math.Max(yearSource.Rows,yearSource.Columns):0;
+            if(periods){if(yearSource.Rows!=1&&yearSource.Columns!=1)throw new InvalidOperationException("年度来源须为单行或单列。");if(periodCount>width)throw new InvalidOperationException("年度数量不能超过模板区域横向跨度。");}
             dynamic source=Sheet(leadSheet,bag),sheet=Sheet(templateSheet,bag);bool date1904=Bool(((dynamic)book).Date1904);
             var dates=new List<DateTime>();var texts=new List<string>();var formats=new List<string>();
-            for(int n=0;periods&&n<width;n++)using(var one=new ComBag())
+            for(int n=0;n<periodCount;n++)using(var one=new ComBag())
             {
                 dynamic cell=one.Own(source.Range[CellAddress.Name(yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0))]);RejectSpecial(cell,"期间来源",one);
                 object raw=cell.Value2;string display=Convert.ToString(cell.Text);if(SummaryAreaEngine.IsError(raw)||string.IsNullOrWhiteSpace(display)||display.Trim('#').Length==0)throw new InvalidOperationException("期间显示错误或列宽不足："+n);
@@ -816,7 +817,7 @@ namespace Excel_Iterate
                     string text=Convert.ToString(cell.Text);if(SummaryAreaEngine.IsError((object)cell.Value2)||string.IsNullOrWhiteSpace(text)||text.Trim('#').Length==0)throw new InvalidOperationException("重复变量显示为空、错误或列宽不足：Lead第 "+company.Row+" 行");
                     for(int c=0;c<width;c++)PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=repeatTarget.Row+f,Column=repeatTarget.Column+i*width+c,Rows=1,Columns=1},repeatSource.Sheet,company.Row,selectedColumns[f],text,Convert.ToString(cell.NumberFormat),bag);
                 }
-                if(periods)for(int c=0;c<width;c++){int n=order[c];PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=yearTarget.Column+i*width+c,Rows=1,Columns=1},yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0),texts[n],formats[n],bag);}
+                if(periods)for(int c=0;c<periodCount;c++){int n=order[c];PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=yearTarget.Column+i*width+c,Rows=1,Columns=1},yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0),texts[n],formats[n],bag);}
             }
             view.HeaderPreview.Text=picked.Count+" 组 × "+width+" 期间；重复字段 "+selectedColumns.Count+" 个；关联公式 "+headerTargets.Count+" 格。";
         }

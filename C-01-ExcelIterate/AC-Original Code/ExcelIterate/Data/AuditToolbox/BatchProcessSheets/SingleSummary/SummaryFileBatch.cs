@@ -23,7 +23,7 @@ namespace Excel_Iterate
         private readonly ProgressBar progress = new ProgressBar { Dock = DockStyle.Top };
         private readonly RoundedButton preview = Ui.Button("批量预检", 120), execute = Ui.Button("执行并另存", 135), stop = Ui.Button("停止", 90);
         private readonly Timer timer = new Timer { Interval = 40 };
-        private readonly TextBox templateName=new TextBox{Text="单体数据汇总"},templateArea=new TextBox{Text="D1:X1700"},leadName=new TextBox{Text="Lead"},leadArea=new TextBox{Text="L3:L18"},pasteStart=new TextBox{Text="AV1"};
+        private readonly TextBox templateName=new TextBox{Text="单体数据汇总"},templateArea=new TextBox{Text="A3:E6;A8:E208"},leadName=new TextBox{Text="Lead"},leadArea=new TextBox{Text="L3:L17"},pasteStart=new TextBox{Text="L3"};
         private readonly CheckBox strictFiles=new CheckBox{Text="严格检查目录及来源文件存在（虚拟路径暂不可用时请取消）",AutoSize=true};
         private readonly Dictionary<string,TextBox> variableFields=new Dictionary<string,TextBox>();
         private sealed class VariableGroup{internal string Kind;internal TextBox Source=new TextBox{Width=300},Target=new TextBox{Width=300};internal Control Row;}
@@ -85,7 +85,7 @@ namespace Excel_Iterate
             var addRepeat=Ui.Button("添加重复变量",140);addRepeat.Click+=delegate{AddVariable("repeat");};var addYear=Ui.Button("添加年度变量",140);addYear.Click+=delegate{AddVariable("year");};
             AddRow("变量设置",Inline(addRepeat,addYear,new Label{Text="来源与粘贴地址均填写 表名!地址；可留空或删除不需要的组。",AutoSize=true}));
             AddRow("路径校验",strictFiles);
-            AddVariable("repeat");AddVariable("year");
+            AddVariable("repeat","Lead!L3:L17","单体数据汇总!L2");AddVariable("year","Lead!J5:J6","单体数据汇总!L7");
             var presetActions=new BatchPresetActions(dialog,"summary",ManualPreset,value=>UsePreset(value,"已应用："),delegate{return queue==null;},Message);
             AddRow("保存／管理预设",presetActions.Header(new Label{Text="可直接填写，也可载入预设后修改；多区域用分号分隔。",AutoSize=true}));
 
