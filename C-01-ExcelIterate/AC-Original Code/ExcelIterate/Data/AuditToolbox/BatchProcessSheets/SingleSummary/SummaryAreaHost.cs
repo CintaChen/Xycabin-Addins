@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -368,7 +368,7 @@ namespace Excel_Iterate
                     object codeValue = codeCell.Value2, nameValue = nameCell.Value2;
                     if (SummaryAreaEngine.IsError(codeValue) || SummaryAreaEngine.IsError(nameValue)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行含错误值。");
                     string code = Convert.ToString(codeValue, CultureInfo.InvariantCulture), name = Convert.ToString(nameValue, CultureInfo.InvariantCulture);
-                    if (code.Length == 0 && name.Length == 0) continue;
+                    if (string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(name)) continue;
                     if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行两列必须同时填写。");
                     var company = new SummaryCompany { Row = binding.Row, Code = code, Name = name, Selected = !selected.ContainsKey(binding.Row) || selected[binding.Row] };
                     companies.Add(company); view.Companies.Rows.Add(company.Selected, company.Row, code, name);
@@ -789,22 +789,23 @@ namespace Excel_Iterate
         }
         private void PrepareVariableHeaders(ComBag bag,IList<SummaryCompany> picked,bool variables=true,bool periods=true)
         {
-            if(repeatSource==null||repeatTarget==null||yearSource==null||yearTarget==null)throw new InvalidOperationException("变量模式请完成重复来源、变量目标、期间来源和期间起点。");
-            var selectedParts=VariableParts(repeatSource);var selectedColumns=selectedParts.SelectMany(a=>Enumerable.Range(a.Column,a.Columns)).Distinct().ToList();
-            if(selectedParts.Any(a=>a.Sheet!=leadSheet)||repeatSource.Sheet!=leadSheet||yearSource.Sheet!=leadSheet)throw new InvalidOperationException("重复变量及期间必须来自当前绑定的Lead工作表。");
-            if(repeatTarget.Sheet!=templateSheet||yearTarget.Sheet!=templateSheet||repeatTarget.Columns!=1||repeatTarget.Rows!=selectedColumns.Count)throw new InvalidOperationException("变量目标须在汇总表选同一列的连续单元格，每个来源字段对应一行。");
-            int width=Math.Max(yearSource.Rows,yearSource.Columns);
-            if(yearSource.Rows!=1&&yearSource.Columns!=1)throw new InvalidOperationException("期间来源须为单行或单列。");
-            if(width!=areas.Max(a=>a.Column+a.Columns)-areas.Min(a=>a.Column))throw new InvalidOperationException("期间数量必须等于模板区域横向跨度。");
+            variables=variables&&(repeatSource!=null||repeatTarget!=null);periods=periods&&(yearSource!=null||yearTarget!=null);
+            if(!variables&&!periods)return;
+            if(variables&&(repeatSource==null||repeatTarget==null)||periods&&(yearSource==null||yearTarget==null))throw new InvalidOperationException("每组变量必须同时配置来源与粘贴地址。");
+            var selectedParts=variables?VariableParts(repeatSource):new List<SummaryAreaPlan>();var selectedColumns=selectedParts.SelectMany(a=>Enumerable.Range(a.Column,a.Columns)).Distinct().ToList();
+            if(variables&&(selectedParts.Any(a=>a.Sheet!=leadSheet)||repeatSource.Sheet!=leadSheet)||periods&&yearSource.Sheet!=leadSheet)throw new InvalidOperationException("重复变量及年度必须来自当前Lead工作表。");
+            if(variables&&(repeatTarget.Sheet!=templateSheet||repeatTarget.Columns!=1||repeatTarget.Rows!=selectedColumns.Count)||periods&&yearTarget.Sheet!=templateSheet)throw new InvalidOperationException("变量目标须在模板工作表；重复变量每个来源字段对应一个目标行。");
+            int width=areas.Max(a=>a.Column+a.Columns)-areas.Min(a=>a.Column);
+            if(periods){if(yearSource.Rows!=1&&yearSource.Columns!=1)throw new InvalidOperationException("年度来源须为单行或单列。");if(Math.Max(yearSource.Rows,yearSource.Columns)!=width)throw new InvalidOperationException("年度数量须等于模板区域横向跨度。");}
             dynamic source=Sheet(leadSheet,bag),sheet=Sheet(templateSheet,bag);bool date1904=Bool(((dynamic)book).Date1904);
             var dates=new List<DateTime>();var texts=new List<string>();var formats=new List<string>();
-            for(int n=0;n<width;n++)using(var one=new ComBag())
+            for(int n=0;periods&&n<width;n++)using(var one=new ComBag())
             {
                 dynamic cell=one.Own(source.Range[CellAddress.Name(yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0))]);RejectSpecial(cell,"期间来源",one);
                 object raw=cell.Value2;string display=Convert.ToString(cell.Text);if(SummaryAreaEngine.IsError(raw)||string.IsNullOrWhiteSpace(display)||display.Trim('#').Length==0)throw new InvalidOperationException("期间显示错误或列宽不足："+n);
                 dates.Add(SummaryPeriodOrder.Parse(raw,display,date1904));texts.Add(display);formats.Add(Convert.ToString(cell.NumberFormat));
             }
-            if(targets.Any(t=>selectedParts.Any(p=>p.Sheet==templateSheet&&SummaryAreaEngine.Intersects(t,p))||yearSource.Sheet==templateSheet&&SummaryAreaEngine.Intersects(t,yearSource)))throw new InvalidOperationException("数据目标与表头来源重叠。");
+            if(targets.Any(t=>selectedParts.Any(p=>p.Sheet==templateSheet&&SummaryAreaEngine.Intersects(t,p))||periods&&yearSource.Sheet==templateSheet&&SummaryAreaEngine.Intersects(t,yearSource)))throw new InvalidOperationException("数据目标与表头来源重叠。");
             var order=SummaryPeriodOrder.Descending(dates);view.Message("期间倒序："+string.Join("、",order.Select(n=>texts[n]).ToArray())+"；仅生成时排序，后续保持来源映射。");
             for(int i=0;i<picked.Count;i++)
             {
@@ -822,7 +823,7 @@ namespace Excel_Iterate
         private void PlanVariableCell(dynamic sheet,SummaryAreaPlan part,string sourceSheet,int sourceRow,int sourceColumn,string display,string format,ComBag bag)
         {
             if(part.Column>16384||part.Row>1048576)throw new InvalidOperationException("变量表头超出边界。");
-            if(repeatSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(repeatSource,part))throw new InvalidOperationException("变量目标与变量来源重叠。");
+            if(repeatSource!=null&&repeatSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(repeatSource,part))throw new InvalidOperationException("变量目标与变量来源重叠。");
             using(var one=new ComBag()){
                 dynamic cell=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);RejectSpecial(cell,"变量表头目标",one);AddHeader(part,display);string key=HeaderKey(part);headerExpressions[key]=SummaryHeaderFormula.Cell(sourceSheet,sourceRow,sourceColumn);headerFormats[key]=format;dynamic original=one.Own(((dynamic)Sheet(sourceSheet,one)).Range[CellAddress.Name(sourceRow,sourceColumn)]);variableRawValues[key]=(object)original.Value2;
                 if(Bool((object)cell.HasFormula))originalTargetFormulas.Add(new SummaryAreaCell{Row=part.Row,Column=part.Column,Text=Convert.ToString(cell.Formula)});
@@ -1004,3 +1005,4 @@ namespace Excel_Iterate
         }
     }
 }
+

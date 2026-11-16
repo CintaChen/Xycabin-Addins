@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Forms;
@@ -158,6 +158,18 @@ internal static class SummaryAreaChecks
             check("多文件不选预设也可设置坐标",manualSettings.Paste.Column==48&&!manualSettings.CheckFiles,"manual defaults invalid");
             manual.Values["leadAreas"]="4,14,3,1";manual.Values["templateAreas"]="2,4,5,2";batch.UsePreset(manual,"测试：");
             var changed=(BatchPreset)capture.Invoke(batch,null);check("预设坐标回填再保存不丢失",changed.Values["leadAreas"]==manual.Values["leadAreas"]&&changed.Values["templateAreas"]==manual.Values["templateAreas"],"preset roundtrip lost coordinates");
+            var add=typeof(SummaryFileBatch).GetMethod("AddVariable",BindingFlags.Instance|BindingFlags.NonPublic);
+            add.Invoke(batch,new object[]{"repeat","Lead!L3:L18","单体数据汇总!AV1"});
+            add.Invoke(batch,new object[]{"repeat","Lead!M3:M18","单体数据汇总!AV2"});
+            var repeated=(BatchPreset)capture.Invoke(batch,null);
+            check("可添加多个重复变量且无独立公司表头",repeated.Values["extraGroups"]=="repeat_1"&&repeated.Values["companyHeader"]==""&&repeated.Values["headersEnabled"]=="True","repeat groups not encoded");
+            batch.UsePreset(repeated,"分组测试：");var again=(BatchPreset)capture.Invoke(batch,null);
+            check("多重复变量预设往返保留来源与目标",again.Values["repeat_1Source"]==repeated.Values["repeat_1Source"]&&again.Values["repeat_1Target"]==repeated.Values["repeat_1Target"],"additional group lost");
+            var storedGroups=(System.Collections.IEnumerable)typeof(SummaryFileBatch).GetField("groups",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(batch);
+            foreach(object item in storedGroups){var type=item.GetType();((TextBox)type.GetField("Source",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(item)).Text="";((TextBox)type.GetField("Target",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(item)).Text="";}
+            add.Invoke(batch,new object[]{"year","Lead!H2:I2","单体数据汇总!AV3"});var annual=(BatchPreset)capture.Invoke(batch,null);
+            check("年度变量可以独立配置",annual.Values["repeatSource"]==""&&annual.Values["yearSource"]!=""&&SummaryAreaSettings.Read(annual).VariableHeaders,"year-only settings rejected");
+
         }
         rejects(delegate { SummaryFileBatch.CellPath(123); }, "路径单元格拒绝数字");
         rejects(delegate { SummaryFileBatch.CellPath(""); }, "路径单元格拒绝空白");
@@ -320,3 +332,4 @@ public sealed class SummaryArrayOnlyRange{public bool HasArray{get{return false;
 public sealed class SummaryRecalcRange {public readonly SummaryRecalcSheet Worksheet=new SummaryRecalcSheet();public void Calculate(){throw new InvalidOperationException("Range Calculate unavailable");}}
 public sealed class SummaryRecalcSheet {public int Calls;public bool Fail;public void Calculate(){Calls++;if(Fail)throw new InvalidOperationException("Sheet Calculate unavailable");}}
 public sealed class SummaryRecalcApp {public int Calls;public void Calculate(){Calls++;}}
+

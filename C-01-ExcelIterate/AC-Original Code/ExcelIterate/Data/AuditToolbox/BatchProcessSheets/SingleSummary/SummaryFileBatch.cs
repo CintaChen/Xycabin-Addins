@@ -23,9 +23,19 @@ namespace Excel_Iterate
         private readonly ProgressBar progress = new ProgressBar { Dock = DockStyle.Top };
         private readonly RoundedButton preview = Ui.Button("批量预检", 120), execute = Ui.Button("执行并另存", 135), stop = Ui.Button("停止", 90);
         private readonly Timer timer = new Timer { Interval = 40 };
-        private readonly TextBox templateName=new TextBox{Text="单体数据汇总"},templateArea=new TextBox{Text="D1:X1700"},leadName=new TextBox{Text="Lead"},leadArea=new TextBox{Text="N3:N17"},pasteStart=new TextBox{Text="AV1"};
-        private readonly CheckBox strictFiles=new CheckBox{Text="严格检查目录及来源文件存在（虚拟路径暂不可用时请取消）",AutoSize=true},headers=new CheckBox{Text="启用公司及年度表头变量",AutoSize=true};
+        private readonly TextBox templateName=new TextBox{Text="单体数据汇总"},templateArea=new TextBox{Text="D1:X1700"},leadName=new TextBox{Text="Lead"},leadArea=new TextBox{Text="L3:L18"},pasteStart=new TextBox{Text="AV1"};
+        private readonly CheckBox strictFiles=new CheckBox{Text="严格检查目录及来源文件存在（虚拟路径暂不可用时请取消）",AutoSize=true};
         private readonly Dictionary<string,TextBox> variableFields=new Dictionary<string,TextBox>();
+        private sealed class VariableGroup{internal string Kind;internal TextBox Source=new TextBox{Width=300},Target=new TextBox{Width=300};internal Control Row;}
+        private readonly List<VariableGroup> groups=new List<VariableGroup>();
+        private static Control Inline(params Control[] controls){var panel=new FlowLayoutPanel{AutoSize=true,WrapContents=true};panel.Controls.AddRange(controls);return panel;}
+        private void AddVariable(string kind,string source="",string target="")
+        {
+            var item=new VariableGroup{Kind=kind};item.Source.Text=source;item.Target.Text=target;
+            var remove=Ui.Button("删除",70);var line=Inline(item.Source,new Label{Text="粘贴地址",AutoSize=true},item.Target,remove);
+            AddRow(kind=="repeat"?"重复变量（表名!地址）":"年度变量（表名!地址）",line);item.Row=line.Parent;groups.Add(item);
+            remove.Click+=delegate{settings.Controls.Remove(item.Row);item.Row.Dispose();groups.Remove(item);};
+        }
         private List<DataGridViewRow> queue;
         private BatchPreset preset;
         private BatchPreset chosenPreset;
@@ -69,31 +79,13 @@ namespace Excel_Iterate
             var chooseOutput = Ui.Button("选择输出文件夹", 155);
             chooseOutput.Click += delegate { string path = HostDialogService.Folder(dialog, "选择结果输出文件夹", true); if (!string.IsNullOrEmpty(path)) output.Text = path; };
             AddRow("输入文件夹", input, chooseInput, loadInput); AddRow("使用预设", presetPath, choosePreset, importPreset); AddRow("输出文件夹", output, chooseOutput);
-            var chooseStructure=Ui.Button("从架构表读取",155);var resetStructure=Ui.Button("使用文件夹名单",135);
-            chooseStructure.Click+=delegate{Attempt(delegate{
-                var tasks=CompanyStructurePicker.Choose(dialog,delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(app,path);},StructureUsesLevel);
-                if(tasks==null)return;CompanyStructureTasks.ResolveFiles(tasks,Path.GetTempPath());parentGroups=null;parentChildren=null;structureTasks=tasks;files.Rows.Clear();loadedInput=null;
-                Message("已选择架构任务"+tasks.Count+"项；按过程表文件名称精确匹配，各文件仍使用自己的Lead。");
-                if(Directory.Exists(input.Text.Trim().Trim('"')))LoadFiles();else Message("请输入数据文件夹，然后读取文件。");
-            });};
-            resetStructure.Click+=delegate{Attempt(delegate{structureTasks=null;parentGroups=null;parentChildren=null;files.Rows.Clear();loadedInput=null;LoadFiles();});};
-            AddRow("任务名单",new Label{Text="默认选择末级公司，可手动补选其他公司",AutoSize=true},chooseStructure,resetStructure);
-            var parentLinks=Ui.Button("末级链接至父公司",155);
-            parentLinks.Click+=delegate{Attempt(delegate{
-                var choice=CompanyStructurePicker.ChooseSelection(dialog,delegate(string path){return CompanyWorkbookHost.FromOpenOrDisk(app,path);},true);if(choice==null)return;
-                var groups=CompanyStructureTasks.DirectParentLinks(choice.All,choice.Selected);
-                parentGroups=groups;parentChildren=null;structureTasks=groups.Select(g=>g.Parent).ToList();files.Rows.Clear();loadedInput=null;
-                foreach(var group in groups)Message("父公司 "+group.Parent.Sequence+" "+group.Parent.FileName+" ← "+string.Join("、",group.Children.Select(c=>c.Sequence+" "+c.FileName).ToArray()));
-                Message("只处理直属父公司；不改Lead、不继续向祖父公司传递，Lead缺少任一所选末级公司时阻止该父公司整个任务。");
-                if(Directory.Exists(input.Text.Trim().Trim('"')))LoadFiles();else Message("请输入父公司过程表所在文件夹，然后读取文件。");
-            });};
-            AddRow("父子链接",new Label{Text="按架构分组，只链接到直属父公司",AutoSize=true},parentLinks);
-            AddRow("路径来源工作表", pathSheet); AddRow("路径来源单元格", pathCell);
-            AddRow("模板工作表",templateName);AddRow("模板已编制区域",templateArea);AddRow("第一粘贴起点",pasteStart);
-            AddRow("Lead工作表",leadName);AddRow("Lead公司范围",leadArea);
-            foreach(var pair in new Dictionary<string,string>{{"companyHeader","公司表头目标"},{"yearSource","年度来源"},{"yearTarget","年度目标起点"},{"repeatSource","Lead重复变量来源"},{"repeatTarget","重复变量目标"}})
-            {var box=new TextBox();variableFields.Add(pair.Key,box);AddRow(pair.Value+"（表名!地址）",box);}
-            AddRow("表头与路径校验",headers,strictFiles);
+            AddRow("路径来源",Inline(pathSheet,new Label{Text="单元格",AutoSize=true},pathCell));
+            AddRow("模板与粘贴起点",Inline(templateName,new Label{Text="已编排区域",AutoSize=true},templateArea,new Label{Text="粘贴起点",AutoSize=true},pasteStart));
+            AddRow("Lead公司范围",Inline(leadName,leadArea));
+            var addRepeat=Ui.Button("添加重复变量",140);addRepeat.Click+=delegate{AddVariable("repeat");};var addYear=Ui.Button("添加年度变量",140);addYear.Click+=delegate{AddVariable("year");};
+            AddRow("变量设置",Inline(addRepeat,addYear,new Label{Text="来源与粘贴地址均填写 表名!地址；可留空或删除不需要的组。",AutoSize=true}));
+            AddRow("路径校验",strictFiles);
+            AddVariable("repeat");AddVariable("year");
             var presetActions=new BatchPresetActions(dialog,"summary",ManualPreset,value=>UsePreset(value,"已应用："),delegate{return queue==null;},Message);
             AddRow("保存／管理预设",presetActions.Header(new Label{Text="可直接填写，也可载入预设后修改；多区域用分号分隔。",AutoSize=true}));
 
@@ -102,9 +94,9 @@ namespace Excel_Iterate
             files.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", ReadOnly = true, Width = 200 }); Ui.StyleGrid(files);
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(16) };
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute,360)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent, 50)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute,360)); root.RowStyles.Add(new RowStyle(SizeType.Absolute,0)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.Percent,100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var actions = Ui.ActionBar(); actions.Controls.AddRange(new Control[] { preview, execute, stop });
-            var scroll=new Panel{Dock=DockStyle.Fill,AutoScroll=true};scroll.Controls.Add(settings);root.Controls.Add(scroll, 0, 0); root.Controls.Add(files, 0, 1); root.Controls.Add(progress, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
+            var scroll=new Panel{Dock=DockStyle.Fill,AutoScroll=true};scroll.Controls.Add(settings);root.Controls.Add(scroll, 0, 0);  root.Controls.Add(progress, 0, 2); root.Controls.Add(log, 0, 3); root.Controls.Add(actions, 0, 4); dialog.Controls.Add(root);
             preview.Click += delegate { Attempt(delegate { Begin(false); }); }; execute.Click += delegate { Attempt(delegate { Begin(true); }); };
             stop.Enabled = false; stop.Click += delegate { stopping = true; Message("正在停止；当前临时副本将丢弃，已经输出的成功文件保留。"); };
             timer.Tick += delegate { Advance(); };
@@ -132,7 +124,7 @@ namespace Excel_Iterate
                 for(int i=0;i<found.Length;i++){parentChildren[found[i]]=new List<CompanyStructureTask>(parentGroups[i].Children);files.Rows[i].Cells[1].ToolTipText=parentGroups[i].Parent.FullName+" ← "+string.Join("、",parentGroups[i].Children.Select(c=>c.FileName).ToArray());}
             }
             loadedInput = path;
-            Message(structureTasks==null?"已列出 " + found.Length + " 个工作簿，默认勾选文件名含（合并）或(合并)的合并主体；可手动调整。":"已按架构表顺序匹配"+found.Length+"个任务；未找到的文件会明确报告，不使用近似名称替代。");
+            Message(structureTasks==null?"已列出 " + found.Length + " 个工作簿，按文件名识别（合并）或(合并)主体；逐文件处理结果见日志。":"已按架构表顺序匹配"+found.Length+"个任务；未找到的文件会明确报告，不使用近似名称替代。");
         }
         internal static bool IsWorkbook(string file)
         { string extension = Path.GetExtension(file); return string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".xls", StringComparison.OrdinalIgnoreCase); }
@@ -160,9 +152,19 @@ namespace Excel_Iterate
             var snapshot = BatchPresetStore.Decode(BatchPresetStore.Encode(value), "summary");
             SummaryAreaSettings.Read(snapshot);
             chosenPreset = snapshot; presetPath.Text = prefix + snapshot.Name;
-            var cfg=SummaryAreaSettings.Read(snapshot);templateName.Text=cfg.Template[0].Sheet;templateArea.Text=string.Join(";",cfg.Template.Select(a=>a.Address));pasteStart.Text=cfg.Paste.Address;leadName.Text=cfg.Lead[0].Sheet;leadArea.Text=string.Join(";",cfg.Lead.Select(a=>a.Address));strictFiles.Checked=cfg.CheckFiles;headers.Checked=cfg.HeadersEnabled;
-            foreach(var entry in variableFields){var part=SummaryAreaSettings.OptionalHeader(snapshot.Values,entry.Key);entry.Value.Text=part==null?"":part.Sheet+"!"+part.Address;string multi;if(part!=null&&snapshot.Values.TryGetValue(entry.Key+"Multi",out multi))entry.Value.Text=part.Sheet+"!"+string.Join(";",SummaryAreaSettings.Decode(multi,part.Sheet).Select(a=>a.Address));}
-
+            var cfg=SummaryAreaSettings.Read(snapshot);templateName.Text=cfg.Template[0].Sheet;templateArea.Text=string.Join(";",cfg.Template.Select(a=>a.Address));pasteStart.Text=cfg.Paste.Address;leadName.Text=cfg.Lead[0].Sheet;leadArea.Text=string.Join(";",cfg.Lead.Select(a=>a.Address));strictFiles.Checked=cfg.CheckFiles;
+            foreach(var item in groups.ToArray()){settings.Controls.Remove(item.Row);item.Row.Dispose();}groups.Clear();
+            Action<string,string,string> restore=(kind,sourceKey,targetKey)=>{
+                var source=SummaryAreaSettings.OptionalHeader(snapshot.Values,sourceKey);var target=SummaryAreaSettings.OptionalHeader(snapshot.Values,targetKey);if(source==null&&target==null)return;
+                string text=source==null?"":source.Sheet+"!"+source.Address;string multi;if(source!=null&&snapshot.Values.TryGetValue(sourceKey+"Multi",out multi))text=source.Sheet+"!"+string.Join(";",SummaryAreaSettings.Decode(multi,source.Sheet).Select(p=>p.Address));
+                AddVariable(kind,text,target==null?"":target.Sheet+"!"+target.Address);
+            };
+            restore("repeat","repeatSource","repeatTarget");restore("year","yearSource","yearTarget");
+            string extra;if(snapshot.Values.TryGetValue("extraGroups",out extra)&&!string.IsNullOrEmpty(extra))foreach(string key in extra.Split(';'))restore(key.StartsWith("repeat_")?"repeat":"year",key+"Source",key+"Target");
+            if(cfg.CompanyHeader!=null&&!groups.Any(g=>g.Kind=="repeat")){
+                var part=cfg.Lead[0];var source=new SummaryAreaPlan{Sheet=part.Sheet,Row=part.Row,Column=part.Column,Rows=part.Rows,Columns=1};AddVariable("repeat",source.Sheet+"!"+SummaryAreaEngine.Address(source),cfg.CompanyHeader.Sheet+"!"+cfg.CompanyHeader.Address);
+                Message("旧公司表头已迁移为一组重复变量，请核对来源列。");}
+            if(groups.Count==0){AddVariable("repeat");AddVariable("year");}
             string saved;if(snapshot.Values.TryGetValue("batchPathSheet",out saved))pathSheet.Text=saved;if(snapshot.Values.TryGetValue("batchPathCell",out saved))pathCell.Text=saved;
             foreach (DataGridViewRow row in files.Rows) row.Cells[2].Value = "待预检";
             Message("已选择预设“" + snapshot.Name + "”；仅使用坐标配置，各文件读取自己的数据，无需原预设工作簿存在。");
@@ -172,9 +174,20 @@ namespace Excel_Iterate
         private BatchPreset ManualPreset()
         {
             var value=chosenPreset==null?new BatchPreset{Feature="summary",Name="多文件自定义",Context="",Values=new Dictionary<string,string>()}:BatchPresetStore.Decode(BatchPresetStore.Encode(chosenPreset),"summary");
-            var v=value.Values;v["mode"]="area-mvp";v["templateSheet"]=templateName.Text.Trim();v["templateAreas"]=EncodeAddresses(templateArea.Text,v["templateSheet"]);v["pasteSheet"]=v["templateSheet"];v["pasteArea"]=EncodeAddresses(pasteStart.Text,v["templateSheet"]);v["leadSheet"]=leadName.Text.Trim();v["leadAreas"]=EncodeAddresses(leadArea.Text,v["leadSheet"]);v["projectFolder"]=Path.GetTempPath();v["checkFiles"]=strictFiles.Checked.ToString();v["headersEnabled"]=headers.Checked.ToString();v["batchPathSheet"]=pathSheet.Text;v["batchPathCell"]=pathCell.Text;
+            var v=value.Values;v["mode"]="area-mvp";v["templateSheet"]=templateName.Text.Trim();v["templateAreas"]=EncodeAddresses(templateArea.Text,v["templateSheet"]);v["pasteSheet"]=v["templateSheet"];v["pasteArea"]=EncodeAddresses(pasteStart.Text,v["templateSheet"]);v["leadSheet"]=leadName.Text.Trim();v["leadAreas"]=EncodeAddresses(leadArea.Text,v["leadSheet"]);v["projectFolder"]=Path.GetTempPath();v["checkFiles"]=strictFiles.Checked.ToString();v["batchPathSheet"]=pathSheet.Text;v["batchPathCell"]=pathCell.Text;
             if(chosenPreset==null){v["headersFormula"]="True";v["headersRepeat"]="True";v["variableHeaders"]="False";}
-            foreach(var entry in variableFields){string text=entry.Value.Text.Trim();if(text.Length==0){v[entry.Key]="";v[entry.Key+"Sheet"]="";v.Remove(entry.Key+"Multi");continue;}int split=text.LastIndexOf('!');if(split<1)throw new InvalidOperationException("变量请填写 工作表!地址："+entry.Key);string name=text.Substring(0,split).Trim().Trim('\'');v[entry.Key+"Sheet"]=name;v[entry.Key]=EncodeAddresses(text.Substring(split+1),name);if(entry.Key=="repeatSource"){var parts=SummaryAreaSettings.Decode(v[entry.Key],name);v[entry.Key+"Multi"]=v[entry.Key];v[entry.Key]=SummaryAreaSettings.Encode(parts.Take(1));v["variableHeaders"]="True";}}
+            foreach(string key in v.Keys.Where(k=>System.Text.RegularExpressions.Regex.IsMatch(k,@"^(repeat|year)_\d+(Source|Target)(Sheet|Multi)?$")).ToArray())v.Remove(key);
+            foreach(string key in new[]{"companyHeader","repeatSource","repeatTarget","yearSource","yearTarget"}){v[key]="";v[key+"Sheet"]="";v.Remove(key+"Multi");}
+            var extra=new List<string>();bool repeatUsed=false,yearUsed=false;int id=0;int active=0;
+            foreach(var item in groups){string from=item.Source.Text.Trim(),to=item.Target.Text.Trim();if(from.Length==0&&to.Length==0)continue;if(from.Length==0||to.Length==0)throw new InvalidOperationException("每组变量必须同时填写来源和粘贴地址。");
+                bool first=item.Kind=="repeat"?!repeatUsed:!yearUsed;string groupKey=first?item.Kind:item.Kind+"_"+(++id);if(item.Kind=="repeat")repeatUsed=true;else yearUsed=true;if(!first)extra.Add(groupKey);
+                foreach(var pair in new[]{new KeyValuePair<string,string>("Source",from),new KeyValuePair<string,string>("Target",to)}){
+                    string key=groupKey=="repeat"?"repeat"+pair.Key:groupKey=="year"?(pair.Key=="Source"?"yearSource":"yearTarget"):groupKey+pair.Key;
+                    int split=pair.Value.LastIndexOf('!');if(split<1)throw new InvalidOperationException("变量请填写 工作表!地址。");string name=pair.Value.Substring(0,split).Trim().Trim('\'');string encoded=EncodeAddresses(pair.Value.Substring(split+1),name);var parts=SummaryAreaSettings.Decode(encoded,name);
+                    v[key+"Sheet"]=name;v[key]=encoded;if(item.Kind=="repeat"&&pair.Key=="Source"){v[key+"Multi"]=encoded;v[key]=SummaryAreaSettings.Encode(parts.Take(1));}
+                }active++;
+            }
+            v["extraGroups"]=string.Join(";",extra);v["headersEnabled"]=(active>0).ToString();v["variableHeaders"]="True";v["headersFormula"]="True";
             SummaryAreaSettings.Read(value);return value;
         }
         private void Message(string text) { log.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + text + Environment.NewLine); log.SelectionStart = log.TextLength; log.ScrollToCaret(); log.Update(); files.Update(); }
@@ -332,3 +345,4 @@ namespace Excel_Iterate
         public void Dispose() { timer.Stop(); timer.Dispose(); try { Cleanup(); } finally { try{ReleaseHiddenApplication();}finally{dialog.Dispose();} } }
     }
 }
+
