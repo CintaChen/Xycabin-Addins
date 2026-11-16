@@ -13,6 +13,17 @@ internal static class NotesLinksProbe
     private static void Reject(Action action,string message){bool rejected=false;try{action();}catch(InvalidOperationException){rejected=true;}catch(FormatException){rejected=true;}Check(rejected,message);}
     private static void Pure()
     {
+        Check(ConsolidatedWorkbookForm.SequenceKey("！00-")=="0"&&ConsolidatedWorkbookForm.SequenceKey("!01-02-")=="1-2","report hierarchy accepts exclamation prefix and leading zeros");
+        var map=typeof(ConsolidatedWorkbookForm).GetMethod("Areas",BindingFlags.NonPublic|BindingFlags.Static);
+        var planned=(MigrationArea[])map.Invoke(null,new object[]{"K3,L3,M3,N3",15,true});
+        Check(planned[0].Address=="K3:K17"&&planned[3].Address=="N3:N17","report field anchors expand to actual child count");
+        var parentFields=ConsolidatedWorkbookForm.ParentAreas(planned);
+        Check(parentFields.Select(a=>a.Address).SequenceEqual(new[]{"K2:K2","L2:L2","M2:M2","N2:N2"}),"group owner occupies row two separately from children");
+        Reject(()=>ConsolidatedWorkbookForm.ParentAreas(new[]{MigrationArea.Parse("K2")}),"children cannot overwrite owner row");
+        Check(ConsolidatedWorkbookForm.ParentAreas(new[]{MigrationArea.Parse("B5"),MigrationArea.Parse("D5")}).Select(a=>a.Column).SequenceEqual(new[]{2,4}),"owner follows mapped columns");
+        bool overlap=false;try{map.Invoke(null,new object[]{"L3,L3,M3,N3",15,true});}catch(TargetInvocationException e){overlap=e.InnerException is InvalidOperationException;}Check(overlap,"overlapping report identity fields rejected");
+        Check(SummaryTextReference.External(@"N:\EASDATA\SZYSKG_20261231","！01-示例公司.xlsx","BS!$G$10")=="='N:\\EASDATA\\SZYSKG_20261231\\[！01-示例公司.xlsx]BS'!$G$10","full file name preserves prefix and extension in external link");
+        Check(SummaryTextReference.LinkFileName("sample.xlsm")=="sample.xlsm"&&SummaryTextReference.LinkFileName("sample")=="sample.xlsx","full Excel extension and legacy company name supported");
         var source=MigrationArea.Parse("D1:X1700");Check(source.Columns==21&&source.Rows==1700,"default bounded source has 21 columns and 1700 rows");
         string[] expected={"AV1:BP1700","BR1:CL1700","CN1:DH1700","DJ1:ED1700"};
         for(int i=0;i<expected.Length;i++)Check(NotesLinkRules.Target(source,"AV1","BR1",i).Address==expected[i],"fixed slot "+i);
@@ -40,6 +51,30 @@ internal static class NotesLinksProbe
             Check(emptyTask.Blocks.Count==0&&emptyTask.Anchors.Count==1&&emptyTask.Skipped==3,"empty unmerged source maps only target merge anchor");
             emptyFacts.Contents[MigrationSheetSnapshot.Key(1,5)]="formula:1";
             Reject(()=>NotesLinkRules.MapMerges(new NotesLinkTask{Target=dst},src,parentFacts,emptyFacts),"source formula prevents merge mismatch data loss");
+        }
+        {
+            string sample=Path.Combine(Path.GetTempPath(),"LeadMapping-"+Guid.NewGuid().ToString("N")+".xlsx");
+            try
+            {
+                using(var stream=File.Create(sample))using(var zip=new System.IO.Compression.ZipArchive(stream,System.IO.Compression.ZipArchiveMode.Create))
+                {
+                    Action<string,string> put=(name,xml)=>{using(var writer=new StreamWriter(zip.CreateEntry(name).Open()))writer.Write(xml);};
+                    put("xl/workbook.xml","<workbook xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' xmlns:r='http://schemas.openxmlformats.org/officeDocument/2006/relationships'><sheets><sheet name='Lead' r:id='rId1'/></sheets></workbook>");
+                    put("xl/_rels/workbook.xml.rels","<Relationships><Relationship Id='rId1' Target='worksheets/sheet1.xml'/></Relationships>");
+                    put("xl/worksheets/sheet1.xml","<worksheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><sheetData><row r='1'><c r='B1' t='inlineStr'><is><t>公司全称</t></is></c><c r='D1' t='inlineStr'><is><t>编码</t></is></c><c r='F1' t='inlineStr'><is><t>简称</t></is></c><c r='H1' t='inlineStr'><is><t>完整文件名</t></is></c><c r='J1' t='inlineStr'><is><t>不含编码文件名</t></is></c></row></sheetData></worksheet>");
+                }
+                Check(ConsolidatedTemplateProfile.Read(sample).Columns.SequenceEqual(new[]{4,6,2,8,10}),"consolidated template identifies relocated columns by header");
+                Check(ConsolidatedTemplateProfile.Read(sample,new[]{1,3,5,7,9}).Columns.SequenceEqual(new[]{1,3,5,7,9}),"explicit consolidated column mapping is respected");
+                Reject(()=>ConsolidatedTemplateProfile.Read(sample,new[]{1,1,2,3,4}),"duplicate consolidated column mapping rejected");
+            }
+            finally{if(File.Exists(sample))File.Delete(sample);}
+        }
+        using(var company=new CompanyWorkbookForm())
+        {
+            var inputs=(System.Windows.Forms.FlowLayoutPanel)typeof(CompanyWorkbookForm).GetField("inputs",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(company);
+            int outputIndex=-1,confirmIndex=-1,structureIndex=-1;
+            for(int i=0;i<inputs.Controls.Count;i++){var control=inputs.Controls[i];if(Convert.ToString(control.Tag)=="输出文件夹")outputIndex=i;if(Convert.ToString(control.Tag)=="核对")confirmIndex=i;if(control is CompanyStructurePicker)structureIndex=i;}
+            Check(outputIndex>=0&&confirmIndex>outputIndex&&structureIndex>confirmIndex,"output directory and confirmation precede structure task grid");
         }
         using(var form=new NotesLinksForm())
         {

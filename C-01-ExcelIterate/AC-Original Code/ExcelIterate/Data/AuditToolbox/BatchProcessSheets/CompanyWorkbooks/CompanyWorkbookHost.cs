@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -93,6 +93,11 @@ namespace Excel_Iterate
             var result=new List<string[]>();using(var bag=new ComBag())
             {dynamic sheet=Sheet(name,bag),used=bag.Own(sheet.UsedRange),rows=bag.Own(used.Rows);int last=Convert.ToInt32(used.Row)+Convert.ToInt32(rows.Count)-1;if(last>100000)throw new InvalidOperationException("架构表超过十万行，请整理实际数据范围。");object cells=bag.Own(sheet.Cells);
              for(int r=1;r<=last;r++)result.Add(new[]{r.ToString(),Read(cells,r,columns[0]),Read(cells,r,columns[1]),Read(cells,r,columns[2]),Read(cells,r,columns[3])});}return result;
+        }
+        internal int ReportLastRow(string name,int column)
+        {
+            using(var bag=new ComBag())
+            {dynamic sheet=Sheet(name,bag),cells=bag.Own(sheet.Cells),rows=bag.Own(sheet.Rows),bottom=bag.Own(cells.Item(Convert.ToInt32(rows.Count),column)),last=bag.Own(bottom.End[-4162]);return Convert.ToInt32(last.Row);}
         }
         internal void ValidateReportArea(string name,MigrationArea area)
         {

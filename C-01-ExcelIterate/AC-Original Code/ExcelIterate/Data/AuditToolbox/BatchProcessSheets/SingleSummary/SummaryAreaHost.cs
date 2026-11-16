@@ -38,6 +38,7 @@ namespace Excel_Iterate
         private string bookName, templateSheet, pasteSheet, leadSheet, backup;
         private readonly List<SummaryAreaPlan> areas = new List<SummaryAreaPlan>();
         private SummaryAreaPlan paste, lead;
+        private int linkFileColumn;
         private readonly List<SummaryAreaPlan> leadAreas = new List<SummaryAreaPlan>();
         private readonly List<SummaryAreaCell> cells = new List<SummaryAreaCell>();
         private List<SummaryAreaPlan> targets = new List<SummaryAreaPlan>();
@@ -109,7 +110,7 @@ namespace Excel_Iterate
             var preset = new BatchPreset { Feature = "summary", Name = "区域链接", Context = book == null ? "" : bookName, Values = new Dictionary<string, string> {
                 { "mode", "area-mvp" }, { "templateSheet", templateSheet ?? "" }, { "templateAreas", SummaryAreaSettings.Encode(areas) },
                 { "pasteSheet", pasteSheet ?? "" }, { "pasteArea", paste == null ? "" : SummaryAreaSettings.Encode(new[] { paste }) },
-                { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
+                { "linkFileColumn", linkFileColumn==0?"":CellAddress.ColumnLetters(linkFileColumn) }, { "leadSheet", leadSheet ?? "" }, { "leadAreas", SummaryAreaSettings.Encode(LeadSelections()) }, { "projectFolder", view.Folder.Text }, { "checkFiles", view.CheckFiles.Checked.ToString() }
             } };
             preset.Values["headersEnabled"] = view.HeadersEnabled.Checked.ToString();preset.Values["headersFormula"]=view.FormulaHeaders.Checked.ToString();preset.Values["headersRepeat"]=view.RepeatNames.Checked.ToString();
             preset.Values["variableHeaders"]=view.VariableHeaders.Checked.ToString();
@@ -130,6 +131,7 @@ namespace Excel_Iterate
                 if(!System.Text.RegularExpressions.Regex.IsMatch(key,@"^(repeat|year)_\d+$")||restored.Count>=40)throw new InvalidOperationException("新增分组预设格式不正确，请重新保存。");
                 foreach(string suffix in new[]{"Source","Target"}){var part=SummaryAreaSettings.OptionalHeader(preset.Values,key+suffix);if(part!=null)restored[key+suffix]=part;}
             }
+            string fileColumn;linkFileColumn=preset.Values.TryGetValue("linkFileColumn",out fileColumn)&&!string.IsNullOrWhiteSpace(fileColumn)?MigrationPlanner.ColumnIndex(fileColumn):0;
             var settings = SummaryAreaSettings.Read(preset);var multiSelections=new Dictionary<string,List<SummaryAreaPlan>>();
             foreach(var entry in restored.Concat(new[]{new KeyValuePair<string,SummaryAreaPlan>("repeatSource",settings.RepeatSource)})){
                 string text;if(entry.Value!=null&&preset.Values.TryGetValue(entry.Key+"Multi",out text)){var selected=SummaryAreaSettings.Decode(text,entry.Value.Sheet);if(selected.Sum(a=>(long)a.Rows*a.Columns)>SummaryAreaEngine.CellLimit)throw new InvalidOperationException("重复变量选区过大，请选择实际使用的数据行。");multiSelections[entry.Key]=selected;}
@@ -372,6 +374,7 @@ namespace Excel_Iterate
                     if (string.IsNullOrWhiteSpace(code) && string.IsNullOrWhiteSpace(name)) continue;
                     if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("Lead 第 " + binding.Row + " 行两列必须同时填写。");
                     var company = new SummaryCompany { Row = binding.Row, Code = code, Name = name, Selected = !selected.ContainsKey(binding.Row) || selected[binding.Row] };
+                    if(linkFileColumn>0){dynamic fileCell=one.Own(sheet.Cells[binding.Row,linkFileColumn]);object fileValue=fileCell.Value2;if(SummaryAreaEngine.IsError(fileValue)||string.IsNullOrWhiteSpace(Convert.ToString(fileValue)))throw new InvalidOperationException("Lead文件名称缺失，行号："+binding.Row);company.SourceFileName=CompanyWorkbookRules.FileName(Convert.ToString(fileValue));if(!SummaryLinkRewriter.IsLinkFile(company.SourceFileName))throw new InvalidOperationException("Lead文件名称必须包含Excel扩展名。");}
                     companies.Add(company); view.Companies.Rows.Add(company.Selected, company.Row, code, name);
                 }
                 if(structureChildren!=null)
@@ -381,7 +384,7 @@ namespace Excel_Iterate
                     foreach(var child in structureChildren)
                     {
                         string file=CompanyWorkbookRules.FileName(child.FileName);
-                        var matches=companies.Where(c=>string.Equals(c.Name+".xlsx",file,StringComparison.OrdinalIgnoreCase)).ToList();
+                        var matches=companies.Where(c=>string.Equals(c.FileName,file,StringComparison.OrdinalIgnoreCase)).ToList();
                         if(matches.Count==0)issues.Add("缺少「"+file+"」（应在预设公司字段选区内填写不含.xlsx的完整文件名）");
                         else if(matches.Count>1)issues.Add("「"+file+"」存在重复记录");
                         else{rows.Add(matches[0].Row);view.Message("直属末级 "+child.Sequence+" → 父公司Lead第"+matches[0].Row+"行："+file);}
@@ -424,7 +427,7 @@ namespace Excel_Iterate
                             {
                                 SummaryExistingFormula existing=null;bool literal=!formula && (!(value is string)||text.StartsWith("=",StringComparison.Ordinal)||!System.Text.RegularExpressions.Regex.IsMatch(text,@"!\$?[A-Za-z]{1,3}\$?[0-9]"));
                                 if (formula) { existing=SummaryExistingFormula.Read(text); if(!existing.Spans.Any(x=>x.Kind!=RefKind.Local))existing=null; }
-                                else if(!literal) foreach (var company in picked) SummaryTextReference.External(view.ProjectFolder, company.Name, text);
+                                else if(!literal) foreach (var company in picked) SummaryTextReference.External(view.ProjectFolder, company.FileName, text);
                                 cells.Add(new SummaryAreaCell { Row = row, Column = column, Text = text, Formula = formula, Literal=literal,Existing=existing,R1C1 = formula ? Convert.ToString(cell.FormulaR1C1) : null });
                             }
                             catch (Exception error) { errors.Add(CellAddress.Name(row, column) + " | " + text + " | " + error.Message); }
@@ -435,7 +438,7 @@ namespace Excel_Iterate
                 // Validate filenames even for an entirely blank template.
                 foreach (var company in picked)
                 {
-                    try { SummaryTextReference.External(view.ProjectFolder, company.Name, "BS!A1"); if (view.CheckFiles.Checked && !File.Exists(Path.Combine(view.ProjectFolder, company.Name + ".xlsx"))) throw new InvalidOperationException("来源文件不存在。"); }
+                    try { SummaryTextReference.External(view.ProjectFolder, company.FileName, "BS!A1"); if (view.CheckFiles.Checked && !File.Exists(Path.Combine(view.ProjectFolder, company.FileName))) throw new InvalidOperationException("来源文件不存在。"); }
                     catch (Exception error) { errors.Add("Lead 第 " + company.Row + " 行 | " + company.Name + " | " + error.Message); }
                 }
                 for (int i = 0; i < targets.Count; i++)
@@ -566,7 +569,7 @@ namespace Excel_Iterate
                     var block = cells.Where(c => c.Row >= sourceArea.Row && c.Row < sourceArea.Row + sourceArea.Rows && c.Column >= sourceArea.Column && c.Column < sourceArea.Column + sourceArea.Columns).ToList();
                     if(block.Any(c=>(!c.Formula&&!c.Literal)||c.Existing!=null))
                     {
-                        if(!block.Any(c=>c.Literal)) { target.Formula=SummaryAreaEngine.FormulaMatrix((object)target.Formula,sourceArea,block,view.ProjectFolder,company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);bulkWrites++; }
+                        if(!block.Any(c=>c.Literal)) { target.Formula=SummaryAreaEngine.FormulaMatrix((object)target.Formula,sourceArea,block,view.ProjectFolder,company.FileName,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);bulkWrites++; }
                         else foreach(var row in block.Where(c=>(!c.Formula&&!c.Literal)||c.Existing!=null).GroupBy(c=>c.Row))
                         {
                             var ordered=row.OrderBy(c=>c.Column).ToList();int first=0;
@@ -575,7 +578,7 @@ namespace Excel_Iterate
                                 int last=first;while(last+1<ordered.Count&&ordered[last+1].Column==ordered[last].Column+1)last++;
                                 var run=new SummaryAreaPlan{Row=row.Key,Column=ordered[first].Column,Rows=1,Columns=ordered[last].Column-ordered[first].Column+1};
                                 string address=CellAddress.Name(targetArea.Row+run.Row-sourceArea.Row,targetArea.Column+run.Column-sourceArea.Column)+":"+CellAddress.Name(targetArea.Row+run.Row-sourceArea.Row,targetArea.Column+run.Column-sourceArea.Column+run.Columns-1);
-                                dynamic output=bag.Own(sheet.Range[address]);output.Formula=SummaryAreaEngine.FormulaMatrix((object)output.Formula,run,ordered.GetRange(first,last-first+1),view.ProjectFolder,company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);bulkWrites++;first=last+1;
+                                dynamic output=bag.Own(sheet.Range[address]);output.Formula=SummaryAreaEngine.FormulaMatrix((object)output.Formula,run,ordered.GetRange(first,last-first+1),view.ProjectFolder,company.FileName,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);bulkWrites++;first=last+1;
                             }
                         }
                     }
@@ -583,7 +586,7 @@ namespace Excel_Iterate
                     if (block.Count > 0)
                     {
                         VerifyFormulaCells(sheet, target, sourceArea, targetArea, block);
-                        SummaryAreaEngine.VerifyMatrix((object)target.Formula, (object)target.FormulaR1C1, sourceArea, block, view.ProjectFolder, company.Name,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);
+                        SummaryAreaEngine.VerifyMatrix((object)target.Formula, (object)target.FormulaR1C1, sourceArea, block, view.ProjectFolder, company.FileName,targetArea.Row-sourceArea.Row,targetArea.Column-sourceArea.Column);
                     }
                     formulaCount += block.Count;
                     step++; view.Message("已完成 " + step + "/" + targets.Count + "：" + company.Name + " → " + SummaryAreaEngine.Address(targetArea));
@@ -697,7 +700,7 @@ namespace Excel_Iterate
             var review=new List<SummaryReferenceSource>();
             foreach(var entry in observations)
             {
-                bool matched=files[entry.Key].Length>0&&companies.Any(c=>string.Equals(c.Name+".xlsx",files[entry.Key],StringComparison.OrdinalIgnoreCase));
+                bool matched=files[entry.Key].Length>0&&companies.Any(c=>string.Equals(c.FileName,files[entry.Key],StringComparison.OrdinalIgnoreCase));
                 review.Add(new SummaryReferenceSource{Key=entry.Key,File=files[entry.Key],Locations=string.Join(", ",entry.Value.Select(x=>x.Split('|')[0].Trim()).Distinct().ToArray()),Signature=string.Join("\n",entry.Value.ToArray()),Reason=matched?"匹配 Lead 公司文件" : files[entry.Key].Length==0?"本工作簿跨表来源，只能保留" : "未匹配 Lead，可能为公共或无关来源",Decision=matched&&observations.Count==1?"参与公司替换":"待确认"});
                 if(observations.Count>1)review.Last().Reason+="；存在多个来源，须逐项确认";
                 view.Message("来源预检："+entry.Key+"；"+review.Last().Reason);foreach(string item in entry.Value)view.Message("引用位置及公式："+item);

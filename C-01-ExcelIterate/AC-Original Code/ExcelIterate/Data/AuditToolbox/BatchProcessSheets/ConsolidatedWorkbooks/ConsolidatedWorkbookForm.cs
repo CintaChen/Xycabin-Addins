@@ -29,7 +29,7 @@ namespace Excel_Iterate
         private readonly List<Job> jobs=new List<Job>();
         private int position;private bool running,cancelled,closePending;private string frozen;
         private sealed class Company{internal int Row;internal string Sequence,Short,Full,File,Key;}
-        private sealed class Job{internal Company Owner;internal List<Company> Rows;internal bool Group;internal MigrationArea[] Areas;internal string Sheet,Path;}
+        private sealed class Job{internal Company Owner;internal List<Company> Rows;internal bool Group;internal MigrationArea[] Areas,Cleanup,OwnerAreas;internal string Sheet,Path;}
         private static TextBox Box(string value,int width){return new TextBox{Text=value,Width=width};}
         private void Row(string title,params Control[] controls){var line=new FlowLayoutPanel{AutoSize=true,WrapContents=true,Width=1080};line.Controls.Add(new Label{Text=title,Width=155,Height=28,TextAlign=ContentAlignment.MiddleLeft});line.Controls.AddRange(controls);settings.Controls.Add(line);}
         private RoundedButton Browse(TextBox field){var b=Ui.Button("选择工作簿",120);b.Click+=delegate{Attempt(delegate{var files=HostDialogService.OpenFiles(this,"Excel工作簿 (*.xlsx)|*.xlsx");if(files.Length==1)field.Text=files[0];});};return b;}
@@ -39,7 +39,7 @@ namespace Excel_Iterate
             Row("股权架构工作簿",structure,Browse(structure));Row("架构工作表",sheet);
             Row("架构字段列",columns,new Label{AutoSize=true,Text="依次：序号、公司简称、公司全称、完整文件名；填写列字母，用逗号分隔"});
             Row("单体模板",single,Browse(single));Row("单体 Lead 名称",singleSheet);Row("单体写入位置",singleMap,new Label{AutoSize=true,Text="依次：序号、简称、全称、文件名（四个单元格）"});
-            Row("合并模板",group,Browse(group));Row("合并 Lead 名称",groupSheet);Row("合并写入位置",groupMap,new Label{AutoSize=true,Text="四个单列区域或起点；按直系子公司数向下填充，不自动加入父公司"});
+            Row("合并模板",group,Browse(group));Row("合并 Lead 名称",groupSheet);Row("合并写入位置",groupMap,new Label{AutoSize=true,Text="四个单列区域或起点；按直系子公司数向下填充，第2行同列更新母公司，尾部旧名单清空"});
             var folder=Ui.Button("选择文件夹",120);folder.Click+=delegate{string path=HostDialogService.Folder(this,"报表输出文件夹",true);if(!string.IsNullOrEmpty(path))output.Text=path;};Row("输出文件夹",output,folder);
             Row("格式",new Label{AutoSize=true,Text="完整复制模板，保留千分位、金额精度、字体及合并格式；序号、名称、文件名按文本写入。原文件不变，同名不覆盖。"});
             grid.Columns.Add("kind","类型");grid.Columns.Add("company","公司");grid.Columns.Add("rows","Lead 行数");grid.Columns.Add("path","输出文件");grid.Columns.Add("status","状态");Ui.StyleGrid(grid);
@@ -63,6 +63,11 @@ namespace Excel_Iterate
             var areas=text.Split(',','，').Select(s=>MigrationArea.Parse(s.Trim())).ToArray();if(areas.Length!=4)throw new InvalidOperationException("请填写四个字段位置。");
             for(int i=0;i<4;i++){var a=areas[i];if(a.Columns!=1||!groupMode&&a.Rows!=1||a.Rows!=1&&a.Rows<count)throw new InvalidOperationException("写入区域必须是单列且足够容纳任务行数。");if(a.Row+count-1>1048576)throw new InvalidOperationException("写入超出行上限。");a.Rows=count;for(int j=0;j<i;j++)if(NotesOverlap(a,areas[j]))throw new InvalidOperationException("字段写入区域重叠，请分别指定序号、简称、全称和文件名位置。");}return areas;
         }
+        internal static MigrationArea[] ParentAreas(MigrationArea[] children)
+        {
+            if(children.Any(a=>a.Row<=2))throw new InvalidOperationException("合并名单必须从第3行或之后开始，第2行用于母公司。");
+            return children.Select(a=>new MigrationArea{Row=2,Column=a.Column,Rows=1,Columns=1}).ToArray();
+        }
         private static bool NotesOverlap(MigrationArea a,MigrationArea b){return a.Column==b.Column&&a.Row<b.Row+b.Rows&&b.Row<a.Row+a.Rows;}
         private void Preview()
         {
@@ -74,6 +79,7 @@ namespace Excel_Iterate
             {int r=int.Parse(data[0]);string seq=data[1].Trim();if(seq.Length==0)continue;if(!Regex.IsMatch(seq.TrimStart('！','!'),@"^\d+(?:-\d+)*-?$")){if(r<=20&&new[]{"序号","公司序号","编号","编码"}.Contains(seq))continue;throw new InvalidOperationException("架构表第"+r+"行序号无效。");}companies.Add(new Company{Row=r,Sequence=seq,Key=SequenceKey(seq),Short=data[2],Full=data[3],File=data[4]});}
             if(companies.Count==0)throw new InvalidOperationException("没有识别到公司任务。");if(companies.Select(c=>c.Key).Distinct().Count()!=companies.Count)throw new InvalidOperationException("架构表序号重复。");
             foreach(var company in companies.Where(c=>c.Key.Contains("-"))){string parentKey=company.Key.Substring(0,company.Key.LastIndexOf('-'));if(!companies.Any(c=>c.Key==parentKey))throw new InvalidOperationException("架构表存在缺失的直属父级："+company.Sequence);}
+            foreach(var company in companies.Where(c=>c.Key.Contains("-"))){string parentKey=company.Key.Substring(0,company.Key.LastIndexOf('-'));if(!companies.Any(c=>c.Key==parentKey))throw new InvalidOperationException("架构表存在缺失的直属父级："+company.Sequence);}
             singleHost=OpenTemplate(single.Text);groupHost=OpenTemplate(group.Text);
             if(companies.Any(c=>string.IsNullOrWhiteSpace(c.Short)||string.IsNullOrWhiteSpace(c.Full)||string.IsNullOrWhiteSpace(c.File)))throw new InvalidOperationException("架构表公司简称、全称和文件名称不能为空。");
             foreach(var owner in companies)
@@ -84,7 +90,10 @@ namespace Excel_Iterate
                 string file=CompanyWorkbookRules.FileName(owner.File);if(!file.EndsWith(".xlsx",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("文件名称须带.xlsx："+file);
                 string path=Path.Combine(Path.GetFullPath(output.Text),file);if(File.Exists(path)||jobs.Any(j=>string.Equals(j.Path,path,StringComparison.OrdinalIgnoreCase)))throw new InvalidOperationException("输出已存在或重名："+path);
                 var job=new Job{Owner=owner,Rows=rows,Group=isGroup,Sheet=targetName,Path=path,Areas=Areas(isGroup?groupMap.Text:singleMap.Text,rows.Count,isGroup)};
-                foreach(var area in job.Areas)host.ValidateReportArea(targetName,area);
+                job.OwnerAreas=isGroup?ParentAreas(job.Areas):new MigrationArea[0];
+                foreach(var area in job.OwnerAreas)host.ValidateReportArea(targetName,area);
+                job.Cleanup=job.Areas.Select(a=>new MigrationArea{Row=a.Row,Column=a.Column,Columns=1,Rows=isGroup?Math.Max(a.Rows,host.ReportLastRow(targetName,a.Column)-a.Row+1):a.Rows}).ToArray();
+                foreach(var area in job.Cleanup)host.ValidateReportArea(targetName,area);
                 jobs.Add(job);grid.Rows.Add(isGroup?"合并":"单体",owner.Full,rows.Count,path,"待生成");
             }
             frozen=Key();start.Enabled=true;Append("预检：合并 "+jobs.Count(j=>j.Group)+" 个，单体 "+jobs.Count(j=>!j.Group)+" 个。请核对任务数量和输出位置；12/59仅为当前样本预期，不硬编码。");
@@ -94,6 +103,18 @@ namespace Excel_Iterate
         private static void Write(object book,Job job,bool verify)
         {
             using(var bag=new ComBag()){dynamic sheets=bag.Own(((dynamic)book).Worksheets),lead=bag.Own(sheets.Item(job.Sheet));if(Convert.ToBoolean(lead.ProtectContents))throw new InvalidOperationException("目标工作表受保护。");
+                for(int c=0;c<job.OwnerAreas.Length;c++)
+                {
+                    var area=job.OwnerAreas[c];dynamic cell=bag.Own(lead.Cells[area.Row,area.Column]);
+                    if(!verify)CompanyWorkbookHost.WriteText(cell,Value(job.Owner,c));
+                    else if(Convert.ToString(cell.Value2)!=Value(job.Owner,c)||Convert.ToBoolean(cell.HasFormula))throw new InvalidOperationException("母公司字段保存后核验失败。");
+                }
+                for(int c=0;c<4;c++)
+                {
+                    var area=job.Cleanup[c];
+                    if(!verify){dynamic clear=bag.Own(lead.Range[area.Address]);clear.ClearContents();}
+                    else for(int r=job.Rows.Count;r<area.Rows;r++){dynamic tail=bag.Own(lead.Cells[area.Row+r,area.Column]);if(!string.IsNullOrEmpty(Convert.ToString(tail.Value2))||Convert.ToBoolean(tail.HasFormula))throw new InvalidOperationException("保存后旧名单清理核验失败："+CellAddress.Name(area.Row+r,area.Column));}
+                }
                 for(int c=0;c<4;c++)for(int r=0;r<job.Rows.Count;r++){dynamic cell=bag.Own(lead.Cells[job.Areas[c].Row+r,job.Areas[c].Column]);if(!verify){if(Convert.ToBoolean(cell.MergeCells)||Convert.ToBoolean(cell.HasArray))throw new InvalidOperationException("写入位置包含合并或数组公式。");CompanyWorkbookHost.WriteText(cell,Value(job.Rows[r],c));}else if(Convert.ToString(cell.Value2)!=Value(job.Rows[r],c)||Convert.ToBoolean(cell.HasFormula))throw new InvalidOperationException("保存后字段读回不一致。");}}
         }
         private void Tick(){timer.Stop();if(cancelled||position>=jobs.Count){Finish();return;}var job=jobs[position];try{var host=job.Group?groupHost:singleHost;host.Generate(new CompanyWorkbookRequest{Output=output.Text,UpdateLead=true},new CompanyWorkbookRecord{Row=job.Owner.Row,Name=job.Owner.File,OutputPath=job.Path},(b,q,r)=>Write(b,job,false),Append,(b,q,r)=>Write(b,job,true));grid.Rows[position].Cells[4].Value="已生成";Append("完成："+job.Path);}catch(Exception e){grid.Rows[position].Cells[4].Value="失败";Append("失败："+job.Path+"；"+e.Message);}position++;progress.Value=position;timer.Start();}

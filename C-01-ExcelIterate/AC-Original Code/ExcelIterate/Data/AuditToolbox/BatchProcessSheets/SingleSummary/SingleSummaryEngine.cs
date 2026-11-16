@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -21,11 +21,14 @@ namespace Excel_Iterate
     }
     internal static class SummaryTextReference
     {
+        internal static string LinkFileName(string name)
+        {return name.EndsWith(".xlsx",StringComparison.OrdinalIgnoreCase)||name.EndsWith(".xlsm",StringComparison.OrdinalIgnoreCase)?name:name+".xlsx";}
         internal static string External(string folder, string companyName, string original)
         {
             if (string.IsNullOrWhiteSpace(companyName)) throw new InvalidOperationException("公司全称为空。");
             // Preserve the original name; invalid names must be reported, never repaired.
-            CompanyWorkbookRules.FileName(companyName + ".xlsx");
+            string fileName=LinkFileName(companyName);
+            CompanyWorkbookRules.FileName(fileName);
             if (companyName.IndexOfAny(new[] { '[', ']' }) >= 0) throw new InvalidOperationException("公司名称含外链不支持的方括号。");
             if (string.IsNullOrWhiteSpace(folder) || (!System.Text.RegularExpressions.Regex.IsMatch(folder, @"^[A-Za-z]:[\\/]") && !System.Text.RegularExpressions.Regex.IsMatch(folder, @"^\\\\[^\\]+\\[^\\]+(?:\\|$)"))) throw new InvalidOperationException("项目文件夹必须为完整的盘符或 UNC 绝对路径。");
             if (folder.IndexOfAny(new[] { '[', ']', '\r', '\n' }) >= 0) throw new InvalidOperationException("项目路径包含非法外链字符。");
@@ -47,7 +50,7 @@ namespace Excel_Iterate
             int column = 0; foreach (char letter in match.Groups[1].Value.ToUpperInvariant()) column = column * 26 + letter - 'A' + 1;
             int row = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
             if (column > 16384 || row > 1048576) throw new InvalidOperationException("源地址超出 Excel 边界。");
-            string path = folder.TrimEnd('\\', '/') + "\\[" + companyName + ".xlsx]" + sheet;
+            string path = folder.TrimEnd('\\', '/') + "\\[" + fileName + "]" + sheet;
             return "='" + path.Replace("'", "''") + "'!" + cell;
         }
     }

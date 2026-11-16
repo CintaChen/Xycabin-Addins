@@ -24,6 +24,7 @@ namespace Excel_Iterate
         private readonly RoundedButton preview = Ui.Button("批量预检", 120), execute = Ui.Button("执行并另存", 135), stop = Ui.Button("停止", 90);
         private readonly Timer timer = new Timer { Interval = 40 };
         private readonly TextBox templateName=new TextBox{Text="单体数据汇总"},templateArea=new TextBox{Text="A3:E6;A8:E208"},leadName=new TextBox{Text="Lead"},leadArea=new TextBox{Text="L3:L17"},pasteStart=new TextBox{Text="L3"};
+        private readonly TextBox linkFileColumn=new TextBox{Text="N",Width=65};
         private readonly CheckBox strictFiles=new CheckBox{Text="严格检查目录及来源文件存在（虚拟路径暂不可用时请取消）",AutoSize=true};
         private readonly Dictionary<string,TextBox> variableFields=new Dictionary<string,TextBox>();
         private sealed class VariableGroup{internal string Kind;internal TextBox Source=new TextBox{Width=300},Target=new TextBox{Width=300};internal Control Row;}
@@ -87,6 +88,7 @@ namespace Excel_Iterate
             AddRow("路径来源",Inline(pathSheet,new Label{Text="单元格",AutoSize=true},pathCell));
             AddRow("模板与粘贴起点",Inline(templateName,new Label{Text="已编排区域",AutoSize=true},templateArea,new Label{Text="粘贴起点",AutoSize=true},pasteStart));
             AddRow("Lead公司范围",Inline(leadName,leadArea));
+            AddRow("外链文件名称列",Inline(linkFileColumn,new Label{Text="读取同一Lead行的完整文件名（含.xlsx）；列名仍由重复变量取简称。",AutoSize=true}));
             var addRepeat=Ui.Button("添加重复变量",140);addRepeat.Click+=delegate{AddVariable("repeat");};var addYear=Ui.Button("添加年度变量",140);addYear.Click+=delegate{AddVariable("year");};
             AddRow("变量设置",Inline(addRepeat,addYear,new Label{Text="来源与粘贴地址均填写 表名!地址；可留空或删除不需要的组。",AutoSize=true}));
             AddRow("路径校验",strictFiles);
@@ -157,7 +159,7 @@ namespace Excel_Iterate
             var snapshot = BatchPresetStore.Decode(BatchPresetStore.Encode(value), "summary");
             SummaryAreaSettings.Read(snapshot);
             chosenPreset = snapshot; presetPath.Text = prefix + snapshot.Name;
-            var cfg=SummaryAreaSettings.Read(snapshot);templateName.Text=cfg.Template[0].Sheet;templateArea.Text=string.Join(";",cfg.Template.Select(a=>a.Address));pasteStart.Text=cfg.Paste.Address;leadName.Text=cfg.Lead[0].Sheet;leadArea.Text=string.Join(";",cfg.Lead.Select(a=>a.Address));strictFiles.Checked=cfg.CheckFiles;
+            var cfg=SummaryAreaSettings.Read(snapshot);templateName.Text=cfg.Template[0].Sheet;templateArea.Text=string.Join(";",cfg.Template.Select(a=>a.Address));pasteStart.Text=cfg.Paste.Address;leadName.Text=cfg.Lead[0].Sheet;leadArea.Text=string.Join(";",cfg.Lead.Select(a=>a.Address));strictFiles.Checked=cfg.CheckFiles;string savedFileColumn;linkFileColumn.Text=snapshot.Values.TryGetValue("linkFileColumn",out savedFileColumn)?savedFileColumn:"";
             foreach(var item in groups.ToArray()){settings.Controls.Remove(item.Row);item.Row.Dispose();}groups.Clear();
             Action<string,string,string> restore=(kind,sourceKey,targetKey)=>{
                 var source=SummaryAreaSettings.OptionalHeader(snapshot.Values,sourceKey);var target=SummaryAreaSettings.OptionalHeader(snapshot.Values,targetKey);if(source==null&&target==null)return;
@@ -179,7 +181,7 @@ namespace Excel_Iterate
         private BatchPreset ManualPreset()
         {
             var value=chosenPreset==null?new BatchPreset{Feature="summary",Name="多文件自定义",Context="",Values=new Dictionary<string,string>()}:BatchPresetStore.Decode(BatchPresetStore.Encode(chosenPreset),"summary");
-            var v=value.Values;v["mode"]="area-mvp";v["templateSheet"]=templateName.Text.Trim();v["templateAreas"]=EncodeAddresses(templateArea.Text,v["templateSheet"]);v["pasteSheet"]=v["templateSheet"];v["pasteArea"]=EncodeAddresses(pasteStart.Text,v["templateSheet"]);v["leadSheet"]=leadName.Text.Trim();v["leadAreas"]=EncodeAddresses(leadArea.Text,v["leadSheet"]);v["projectFolder"]=Path.GetTempPath();v["checkFiles"]=strictFiles.Checked.ToString();v["batchPathSheet"]=pathSheet.Text;v["batchPathCell"]=pathCell.Text;
+            var v=value.Values;v["linkFileColumn"]=linkFileColumn.Text.Trim();v["mode"]="area-mvp";v["templateSheet"]=templateName.Text.Trim();v["templateAreas"]=EncodeAddresses(templateArea.Text,v["templateSheet"]);v["pasteSheet"]=v["templateSheet"];v["pasteArea"]=EncodeAddresses(pasteStart.Text,v["templateSheet"]);v["leadSheet"]=leadName.Text.Trim();v["leadAreas"]=EncodeAddresses(leadArea.Text,v["leadSheet"]);v["projectFolder"]=Path.GetTempPath();v["checkFiles"]=strictFiles.Checked.ToString();v["batchPathSheet"]=pathSheet.Text;v["batchPathCell"]=pathCell.Text;
             if(chosenPreset==null){v["headersFormula"]="True";v["headersRepeat"]="True";v["variableHeaders"]="False";}
             foreach(string key in v.Keys.Where(k=>System.Text.RegularExpressions.Regex.IsMatch(k,@"^(repeat|year)_\d+(Source|Target)(Sheet|Multi)?$")).ToArray())v.Remove(key);
             foreach(string key in new[]{"companyHeader","repeatSource","repeatTarget","yearSource","yearTarget"}){v[key]="";v[key+"Sheet"]="";v.Remove(key+"Multi");}
