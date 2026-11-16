@@ -13,9 +13,10 @@ namespace Excel_Iterate
         internal object Application;
         internal Func<bool> CanRun;
         internal event Action<bool> BusyChanged;
-        private readonly TextBox parent=Box("",480),folder=Box("",480),parentCode=Box("K2",65),codeColumn=Box("K",45),nameColumn=Box("M",45),fileColumn=Box("N",45),sourceRange=Box("D1:X1700",155),firstStart=Box("AV1",75),secondStart=Box("",75),firstColumn=Box("D",45),lastColumn=Box("X",45);
+        private readonly TextBox parent=Box("",480),folder=Box("",480),parentCode=Box("K2",65),codeColumn=Box("K",45),nameColumn=Box("M",45),fileColumn=Box("N",45),sourceRange=Box("D1:X1700",155),firstStart=Box("AV1",75),firstColumn=Box("D",45),lastColumn=Box("X",45);
         private readonly ComboBox leadSheet=Choice("Lead"),sourceSheet=Choice("Notes"),targetSheet=Choice("Notes");
-        private readonly NumericUpDown firstRow=Number(3,1),lastRow=Number(0,0),sourceFirstRow=Number(1,1,1048576),sourceRows=Number(1700,1);
+        private readonly NumericUpDown firstRow=Number(3,1),lastRow=Number(0,0),sourceFirstRow=Number(1,1,1048576),sourceRows=Number(1700,1),columnSpacing=Number(22,1,16384);
+        private readonly Label placementHint=new Label{AutoSize=true};
         private readonly FlowLayoutPanel settings=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true};
         private readonly DataGridView grid=new ResultGrid{Dock=DockStyle.Fill,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false};
         private readonly RichTextBox log=new RichTextBox{Dock=DockStyle.Fill,ReadOnly=true,BackColor=Color.White};
@@ -41,42 +42,65 @@ namespace Excel_Iterate
             root.RowStyles.Add(new RowStyle(SizeType.Absolute,400));root.RowStyles.Add(new RowStyle(SizeType.Percent,60));root.RowStyles.Add(new RowStyle(SizeType.AutoSize));root.RowStyles.Add(new RowStyle(SizeType.Absolute,18));root.RowStyles.Add(new RowStyle(SizeType.Percent,40));root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             var chooseParent=Ui.Button("选择父公司",125);chooseParent.Click+=delegate{Attempt(delegate{var paths=HostDialogService.OpenFiles(this,"Excel工作簿 (*.xlsx;*.xlsm)|*.xlsx;*.xlsm");if(paths.Length==1){parent.Text=paths[0];if(folder.Text.Length==0)folder.Text=Path.GetDirectoryName(paths[0]);RefreshSheets();}});};
             var chooseFolder=Ui.Button("选择文件夹",125);chooseFolder.Click+=delegate{string path=HostDialogService.Folder(this,"子公司工作簿所在目录",true);if(!string.IsNullOrEmpty(path))folder.Text=path;};
-            Row("父公司",parent,chooseParent);Row("子公司目录",folder,chooseFolder);
-            Row("单体 Notes",sourceSheet,SheetPick(sourceSheet,SampleFile));Row("父公司 Notes",targetSheet,SheetPick(targetSheet,delegate{return parent.Text;}));
-            Row("来源区域",sourceRange,Pick("来源",SampleFile,SampleSheet,delegate(MigrationArea a){sourceRange.Text=a.Address;SyncRange();}));
-            Row("第一粘贴起点",firstStart,Pick("第一起点",delegate{return parent.Text;},delegate{return targetSheet.Text;},delegate(MigrationArea a){TargetAnchor(a);firstStart.Text=CellAddress.Name(a.Row,a.Column);}));
-            Row("第二粘贴起点",secondStart,Pick("第二起点",delegate{return parent.Text;},delegate{return targetSheet.Text;},delegate(MigrationArea a){TargetAnchor(a);secondStart.Text=CellAddress.Name(a.Row,a.Column);}));
+            Row("汇总文件",parent,chooseParent);Row("明细文件夹",folder,chooseFolder);
+            Row("从哪张表取数",sourceSheet,SheetPick(sourceSheet,SampleFile));Row("放到哪张表",targetSheet,SheetPick(targetSheet,delegate{return parent.Text;}));
+            Row("每家取数范围",sourceRange,Pick("来源",SampleFile,SampleSheet,delegate(MigrationArea a){sourceRange.Text=a.Address;SyncRange();}));
+            Row("第一家放在",firstStart,Pick("第一起点",delegate{return parent.Text;},delegate{return targetSheet.Text;},delegate(MigrationArea a){TargetAnchor(a);firstStart.Text=CellAddress.Name(a.Row,a.Column);}));
+            Row("列间距",columnSpacing,Label("相邻两家公司的起始列相差多少列。例：AV到BR填22，不是中间留空的列数。"));
+            Row("放置预览",placementHint);
             var advanced=Ui.Button("高级设置 ▼",150);Row("",advanced);int advancedStart=settings.Controls.Count;
-            Row("Lead",leadSheet);
-            Row("Lead字段",Label("父编码"),parentCode,Pick("父编码",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea a){Single(a);parentCode.Text=CellAddress.Name(a.Row,a.Column);}),Label("编码列"),codeColumn,ColumnPick(codeColumn),Label("全称列"),nameColumn,ColumnPick(nameColumn),Label("完整文件名列"),fileColumn,ColumnPick(fileColumn));
-            Row("名单行",Label("起始"),firstRow,Label("结束（0自动）"),lastRow,Pick("名单行",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea a){firstRow.Value=a.Row;lastRow.Value=a.Row+a.Rows-1;}),Label("默认N列为带编码的完整文件名，不使用O列的无编码文件名。"));
-            Row("复制行数",sourceRows);
+            Row("公司名单表",leadSheet);
+            Row("名单信息位置",Label("汇总公司编码在"),parentCode,Pick("父编码",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea a){Single(a);parentCode.Text=CellAddress.Name(a.Row,a.Column);}),Label("公司编码列"),codeColumn,ColumnPick(codeColumn),Label("公司名称列"),nameColumn,ColumnPick(nameColumn),Label("完整文件名列"),fileColumn,ColumnPick(fileColumn));
+            Row("名单从哪行读",Label("起始"),firstRow,Label("结束（0自动）"),lastRow,Pick("名单行",delegate{return parent.Text;},delegate{return leadSheet.Text;},delegate(MigrationArea a){firstRow.Value=a.Row;lastRow.Value=a.Row+a.Rows-1;}),Label("默认N列为带编码的完整文件名，不使用O列的无编码文件名。"));
+            Row("每家取多少行",sourceRows,Label("与上方取数范围联动，例如D1:X1700共1700行。"));
             var advancedRows=settings.Controls.Cast<Control>().Skip(advancedStart).ToArray();foreach(var item in advancedRows)item.Visible=false;advanced.Click+=delegate{bool expand=advanced.Text.EndsWith("▼");foreach(var item in advancedRows)item.Visible=expand;advanced.Text=expand?"高级设置 ▲":"高级设置 ▼";};
-            Row("规则",Label("取消勾选保留原槽位；非标准表名或未找到横跨来源列的合并区域时，检查后勾选“确认例外”。零显示为-；不取消合并，不改边框及尺寸。"));
+            Row("规则",Label("公司按名单顺序从左向右排放。取消一家后保留它的空位，后面的公司不前移。表名或合并格与预期不同时，请先打开文件核对，再勾选“已核对特殊表格”。保留合并格、边框和行列大小，金额0显示为-。"));
             grid.Columns.Add(new DataGridViewCheckBoxColumn{Name="selected",HeaderText="执行",Width=48});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="code",HeaderText="编码",Width=85,ReadOnly=true});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="company",HeaderText="公司",Width=160,ReadOnly=true});
-            grid.Columns.Add(new DataGridViewTextBoxColumn{Name="file",HeaderText="来源文件（可修改）",Width=220});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="sheet",HeaderText="来源工作表",Width=140});grid.Columns.Add(new DataGridViewCheckBoxColumn{Name="confirmed",HeaderText="确认例外",Width=75});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="target",HeaderText="父公司目标区域",Width=160,ReadOnly=true});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="status",HeaderText="状态",AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill,ReadOnly=true});Ui.StyleGrid(grid);
+            grid.Columns.Add(new DataGridViewTextBoxColumn{Name="file",HeaderText="来源文件（可修改）",Width=220});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="sheet",HeaderText="来源工作表",Width=140});grid.Columns.Add(new DataGridViewCheckBoxColumn{Name="confirmed",HeaderText="已核对特殊表格",Width=75});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="target",HeaderText="汇总文件放置范围",Width=160,ReadOnly=true});grid.Columns.Add(new DataGridViewTextBoxColumn{Name="status",HeaderText="状态",AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill,ReadOnly=true});Ui.StyleGrid(grid);
             var chooseSource=Ui.Button("指定所选来源文件",170);chooseSource.Click+=delegate{Attempt(ChangeFile);};var all=Ui.Button("全选",85);var clear=Ui.Button("取消全选",100);all.Click+=delegate{SelectAll(true);};clear.Click+=delegate{SelectAll(false);};
             var actions=Ui.ActionBar();var close=Ui.Button("关闭",90);actions.Controls.AddRange(new Control[]{read,chooseSource,all,clear,preview,execute,cancel,undo,close});
             root.Controls.Add(settings,0,0);root.Controls.Add(grid,0,1);root.Controls.Add(state,0,2);root.Controls.Add(progress,0,3);root.Controls.Add(log,0,4);root.Controls.Add(actions,0,5);Controls.Add(root);
             parent.Leave+=delegate{if(!busy&&File.Exists(parent.Text)&&parent.Text!=sheetsPath)Attempt(RefreshSheets);};
             read.Click+=delegate{Attempt(ReadCompanies);};preview.Click+=delegate{Preview();};execute.Click+=delegate{Attempt(Begin);};cancel.Click+=delegate{stop=true;if(execution!=null)execution.Cancelled=true;Append("已请求停止；提交前取消将丢弃临时修改。");};undo.Click+=delegate{Attempt(Restore);};close.Click+=delegate{Close();};execute.Enabled=cancel.Enabled=undo.Enabled=false;
-            foreach(Control control in new Control[]{parent,folder,leadSheet,sourceSheet,targetSheet,parentCode,codeColumn,nameColumn,fileColumn,firstRow,lastRow,sourceRange,firstStart,secondStart})
+            foreach(Control control in new Control[]{parent,folder,leadSheet,sourceSheet,targetSheet,parentCode,codeColumn,nameColumn,fileColumn,firstRow,lastRow,sourceRange,firstStart,columnSpacing})
             {if(control is NumericUpDown)((NumericUpDown)control).ValueChanged+=delegate{Changed();};else control.TextChanged+=delegate{Changed();};}
             sourceSheet.TextChanged+=delegate{if(!loading){foreach(var task in tasks){task.Sheet="";task.NameNeedsConfirmation=false;}Render();}};
             sourceRange.TextChanged+=delegate{if(!loading)try{SyncRange();}catch(InvalidOperationException){};};sourceRange.Leave+=delegate{Attempt(SyncRange);};firstColumn.TextChanged+=delegate{Parameters();};lastColumn.TextChanged+=delegate{Parameters();};sourceFirstRow.ValueChanged+=delegate{Parameters();};sourceRows.ValueChanged+=delegate{Parameters();};
             grid.CurrentCellDirtyStateChanged+=delegate{if(grid.IsCurrentCellDirty)grid.CommitEdit(DataGridViewDataErrorContexts.Commit);};grid.CellValueChanged+=Edited;grid.DataError+=delegate(object sender,DataGridViewDataErrorEventArgs e){e.ThrowException=false;};
             timer.Tick+=delegate{Tick();};FormClosing+=delegate(object sender,FormClosingEventArgs e){if(busy){e.Cancel=true;closePending=true;stop=true;if(execution!=null)execution.Cancelled=true;}};
+            var help=new ToolTip{AutoPopDelay=20000,InitialDelay=300};
+            help.SetToolTip(parent,"接收所有公司数据的Excel文件，更新前会自动备份。");
+            help.SetToolTip(folder,"各公司明细Excel文件所在的文件夹，文件名要与名单一致。");
+            help.SetToolTip(sourceSheet,"每家公司文件中提供数据的工作表名称，通常是Notes。");
+            help.SetToolTip(targetSheet,"汇总文件中接收数据的工作表名称。");
+            help.SetToolTip(sourceRange,"D1:X1700表示从D1到X1700，共21列、1700行。所有公司使用同一范围。");
+            help.SetToolTip(firstStart,"第一家公司在汇总表中的左上角单元格，例如AV1。");
+            help.SetToolTip(columnSpacing,"第二家起始列号减去第一家起始列号。每家占21列时，填21紧挨排放，填22中间留一列。");
+            help.SetToolTip(leadSheet,"汇总文件中记录公司名单的工作表，通常是Lead。");
+            help.SetToolTip(parentCode,"填单元格地址，不是编码本身。例如K2存放03-08-，程序据此找出直属公司。");
+            help.SetToolTip(codeColumn,"公司编码在哪一列，填列字母，例如K。");
+            help.SetToolTip(nameColumn,"公司全称在哪一列，例如M。");
+            help.SetToolTip(fileColumn,"包含编码和.xlsx后缀的完整文件名在哪一列，例如N；用来找到明细文件。");
+            help.SetToolTip(firstRow,"从名单第几行开始读取，不包含标题行。");
+            help.SetToolTip(lastRow,"读到第几行结束；填0自动找末行。");
+            Disposed+=delegate{help.Dispose();};
+            PlacementPreview();
             Disposed+=delegate{timer.Stop();timer.Dispose();if(sequence!=null)sequence.Dispose();if(execution!=null)execution.Dispose();};
         }
         private void Row(string name,params Control[] fields)
         {var line=new FlowLayoutPanel{AutoSize=true,WrapContents=true,Margin=new Padding(0,1,0,1),Width=1120};line.Controls.Add(new Label{Text=name,AutoSize=false,Width=90,Height=28,TextAlign=ContentAlignment.MiddleLeft});line.Controls.AddRange(fields);settings.Controls.Add(line);}
         private void Append(string text){if(IsDisposed)return;log.AppendText(DateTime.Now.ToString("HH:mm:ss")+"  "+text+Environment.NewLine);log.SelectionStart=log.TextLength;log.ScrollToCaret();log.Update();}
         private void Attempt(Action action){try{if(busy||CanRun!=null&&!CanRun())throw new InvalidOperationException("请等待当前任务结束。");action();}catch(OperationCanceledException error){Append(error.Message);}catch(Exception error){Append("失败："+error.Message);UiDialog.Show(this,error.Message,"Notes 批量链接",MessageBoxButtons.OK,MessageBoxIcon.Warning);}}
-        private void Changed(){if(loading)return;plan=null;execute.Enabled=false;state.Text="参数或名单已改变，请重新预检。";}
+        private void Changed(){if(loading)return;PlacementPreview();plan=null;execute.Enabled=false;state.Text="参数或名单已改变，请重新预检。";}
+        private void PlacementPreview()
+        {
+            try{var area=MigrationArea.Parse(sourceRange.Text);var starts=Enumerable.Range(0,3).Select(i=>NotesLinkRules.Target(area,firstStart.Text,(int)columnSpacing.Value,i)).Select((a,i)=>"第"+(i+1)+"家："+CellAddress.Name(a.Row,a.Column));placementHint.Text=string.Join("；",starts)+"（每家占"+area.Columns+"列，中间空"+((int)columnSpacing.Value-area.Columns)+"列）";}
+            catch(Exception e){placementHint.Text=e.Message;}
+        }
         private void SetBusy(bool value)
         {busy=value;settings.Enabled=grid.Enabled=read.Enabled=preview.Enabled=!value;cancel.Enabled=value;execute.Enabled=!value&&plan!=null&&plan.Tasks.All(t=>t.Status.StartsWith("通过",StringComparison.Ordinal));undo.Enabled=!value&&lastBackup!=null;if(BusyChanged!=null)BusyChanged(value);}
         private NotesLinkConfig Config()
-        {return new NotesLinkConfig{Parent=parent.Text.Trim().Trim('"'),Folder=folder.Text.Trim().Trim('"'),LeadSheet=leadSheet.Text,ParentCodeCell=parentCode.Text.Trim(),CodeColumn=codeColumn.Text.Trim(),NameColumn=nameColumn.Text.Trim(),FileColumn=fileColumn.Text.Trim(),FirstRow=(int)firstRow.Value,LastRow=(int)lastRow.Value,SourceSheet=sourceSheet.Text,TargetSheet=targetSheet.Text,SourceRange=sourceRange.Text.Trim(),FirstStart=firstStart.Text.Trim(),SecondStart=secondStart.Text.Trim()};}
+        {return new NotesLinkConfig{Parent=parent.Text.Trim().Trim('"'),Folder=folder.Text.Trim().Trim('"'),LeadSheet=leadSheet.Text,ParentCodeCell=parentCode.Text.Trim(),CodeColumn=codeColumn.Text.Trim(),NameColumn=nameColumn.Text.Trim(),FileColumn=fileColumn.Text.Trim(),FirstRow=(int)firstRow.Value,LastRow=(int)lastRow.Value,SourceSheet=sourceSheet.Text,TargetSheet=targetSheet.Text,SourceRange=sourceRange.Text.Trim(),FirstStart=firstStart.Text.Trim(),ColumnSpacing=(int)columnSpacing.Value};}
         private void RefreshSheets()
         {
             var names=DataMigrationHost.PackageSheets(parent.Text);loading=true;
@@ -98,7 +122,7 @@ namespace Excel_Iterate
                 grid.Rows.Clear();var cfg=Config();
                 foreach(var task in tasks)
                 {
-                    string target="待填写两个起点";try{target=NotesLinkRules.Target(MigrationArea.Parse(cfg.SourceRange),cfg.FirstStart,cfg.SecondStart,task.Slot).Address;}catch{}
+                    string target="请检查第一家位置和列间距";try{target=NotesLinkRules.Target(MigrationArea.Parse(cfg.SourceRange),cfg.FirstStart,cfg.ColumnSpacing,task.Slot).Address;}catch{}
                     int n=grid.Rows.Add(task.Selected,task.Code,task.Name,task.File,task.Sheet,task.Confirmed,target,task.Status);grid.Rows[n].Tag=task;
                     var cell=new DataGridViewComboBoxCell{DisplayStyle=DataGridViewComboBoxDisplayStyle.DropDownButton,FlatStyle=FlatStyle.Flat};
                     foreach(string name in task.SheetNames.Concat(new[]{task.Sheet.Length>0?task.Sheet:cfg.SourceSheet}).Distinct())cell.Items.Add(name);

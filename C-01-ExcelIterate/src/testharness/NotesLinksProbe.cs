@@ -25,6 +25,11 @@ internal static class NotesLinksProbe
         Check(SummaryTextReference.External(@"N:\EASDATA\SZYSKG_20261231","！01-示例公司.xlsx","BS!$G$10")=="='N:\\EASDATA\\SZYSKG_20261231\\[！01-示例公司.xlsx]BS'!$G$10","full file name preserves prefix and extension in external link");
         Check(SummaryTextReference.LinkFileName("sample.xlsm")=="sample.xlsm"&&SummaryTextReference.LinkFileName("sample")=="sample.xlsx","full Excel extension and legacy company name supported");
         var source=MigrationArea.Parse("D1:X1700");Check(source.Columns==21&&source.Rows==1700,"default bounded source has 21 columns and 1700 rows");
+        Check(NotesLinkRules.Target(source,"AV1",22,1).Address=="BR1:CL1700","column spacing is difference between start columns");
+        Check(NotesLinkRules.Target(source,"AV1",21,1).Address=="BQ1:CK1700","spacing equal to width leaves no blank column");
+        Reject(()=>NotesLinkRules.Target(source,"AV1",20,0),"spacing narrower than company block rejected");
+        Reject(()=>NotesLinkRules.Target(source,"AV1",0,0),"zero spacing rejected");
+        Reject(()=>NotesLinkRules.Target(source,"XFC1",22,1),"spacing overflow rejected");
         string[] expected={"AV1:BP1700","BR1:CL1700","CN1:DH1700","DJ1:ED1700"};
         for(int i=0;i<expected.Length;i++)Check(NotesLinkRules.Target(source,"AV1","BR1",i).Address==expected[i],"fixed slot "+i);
         Check(NotesLinkRules.Target(source,"AV1","BR1",2).Address==expected[2],"unchecked middle company cannot shift later slot");
@@ -119,12 +124,12 @@ internal static class NotesLinksProbe
             book.SaveAs(parent,51);book.Close(false);closed=true;
         }
         string original=DataMigrationHost.Digest(parent),sourceA=DataMigrationHost.Digest(a),sourceB=DataMigrationHost.Digest(b);
-        var cfg=new NotesLinkConfig{Parent=parent,Folder=sources,SourceRange="D1:F4",FirstStart="AV1",SecondStart="AZ1"};
+        var cfg=new NotesLinkConfig{Parent=parent,Folder=sources,SourceRange="D1:F4",FirstStart="AV1",ColumnSpacing=4};
         var rows=NotesLinkRules.ReadLead(cfg);Check(rows.Count==3&&rows[0].Slot==0&&rows[2].Slot==2&&rows.All(t=>t.Code!="04-02-01-01-"),"Lead reader keeps direct order including body and excludes grandchild");
         var bad=NotesLinkPlanner.Build(cfg,rows,Console.WriteLine,null);Check(bad.Tasks.Count(t=>t.Status.StartsWith("阻止"))==1,"missing source reported in preflight");Check(DataMigrationHost.Digest(parent)==original,"preflight does not modify parent");
         rows[1].Selected=false;Func<NotesLinkPlan> prepare=()=>NotesLinkPlanner.Build(cfg,rows,Console.WriteLine,null);
         var plan=prepare();Check(plan.Tasks.Count==2&&plan.Tasks[1].Target.Address=="BD1:BF4","unchecking missing middle source leaves original slot intact");Check(plan.Occupied>0&&plan.Tasks.Sum(t=>t.Skipped)==4,"overwrite and structural merge skips explicitly counted");
-        var defaultConfig=cfg.Copy();defaultConfig.SourceRange="D1:X1700";defaultConfig.SecondStart="BR1";
+        var defaultConfig=cfg.Copy();defaultConfig.SourceRange="D1:X1700";defaultConfig.ColumnSpacing=22;
         Check(NotesLinkPlanner.Build(defaultConfig,rows,Console.WriteLine,null).Tasks.All(t=>t.Status.StartsWith("通过")),"D:X merge markers on different row numbers are detected automatically");
         var noMarker=defaultConfig.Copy();noMarker.SourceRange="D1:Y1700";
         var structureCheck=NotesLinkPlanner.Build(noMarker,rows,Console.WriteLine,null);Check(structureCheck.Tasks.All(t=>t.Status.StartsWith("阻止")),"missing full-width structural marker requires explicit confirmation");
@@ -169,7 +174,7 @@ internal static class NotesLinksProbe
         }
         var arrayCfg=cfg.Copy();arrayCfg.Parent=arrays;var blockedArray=NotesLinkPlanner.Build(arrayCfg,rows,Console.WriteLine,null);
         Check(blockedArray.Tasks.Any(t=>t.Status.Contains("数组")),"legacy array destination is blocked by read-only package preflight");
-        var boundaryCfg=cfg.Copy();boundaryCfg.FirstStart="AW2";boundaryCfg.SecondStart="BA2";
+        var boundaryCfg=cfg.Copy();boundaryCfg.FirstStart="AW2";boundaryCfg.ColumnSpacing=4;
         Check(NotesLinkPlanner.Build(boundaryCfg,rows,Console.WriteLine,null).Tasks.Any(t=>t.Status.StartsWith("阻止")),"partial intersection with an existing merge is blocked before writing");
         bool failed=false;
         using(var execution=new NotesLinkExecution(application,prepare(),Console.WriteLine){FailureForProbe=n=>n>0})

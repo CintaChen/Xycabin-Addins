@@ -133,7 +133,7 @@ namespace Excel_Iterate
                 if(cancelled!=null&&cancelled())throw new OperationCanceledException("已取消预检。");var task=row.Copy();task.Blocks.Clear();task.Anchors.Clear();task.Skipped=task.Occupied=0;
                 try
                 {
-                    task.Target=NotesLinkRules.Target(source,cfg.FirstStart,cfg.SecondStart,task.Slot);
+                    task.Target=NotesLinkRules.Target(source,cfg.FirstStart,cfg.ColumnSpacing,task.Slot);
                     NotesLinkRules.RequireWorkbook(task.File);task.File=Path.GetFullPath(task.File);
                     if(!seen.Add(task.File)||string.Equals(task.File,Path.GetFullPath(cfg.Parent),StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("来源文件重复或指向父公司自身。");
                     task.Hash=DataMigrationHost.Digest(task.File);task.SheetNames=DataMigrationHost.PackageSheets(task.File);
@@ -141,8 +141,8 @@ namespace Excel_Iterate
                     task.Sheet=NotesLinkRules.Resolve(task.SheetNames,requested);bool fuzzy=task.NameNeedsConfirmation||!NotesLinkRules.ExactOrAlias(task.Sheet,requested);task.NameNeedsConfirmation=fuzzy;
                     var profile=MigrationSheetSnapshot.Load(task.File,task.Sheet);task.SourceMerges=profile.Merges;
                     bool feature=profile.Merges.Any(m=>m.Column==source.Column&&m.Columns==source.Columns);
-                    if((fuzzy||!feature)&&!task.Confirmed)throw new InvalidOperationException((fuzzy?"表名为模糊匹配；":"")+(!feature?"未找到横跨来源列的大型合并区域；":"")+"请检查后勾选“确认例外”。");
-                    task.Target=NotesLinkRules.Target(source,cfg.FirstStart,cfg.SecondStart,task.Slot);
+                    if((fuzzy||!feature)&&!task.Confirmed)throw new InvalidOperationException((fuzzy?"表名为模糊匹配；":"")+(!feature?"未找到横跨来源列的大型合并区域；":"")+"请检查后勾选“已核对特殊表格”。");
+                    task.Target=NotesLinkRules.Target(source,cfg.FirstStart,cfg.ColumnSpacing,task.Slot);
                     if(facts.Arrays.Any(a=>NotesLinkRules.Intersects(a,task.Target)))throw new InvalidOperationException("目标含数组／溢出公式，不能安全覆盖。");
                     facts.ValidateNumberFormats(task.Target);
                     NotesLinkRules.MapMerges(task,source,facts,NotesSheetFacts.Load(task.File,task.Sheet));

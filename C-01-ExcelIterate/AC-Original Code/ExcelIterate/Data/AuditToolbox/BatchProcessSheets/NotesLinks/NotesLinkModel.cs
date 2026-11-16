@@ -10,10 +10,11 @@ namespace Excel_Iterate
     {
         internal string Parent="",Folder="",LeadSheet="Lead",ParentCodeCell="K2",CodeColumn="K",NameColumn="M",FileColumn="N";
         internal int FirstRow=3,LastRow;
-        internal string SourceSheet="Notes",TargetSheet="Notes",SourceRange="D1:X1700",FirstStart="AV1",SecondStart="";
+        internal string SourceSheet="Notes",TargetSheet="Notes",SourceRange="D1:X1700",FirstStart="AV1";
+        internal int ColumnSpacing=22;
         internal NotesLinkConfig Copy(){return (NotesLinkConfig)MemberwiseClone();}
         internal string LeadKey { get{return string.Join("\u001f",new[]{Parent,Folder,LeadSheet,ParentCodeCell,CodeColumn,NameColumn,FileColumn,FirstRow.ToString(),LastRow.ToString()});} }
-        internal string Key { get{return LeadKey+"\u001f"+string.Join("\u001f",new[]{SourceSheet,TargetSheet,SourceRange,FirstStart,SecondStart});} }
+        internal string Key { get{return LeadKey+"\u001f"+string.Join("\u001f",new[]{SourceSheet,TargetSheet,SourceRange,FirstStart,ColumnSpacing.ToString()});} }
         internal MigrationArea Validate()
         {
             NotesLinkRules.RequireWorkbook(Parent);
@@ -23,7 +24,7 @@ namespace Excel_Iterate
             if(MigrationArea.Parse(ParentCodeCell).Rows!=1||MigrationArea.Parse(ParentCodeCell).Columns!=1)throw new InvalidOperationException("父公司编码位置应为一个单元格。");
             var source=MigrationArea.Parse(SourceRange);source.Check(1048576,16384);
             if((long)source.Rows*source.Columns>100000)throw new InvalidOperationException("每家公司最多链接100000格，请缩小来源范围，不能选择整列。");
-            NotesLinkRules.Target(source,FirstStart,SecondStart,0);return source;
+            NotesLinkRules.Target(source,FirstStart,ColumnSpacing,0);return source;
         }
     }
     internal sealed class NotesLinkTask
@@ -60,6 +61,16 @@ namespace Excel_Iterate
             int stride=b.Column-a.Column;if(stride<source.Columns)throw new InvalidOperationException("第二个起点应在右侧，列间距不能小于来源宽度"+source.Columns+"列。");
             long column=a.Column+(long)slot*stride;if(column+source.Columns-1>16384)throw new InvalidOperationException("第"+(slot+1)+"家公司目标超出Excel最大列数。");
             var result=new MigrationArea{Row=a.Row,Column=(int)column,Rows=source.Rows,Columns=source.Columns};result.Check(1048576,16384);return result;
+        }
+        internal static MigrationArea Target(MigrationArea source,string first,int spacing,int slot)
+        {
+            var start=MigrationArea.Parse(first);
+            if(start.Rows!=1||start.Columns!=1)throw new InvalidOperationException("第一家公司的放置位置请选一个单元格。");
+            if(spacing<source.Columns||spacing>16384)throw new InvalidOperationException("列间距至少为"+source.Columns+"列（每家公司占用的列数），最多16384列，避免两家公司重叠。");
+            if(slot<0)throw new InvalidOperationException("公司顺序无效。");
+            long column=start.Column+(long)slot*spacing;
+            if(column+source.Columns-1>16384)throw new InvalidOperationException("第"+(slot+1)+"家公司超出Excel最右列，请减少公司数或调整放置位置。");
+            var result=new MigrationArea{Row=start.Row,Column=(int)column,Rows=source.Rows,Columns=source.Columns};result.Check(1048576,16384);return result;
         }
         internal static List<string> Candidates(IEnumerable<string> names,string requested)
         {
