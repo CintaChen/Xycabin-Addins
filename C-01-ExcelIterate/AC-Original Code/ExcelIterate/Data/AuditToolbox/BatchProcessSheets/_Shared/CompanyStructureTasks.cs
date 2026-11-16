@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -30,8 +30,9 @@ namespace Excel_Iterate
     {
         internal static string Key(string sequence)
         {
-            string text = (sequence ?? "").Trim();
-            if (!Regex.IsMatch(text, @"^[0-9]+(?:-[0-9]+)*-?$")) throw new InvalidOperationException("序号格式不正确，请使用03-、03-01-这样的分段数字。");
+            // Business markers are ignored only for hierarchy comparisons; original fields remain intact.
+            string text = (sequence ?? "").Trim().TrimStart('!', '！').Trim();
+            if (!Regex.IsMatch(text, @"^[0-9]+(?:-[0-9]+)*-?$")) throw new InvalidOperationException("公司编码格式不正确，请使用03-、03-01-这样的分段数字，开头可带！或!。");
             return string.Join("-", text.TrimEnd('-').Split('-').Select(s => s.TrimStart('0').Length == 0 ? "0" : s.TrimStart('0')).ToArray());
         }
         internal static void Classify(IList<CompanyStructureTask> rows, bool useLevel)

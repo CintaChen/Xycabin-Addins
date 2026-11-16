@@ -14,6 +14,13 @@ internal static class NotesLinksProbe
     private static void Pure()
     {
         Check(ConsolidatedWorkbookForm.SequenceKey("！00-")=="0"&&ConsolidatedWorkbookForm.SequenceKey("!01-02-")=="1-2","report hierarchy accepts exclamation prefix and leading zeros");
+        Check(CompanyStructureTasks.Key("！03-08-")=="3-8"&&CompanyStructureTasks.Key("!03-08-")=="3-8","hierarchy ignores fullwidth and ASCII leading business markers");
+        Check(NotesLinkRules.IsDirect("！03-08-","!03-08-01-")&&NotesLinkRules.IsDirect("!00-","！03-"),"marked parent and child codes preserve direct hierarchy");
+        Check(!NotesLinkRules.IsDirect("!03-08-","！03-08-01-01-"),"marker support still excludes grandchildren");
+        Reject(()=>CompanyStructureTasks.Key("03-!08-"),"business marker inside a code remains invalid");
+        Reject(()=>CompanyStructureTasks.Key("！"),"marker without a numeric code rejected");
+        var marked=new CompanyStructureTask{Sequence="！03-08-01-",FileName="!03-08-01-sample.xlsx"};CompanyStructureTasks.Key(marked.Sequence);
+        Check(marked.Sequence=="！03-08-01-"&&marked.FileName=="!03-08-01-sample.xlsx","comparison normalization preserves original code and file name");
         var map=typeof(ConsolidatedWorkbookForm).GetMethod("Areas",BindingFlags.NonPublic|BindingFlags.Static);
         var planned=(MigrationArea[])map.Invoke(null,new object[]{"K3,L3,M3,N3",15,true});
         Check(planned[0].Address=="K3:K17"&&planned[3].Address=="N3:N17","report field anchors expand to actual child count");
