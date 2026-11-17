@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -13,7 +13,7 @@ namespace Excel_Iterate
         internal MigrationSheetSnapshot Snapshot;
         internal double StandardWidth,StandardHeight;
         internal readonly HashSet<int> HiddenRows=new HashSet<int>(),HiddenColumns=new HashSet<int>();
-        internal bool Protected,Tables;
+        internal bool Protected,Tables,HiddenSheet;
         internal readonly List<MigrationArea> Arrays=new List<MigrationArea>();
         internal readonly Dictionary<long,string> Contents=new Dictionary<long,string>();
         private readonly Dictionary<long,int> cellStyles=new Dictionary<long,int>();
@@ -38,6 +38,7 @@ namespace Excel_Iterate
             using(var stream=File.Open(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))using(var zip=new ZipArchive(stream,ZipArchiveMode.Read))
             {
                 var book=Read(zip.GetEntry("xl/workbook.xml"));var item=book.SelectNodes("//*[local-name()='sheet']").Cast<XmlElement>().Single(n=>string.Equals(n.GetAttribute("name"),sheet,StringComparison.OrdinalIgnoreCase));
+                result.HiddenSheet=item.GetAttribute("state")=="hidden"||item.GetAttribute("state")=="veryHidden";
                 string id=item.Attributes.Cast<XmlAttribute>().First(a=>a.LocalName=="id").Value;
                 var relationships=Read(zip.GetEntry("xl/_rels/workbook.xml.rels"));var link=relationships.DocumentElement.ChildNodes.OfType<XmlElement>().Single(n=>n.GetAttribute("Id")==id);
                 string part=Uri.UnescapeDataString(new Uri(new Uri("http://package/xl/workbook.xml"),link.GetAttribute("Target")).AbsolutePath.TrimStart('/'));
@@ -124,6 +125,8 @@ namespace Excel_Iterate
             if(!NotesLinkRules.ExactOrAlias(target,cfg.TargetSheet))throw new InvalidOperationException("请在合并Notes表下拉框明确选择："+target);
             var facts=NotesSheetFacts.Load(cfg.Parent,target);if(facts.Protected||facts.Tables)throw new InvalidOperationException("目标Notes受保护或包含表格／透视表对象，不能安全写入。");
             var plan=new NotesLinkPlan{Config=cfg,ParentHash=hash,TargetSheet=target,Source=source,Original=facts};
+            plan.Cleanup=FindUnusedTemplate(facts,source,cfg,rows);
+            if(plan.Cleanup!=null&&log!=null)log("将清理右侧多余模板："+plan.Cleanup.Address+"；保留列位置及左侧合计公式。");
             long estimatedCells=facts.Snapshot.Values.Count;
             if(rows.Count(r=>r.Selected)==0)throw new InvalidOperationException("请勾选至少一家子公司。");
             if((long)rows.Count(r=>r.Selected)*source.Rows*source.Columns>5000000)throw new InvalidOperationException("本批超过500万格，请分批勾选公司。");
@@ -145,17 +148,32 @@ namespace Excel_Iterate
                     task.Target=NotesLinkRules.Target(source,cfg.FirstStart,cfg.ColumnSpacing,task.Slot);
                     if(facts.Arrays.Any(a=>NotesLinkRules.Intersects(a,task.Target)))throw new InvalidOperationException("目标含数组／溢出公式，不能安全覆盖。");
                     NotesLinkRules.MapMerges(task,source,facts,sourceFacts);
-                    foreach(var block in task.Blocks.Concat(task.Anchors))for(int rowNumber=block.Row;rowNumber<block.Row+block.Rows;rowNumber++)for(int col=block.Column;col<block.Column+block.Columns;col++)if(facts.Snapshot.Value(rowNumber,col).Length==0)estimatedCells++;
+                    task.NativeCompatible=cfg.NativePaste&&!facts.HiddenSheet&&!sourceFacts.HiddenSheet&&NotesLinkRules.CanPasteWhole(source,task,facts);
+                    foreach(var block in (task.NativeCompatible?new[]{task.Target}:task.Blocks.Concat(task.Anchors)))for(int rowNumber=block.Row;rowNumber<block.Row+block.Rows;rowNumber++)for(int col=block.Column;col<block.Column+block.Columns;col++)if(facts.Snapshot.Value(rowNumber,col).Length==0)estimatedCells++;
                     if(estimatedCells>MigrationSheetSnapshot.CellLimit)throw new InvalidOperationException("预计结果Notes超过读取器60万非空单元格上限，请缩小行数或减少任务；本批未写入。");
                     for(int r=task.Target.Row;r<task.Target.Row+task.Target.Rows;r++)for(int c=task.Target.Column;c<task.Target.Column+task.Target.Columns;c++)if(facts.Occupied(r,c))task.Occupied++;
                     if(DataMigrationHost.Digest(task.File)!=task.Hash)throw new InvalidOperationException("来源文件在预检期间变化。");
-                    task.Status="通过；覆盖"+task.Occupied+"格；合并内部不写"+task.Skipped+"格";
+                    task.Status="通过；覆盖"+task.Occupied+"格；合并内部"+task.Skipped+"格";
                 }
                 catch(Exception error){task.Status="阻止："+error.Message;}
                 plan.Tasks.Add(task);if(log!=null)log(task.Code+task.Name+"｜"+task.Status);
             }
             if(DataMigrationHost.Digest(cfg.Parent)!=hash)throw new InvalidOperationException("父公司文件在预检期间变化，请重新预检。");
             return plan;
+        }
+        internal static MigrationArea FindUnusedTemplate(NotesSheetFacts facts,MigrationArea source,NotesLinkConfig cfg,IList<NotesLinkTask> rows)
+        {
+            if(rows.Count==0)return null;
+            var first=NotesLinkRules.Target(source,cfg.FirstStart,cfg.ColumnSpacing,0);
+            // Only a contiguous series of full-width, single-row company headers
+            // identifies template slots. Never use UsedRange as a deletion boundary.
+            int slots=0;
+            while(facts.Snapshot.Merges.Any(m=>m.Row==first.Row&&m.Rows==1&&m.Column==first.Column+slots*cfg.ColumnSpacing&&m.Columns==source.Columns))slots++;
+            int actual=rows.Max(t=>t.Slot)+1;
+            if(slots<=actual)return null;
+            var area=new MigrationArea{Row=first.Row,Column=first.Column+actual*cfg.ColumnSpacing,Rows=Math.Max(source.Rows,facts.Snapshot.MaxRow-first.Row+1),Columns=(slots-actual-1)*cfg.ColumnSpacing+source.Columns};
+            if(facts.Arrays.Any(a=>NotesLinkRules.Intersects(a,area))||facts.Snapshot.Merges.Any(m=>NotesLinkRules.Intersects(m,area)&&!(m.Row>=area.Row&&m.Column>=area.Column&&m.Row+m.Rows<=area.Row+area.Rows&&m.Column+m.Columns<=area.Column+area.Columns)))throw new InvalidOperationException("右侧模板清理区域包含数组公式或跨界合并，无法安全清理。");
+            return area;
         }
     }
 }

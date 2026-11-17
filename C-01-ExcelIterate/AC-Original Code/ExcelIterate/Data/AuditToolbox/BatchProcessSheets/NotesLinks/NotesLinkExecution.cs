@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Excel_Iterate
 {
@@ -16,11 +17,11 @@ namespace Excel_Iterate
         private readonly ComBag references=new ComBag();
         private HiddenWorkbookApplication hidden;
         private object book,sheet;
-        private string stage,batch,manifest;
+        private string stage,batch,manifest,saveCopy,previousStage,phase="准备",failureDetail="";
         private bool closed=true,disposed;
         internal bool Cancelled,Committed;
         internal string Backup="",PreBackup="",CommittedHash="";
-        internal int Completed,FormulaWrites,ValueErrors,LinkWarnings;
+        internal int Completed,FormulaWrites,ValueErrors,LinkWarnings,NativePastes;
         internal Func<int,bool> FailureForProbe;
         internal NotesLinkExecution(object application,NotesLinkPlan frozen,Action<string> output)
         {sourceApp=application;plan=frozen;log=output??delegate{};}
@@ -46,7 +47,7 @@ namespace Excel_Iterate
         private void Record(string state)
         {
             if(manifest==null)return;
-            var values=MigrationJson.Obj("state",state,"parent",plan.Config.Parent,"originalHash",plan.ParentHash,"stage",stage,"preBackup",PreBackup,"backup",Backup,"committedHash",CommittedHash);
+            var values=MigrationJson.Obj("state",state,"parent",plan.Config.Parent,"originalHash",plan.ParentHash,"stage",stage,"saveCopy",saveCopy,"previousStage",previousStage,"phase",phase,"failure",failureDetail,"preBackup",PreBackup,"backup",Backup,"committedHash",CommittedHash);
             File.WriteAllText(manifest,MigrationJson.Write(values),new System.Text.UTF8Encoding(false));
         }
         private void Open(bool readOnly)
@@ -56,19 +57,98 @@ namespace Excel_Iterate
         }
         private void Close()
         {if(book!=null&&!closed){((dynamic)book).Close(false);closed=true;book=null;sheet=null;}}
+        private void Step(string name,Action action)
+        {
+            Check();phase=name;Record(name);
+            try{action();}
+            catch(Exception error)
+            {
+                failureDetail=error.ToString();try{Record("Failed");}catch(Exception recordError){log("失败记录写入提示："+recordError.Message);}
+                var com=error as COMException;string code=com==null?"":"，HRESULT 0x"+unchecked((uint)com.ErrorCode).ToString("X8");
+                throw new InvalidOperationException(name+"失败"+code+"："+error.Message+"；原文件未更新，备份："+PreBackup,error);
+            }
+        }
+        internal static bool SaveWithFallback(object workbook,string fallback,Action<string> output)
+        {
+            try{((dynamic)workbook).Save();return false;}
+            catch(COMException error)
+            {
+                if(error.ErrorCode!=unchecked((int)0x80004005))throw;
+                if(output!=null)output("保存返回E_FAIL，尝试将已粘贴内容另存为工作副本…");
+                ((dynamic)workbook).SaveCopyAs(fallback);
+                if(!File.Exists(fallback)||new FileInfo(fallback).Length==0)throw new IOException("另存工作副本未生成有效文件，原文件未更新。",error);
+                return true;
+            }
+        }
+        private void SaveStage()
+        {
+            saveCopy=Path.Combine(Path.GetDirectoryName(stage),".xy-notes-save-"+Guid.NewGuid().ToString("N")+Path.GetExtension(stage));
+            // WPS requires a workbook view during Save. The owned application
+            // stays hidden; no yield or user-workbook operation occurs here.
+            MigrationWindowScope.SetOwnedVisible(book,true);
+            try
+            {
+                if(SaveWithFallback(book,saveCopy,log)){previousStage=stage;stage=saveCopy;log("另存工作副本完成。");}
+            }
+            finally
+            {
+                try{MigrationWindowScope.SetOwnedVisible(book,false);}catch(Exception error){log("隐藏保存窗口提示："+error.Message);}
+                try{((dynamic)hidden.Application).Visible=false;}catch(Exception error){log("隐藏后台进程提示："+error.Message);}
+            }
+        }
         private IEnumerable<MigrationArea> Chunks(MigrationArea area)
         {for(int r=0;r<area.Rows;r+=512)yield return new MigrationArea{Row=area.Row+r,Column=area.Column,Rows=Math.Min(512,area.Rows-r),Columns=area.Columns};}
         private object[,] Matrix(NotesLinkTask task,MigrationArea area)
         {
             return DataMigrationEngine.LinkMatrix(task.File,task.Sheet,plan.Source.Row+area.Row-task.Target.Row,plan.Source.Column+area.Column-task.Target.Column,area.Rows,area.Columns);
         }
+        private bool TryNativePaste(NotesLinkTask task)
+        {
+            if(!task.NativeCompatible||!HiddenWorkbookApplication.IsWps(hidden.Application))return false;
+            System.Windows.Forms.IDataObject clipboard;
+            try{clipboard=System.Windows.Forms.Clipboard.GetDataObject();}catch(System.Runtime.InteropServices.ExternalException){log("剪贴板暂不可用，改用兼容写入。");return false;}
+            object sourceBook=null;bool copied=false;
+            using(var bag=new ComBag())
+            {
+                try
+                {
+                    dynamic books=bag.Own(((dynamic)hidden.Application).Workbooks);sourceBook=bag.Own(books.Open(task.File,0,true));
+                    dynamic tabs=bag.Own(((dynamic)sourceBook).Worksheets),sourceSheet=bag.Own(tabs.Item(task.Sheet));
+                    Check();((dynamic)sourceBook).Activate();sourceSheet.Activate();dynamic from=bag.Own(sourceSheet.Range[plan.Source.Address]);copied=true;from.Copy();
+                    Check();((dynamic)book).Activate();((dynamic)sheet).Activate();dynamic start=bag.Own(((dynamic)sheet).Range[task.Target.Address]);start.Select();
+                    ((dynamic)sheet).Paste(Type.Missing,true);
+                    VerifyLinkSamples(task);
+                    NativePastes++;FormulaWrites+=task.Blocks.Concat(task.Anchors).Sum(a=>a.Rows*a.Columns);
+                    return true;
+                }
+                finally
+                {
+                    try{((dynamic)hidden.Application).CutCopyMode=false;}catch(Exception error){log("结束复制状态提示："+error.Message);}
+                    try{if(sourceBook!=null)((dynamic)sourceBook).Close(false);}
+                    finally{if(copied)try{if(clipboard==null)System.Windows.Forms.Clipboard.Clear();else System.Windows.Forms.Clipboard.SetDataObject(clipboard,true);}catch(Exception error){log("还原剪贴板提示："+error.Message);}}
+                }
+            }
+        }
+        private void VerifyLinkSamples(NotesLinkTask task)
+        {
+            var areas=task.Blocks.Concat(task.Anchors).ToList();
+            var samples=areas.Take(1).Concat(areas.Skip(areas.Count/2).Take(1)).Concat(areas.Skip(Math.Max(0,areas.Count-1))).ToList();
+            foreach(var area in samples)foreach(bool last in new[]{false,true})using(var bag=new ComBag())
+            {
+                int row=area.Row+(last?area.Rows-1:0),col=area.Column+(last?area.Columns-1:0);
+                dynamic cell=bag.Own(((dynamic)sheet).Range[CellAddress.Name(row,col)]);
+                string formula=Convert.ToString(cell.Formula).Replace("$","").Replace("''","'");
+                string token="["+Path.GetFileName(task.File)+"]",address="!"+CellAddress.Name(plan.Source.Row+row-task.Target.Row,plan.Source.Column+col-task.Target.Column);
+                if(!Convert.ToBoolean(cell.HasFormula)||formula.IndexOf(token,StringComparison.OrdinalIgnoreCase)<0||!formula.EndsWith(address,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("链接未完整替换："+CellAddress.Name(row,col)+"；仍未指向本次来源文件，原文件未更新。");
+            }
+        }
         private void RestoreGeometry()
         {
             var rows=new SortedDictionary<int,double>();
             foreach(var task in plan.Tasks)
-            {for(int r=task.Target.Row;r<task.Target.Row+task.Target.Rows;r++)rows[r]=plan.Original.Height(r);}
+            {for(int r=task.Target.Row;r<task.Target.Row+task.Target.Rows;r++)if(!plan.Original.HiddenRows.Contains(r))rows[r]=plan.Original.Height(r);}
             RestoreRows(rows);
-            foreach(int row in plan.Original.HiddenRows.Where(rows.ContainsKey))using(var bag=new ComBag()){dynamic range=bag.Own(((dynamic)sheet).Range[row+":"+row]);range.Hidden=true;}
+            // Formula writes do not require changing Hidden; leave hidden rows completely untouched.
         }
         private void RestoreRows(SortedDictionary<int,double> values)
         {
@@ -77,7 +157,7 @@ namespace Excel_Iterate
                 int first=all[i].Key,last=first;double size=all[i].Value;i++;
                 while(i<all.Count&&all[i].Key==last+1&&Math.Abs(all[i].Value-size)<0.001){last=all[i].Key;i++;}
                 using(var bag=new ComBag())
-                {dynamic range=bag.Own(((dynamic)sheet).Range[first+":"+last]);range.RowHeight=size;}
+                {dynamic range=bag.Own(((dynamic)sheet).Range[first+":"+last]);object current=range.RowHeight;if(current==null||current==DBNull.Value||Math.Abs(Convert.ToDouble(current)-size)>0.001)range.RowHeight=size;}
             }
         }
         internal IEnumerable<string> Run()
@@ -99,6 +179,13 @@ namespace Excel_Iterate
             {
                 Check();if(DataMigrationHost.Digest(task.File)!=task.Hash)throw new InvalidOperationException("来源文件在预检后变化："+task.File);
                 task.Status="执行中";yield return "开始："+task.Code+task.Name+" → "+plan.TargetSheet+"!"+task.Target.Address;
+                bool native=false;Step("整块粘贴链接",delegate{native=TryNativePaste(task);});
+                if(native)
+                {
+                    if(FailureForProbe!=null&&FailureForProbe(FormulaWrites))throw new InvalidOperationException("测试注入的写入异常。");
+                    Completed++;task.Status="整块链接已粘贴";yield return "整块粘贴完成："+task.Name;continue;
+                }
+                log("使用兼容写入："+task.Name+"（合并布局不完全一致、宿主或剪贴板不支持整块链接）");
                 var refresh=System.Diagnostics.Stopwatch.StartNew();
                 foreach(var part in task.Blocks.Concat(task.Anchors))foreach(var chunk in Chunks(part))
                 {
@@ -110,8 +197,17 @@ namespace Excel_Iterate
                 }
                 Completed++;task.Status="链接已粘贴";yield return "已粘贴："+task.Name+"｜累计 "+FormulaWrites+" 格";
             }
-            Check();yield return "正在保存链接，不更新外链或重新计算…";
-            RestoreGeometry();((dynamic)book).Save();Close();Record("Saved");
+            if(plan.Cleanup!=null)
+            {
+                yield return "正在清理右侧多余模板："+plan.Cleanup.Address;
+                Step("清理右侧多余模板",delegate{using(var bag=new ComBag()){dynamic range=bag.Own(((dynamic)sheet).Range[plan.Cleanup.Address]);range.UnMerge();range.Clear();}});
+            }
+            Check();yield return "正在保留原行高及隐藏状态…";
+            Step("恢复行高及隐藏状态",RestoreGeometry);
+            yield return "正在保存链接，不更新外链或重新计算…";
+            Step("保存临时副本",SaveStage);
+            Step("关闭已保存副本",Close);
+            Step("检查保存文件结构",delegate{if(!DataMigrationHost.PackageSheets(stage).Contains(plan.TargetSheet))throw new IOException("保存文件缺少目标工作表。");});Record("Saved");
             foreach(var task in plan.Tasks)if(DataMigrationHost.Digest(task.File)!=task.Hash)throw new InvalidOperationException("来源文件在执行期间变化，未更新汇总文件："+task.File);
             CheckParent();yield return "链接已保存，即将更新汇总文件…";CheckParent();
             string verifiedHash=DataMigrationHost.Digest(stage);
@@ -131,9 +227,11 @@ namespace Excel_Iterate
             if(!Committed)
             {
                 try{Record(Cancelled?"Cancelled":"Failed");}catch(Exception error){log("恢复记录写入失败："+error.Message);}
-                try{if(stage!=null&&File.Exists(stage))File.Delete(stage);}catch(Exception error){log("临时副本保留待清理："+stage+"｜"+error.Message);}
+
                 if(PreBackup.Length>0)log("本批未交付；执行前备份保留："+PreBackup);
             }
+            foreach(string path in new[]{stage,previousStage,saveCopy}.Where(x=>!string.IsNullOrEmpty(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+                try{if(File.Exists(path))File.Delete(path);}catch(Exception error){log("临时副本保留待清理："+path+"｜"+error.Message);}
         }
     }
 }

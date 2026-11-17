@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,6 +9,7 @@ internal static class NotesLinksProbe
 {
     private static int count;
     private static bool scale;
+    private static string liveHost="";
     private static void Check(bool ok,string message){if(!ok)throw new Exception(message);count++;Console.WriteLine("PASS "+message);}
     private static void Reject(Action action,string message){bool rejected=false;try{action();}catch(InvalidOperationException){rejected=true;}catch(FormatException){rejected=true;}Check(rejected,message);}
     private static void Pure()
@@ -34,6 +35,34 @@ internal static class NotesLinksProbe
         try{NotesLinkRules.LeadCodeKey("","Lead","K1",true);throw new Exception("empty parent should be rejected");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!K1")&&e.Message.Contains("空白")&&e.Message.Contains("汇总公司编码在"),"invalid parent identity identifies its actual configured cell");}
         try{NotesLinkRules.LeadCodeKey("03-\u200b","Lead","K3",false);throw new Exception("hidden marker should be rejected");}catch(InvalidOperationException e){Check(e.Message.Contains("U+200B"),"invisible character is made visible in the diagnostic instead of silently removed");}
         Reject(()=>NotesLinkBatch.PickerParent(new NotesLinkConfig(),new[]{new NotesLinkBatchItem{Parent="unchecked.xlsx",Selected=false}},"unchecked.xlsx"),"parent picker does not use an unchecked file as a reference");
+        var cleanupFacts=new NotesSheetFacts{Snapshot=new MigrationSheetSnapshot()};
+        foreach(string header in new[]{"AV1:AX1","AZ1:BB1","BD1:BF1"})cleanupFacts.Snapshot.Merges.Add(MigrationArea.Parse(header));
+        var cleanupConfig=new NotesLinkConfig{FirstStart="AV1",ColumnSpacing=4};
+        var cleanupRows=new[]{new NotesLinkTask{Slot=0},new NotesLinkTask{Slot=1,Selected=false}};
+        var cleanup=NotesLinkPlanner.FindUnusedTemplate(cleanupFacts,MigrationArea.Parse("D1:F4"),cleanupConfig,cleanupRows);
+        Check(cleanup.Address=="BD1:BF4","unused cleanup starts after all Lead slots including unchecked companies");
+        cleanupFacts.Arrays.Add(MigrationArea.Parse("BE3"));
+        bool unsafeCleanup=false;try{NotesLinkPlanner.FindUnusedTemplate(cleanupFacts,MigrationArea.Parse("D1:F4"),cleanupConfig,cleanupRows);}catch(InvalidOperationException){unsafeCleanup=true;}
+        Check(unsafeCleanup,"array formulas block destructive unused-template cleanup");cleanupFacts.Arrays.Clear();
+        cleanupFacts.Snapshot.Merges.RemoveAt(0);
+        Check(NotesLinkPlanner.FindUnusedTemplate(cleanupFacts,MigrationArea.Parse("D1:F4"),cleanupConfig,cleanupRows)==null,"missing contiguous header evidence cannot clear arbitrary right columns");
+        var mergeTarget=new NotesSheetFacts{Snapshot=new MigrationSheetSnapshot()};mergeTarget.Snapshot.Merges.Add(MigrationArea.Parse("AV2:AX2"));
+        var mergeTask=new NotesLinkTask{Target=MigrationArea.Parse("AV1:AX4")};mergeTask.SourceMerges.Add(MigrationArea.Parse("D2:F2"));
+        Check(NotesLinkRules.CanPasteWhole(MigrationArea.Parse("D1:F4"),mergeTask,mergeTarget),"native whole paste accepts matching source and target merge layouts");
+        mergeTarget.Contents[MigrationSheetSnapshot.Key(2,49)]="value:hidden";
+        Check(!NotesLinkRules.CanPasteWhole(MigrationArea.Parse("D1:F4"),mergeTask,mergeTarget),"native paste cannot overwrite preexisting content hidden inside a merge");
+        mergeTarget.Contents.Clear();mergeTarget.Snapshot.Merges[0]=MigrationArea.Parse("AV3:AX3");
+        Check(!NotesLinkRules.CanPasteWhole(MigrationArea.Parse("D1:F4"),mergeTask,mergeTarget),"different merge layouts use the compatibility writer");
+        var heightPlan=new NotesLinkPlan{Original=new NotesSheetFacts{Snapshot=new MigrationSheetSnapshot(),StandardHeight=17}};heightPlan.Original.HiddenRows.Add(4);heightPlan.Tasks.Add(new NotesLinkTask{Target=MigrationArea.Parse("AV1:AX8")});
+        using(var heightRun=new NotesLinkExecution(null,heightPlan,null))
+        {
+            var heightSheet=new NotesHeightSheet();typeof(NotesLinkExecution).GetField("sheet",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(heightRun,heightSheet);
+            typeof(NotesLinkExecution).GetMethod("RestoreGeometry",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(heightRun,null);
+            Check(heightSheet.Range.Lookups.SequenceEqual(new[]{"1:3","5:8"}),"layout finishing excludes hidden rows and avoids unchanged height writes or Hidden setters");
+        }
+        Check(HiddenWorkbookApplication.HostProgId("Microsoft Excel",@"D:\WPS Office\office6","et")=="ket.Application","WPS compatibility name does not select the Excel automation backend");
+        Check(HiddenWorkbookApplication.HostProgId("Microsoft Excel",@"D:\WPSOFF~1\office6","")=="ket.Application","WPS installation path identifies aliases without a process name");
+        Check(HiddenWorkbookApplication.HostProgId("Microsoft Excel",@"C:\Office\Office16","EXCEL")=="Excel.Application","real Excel process retains its own backend");
         var map=typeof(ConsolidatedWorkbookForm).GetMethod("Areas",BindingFlags.NonPublic|BindingFlags.Static);
         var planned=(MigrationArea[])map.Invoke(null,new object[]{"K3,L3,M3,N3",15,true});
         Check(planned[0].Address=="K3:K17"&&planned[3].Address=="N3:N17","report field anchors expand to actual child count");
@@ -123,6 +152,112 @@ internal static class NotesLinksProbe
         }
 
     }
+    private static void SaveFallbackChecks()
+    {
+        using(var sample=new ProbeSession("NotesSaveFallback"))
+        {
+            var normal=new NotesSaveFixture();Check(!NotesLinkExecution.SaveWithFallback(normal,sample.Output("unused.xlsx"),null)&&normal.SaveCalls==1&&normal.CopyCalls==0,"normal save does not perform a second save");
+            var failed=new NotesSaveFixture{ErrorCode=unchecked((int)0x80004005)};string copy=sample.Output("fallback.xlsx");
+            Check(NotesLinkExecution.SaveWithFallback(failed,copy,null)&&failed.CopyCalls==1&&new FileInfo(copy).Length>0,"E_FAIL alone triggers one SaveCopyAs fallback");
+            var denied=new NotesSaveFixture{ErrorCode=unchecked((int)0x80070005)};bool rejected=false;
+            try{NotesLinkExecution.SaveWithFallback(denied,sample.Output("denied.xlsx"),null);}catch(System.Runtime.InteropServices.COMException){rejected=true;}
+            Check(rejected&&denied.CopyCalls==0,"access denied is reported without retrying or overwriting");
+            var twice=new NotesSaveFixture{ErrorCode=unchecked((int)0x80004005),CopyFails=true};rejected=false;
+            try{NotesLinkExecution.SaveWithFallback(twice,sample.Output("both-failed.xlsx"),null);}catch(System.Runtime.InteropServices.COMException){rejected=true;}
+            Check(rejected&&twice.CopyCalls==1,"failed alternate save is not treated as success and does not loop");
+            var absent=new NotesSaveFixture{ErrorCode=unchecked((int)0x80004005),NoOutput=true};rejected=false;
+            try{NotesLinkExecution.SaveWithFallback(absent,sample.Output("missing-copy.xlsx"),null);}catch(IOException){rejected=true;}
+            Check(rejected,"alternate save must produce a nonempty output before use");sample.Finish(0);
+        }
+    }
+    private static void MarkFixtureHiddenRow(string path)
+    {
+        // WPS itself cannot set Hidden on an invisible automation workbook.
+        // Create the own fixture's existing hidden row in its package instead.
+        using(var stream=File.Open(path,FileMode.Open,FileAccess.ReadWrite))using(var zip=new System.IO.Compression.ZipArchive(stream,System.IO.Compression.ZipArchiveMode.Update))
+        {
+            Func<string,System.Xml.XmlDocument> read=name=>{var doc=new System.Xml.XmlDocument{XmlResolver=null};using(var input=zip.GetEntry(name).Open())doc.Load(input);return doc;};
+            var workbook=read("xl/workbook.xml");var item=(System.Xml.XmlElement)workbook.SelectSingleNode("//*[local-name()='sheet'][@name='Notes']");string id=item.GetAttribute("id","http://schemas.openxmlformats.org/officeDocument/2006/relationships");
+            var rels=read("xl/_rels/workbook.xml.rels");var link=(System.Xml.XmlElement)rels.SelectSingleNode("//*[local-name()='Relationship'][@Id='"+id+"']");string part=link.GetAttribute("Target");part=part.StartsWith("/")?part.TrimStart('/'):"xl/"+part;
+            var sheet=read(part);var row=(System.Xml.XmlElement)sheet.SelectSingleNode("//*[local-name()='row'][@r='4']");if(row==null)throw new Exception("Own fixture row 4 missing");row.SetAttribute("hidden","1");zip.GetEntry(part).Delete();using(var output=zip.CreateEntry(part).Open())sheet.Save(output);
+        }
+    }
+    private static void WpsNativeLinks(ProbeSession session)
+    {
+        object source=session.Take(ProbeSession.Connect(new[]{"KET.Application","et.Application"},false));if(source==null)throw new Exception("WPS unavailable");
+        string src=session.Output("03-01-native-source.xlsx"),parent=session.Output("03-native-parent.xlsx");
+        using(var creator=new HiddenWorkbookApplication(source))using(var bag=new ComBag())
+        {
+            dynamic app=creator.Application,books=bag.Own(app.Workbooks);app.Calculation=-4135;app.CalculateBeforeSave=false;
+            foreach(bool isSource in new[]{true,false})
+            {
+                dynamic book=books.Add();bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+                try
+                {
+                    dynamic tabs=bag.Own(book.Worksheets),tab=bag.Own(tabs.Item(1));tab.Name="Notes";
+                    string range=isSource?"D1:X1700":"AV1:BP1700";((dynamic)bag.Own(tab.Range[range])).Value2=isSource?7:99;((dynamic)bag.Own(tab.Range[range])).NumberFormat=isSource?"0.0%":"0.00";
+                    ((dynamic)bag.Own(tab.Range[isSource?"D5:X5":"AV5:BP5"])).Merge();
+                    ((dynamic)bag.Own(tab.Range[isSource?"D1:X1":"AV1:BP1"])).Merge();
+                    if(isSource){((dynamic)bag.Own(tab.Range["G10"])).ClearContents();((dynamic)bag.Own(tab.Range["H10"])).Value2=0;}
+                    else{((dynamic)bag.Own(tab.Range["AY10:AZ10"])).Formula="='[OldTemplate.xlsx]Notes'!G10";((dynamic)bag.Own(tab.Range["BR1:CL1"])).Merge();((dynamic)bag.Own(tab.Range["BR1:CL1700"])).NumberFormat="0.000";((dynamic)bag.Own(tab.Range["BU10"])).Formula="=123";((dynamic)bag.Own(tab.Range["A10"])).Formula="=SUM(AY10,BU10)";((dynamic)bag.Own(tab.Range["CN10"])).Value2="keep outside identified slots";}
+                    if(!isSource){dynamic lead=bag.Own(tabs.Add());lead.Name="Lead";((dynamic)bag.Own(lead.Range["K2:N3"])).Value2=new object[,]{{"03-","parent","parent",Path.GetFileName(parent)},{"03-01-","child","child",Path.GetFileName(src)}};}
+                    MigrationWindowScope.SetOwnedVisible((object)book,true);book.SaveAs(isSource?src:parent,51);MigrationWindowScope.SetOwnedVisible((object)book,false);app.Visible=false;
+                }
+                finally{book.Close(false);closed=true;}
+            }
+        }
+        MarkFixtureHiddenRow(parent);
+        string original=DataMigrationHost.Digest(parent),sourceHash=DataMigrationHost.Digest(src);
+        var cfg=new NotesLinkConfig{Parent=parent,Folder=session.DirectoryPath};var plan=NotesLinkPlanner.Build(cfg,NotesLinkRules.ReadLead(cfg),Console.WriteLine,null);
+        Check(plan.Tasks.Count==1&&plan.Tasks[0].NativeCompatible,"WPS production preflight selects whole-range paste for matching merges");
+        var watch=System.Diagnostics.Stopwatch.StartNew();
+        using(var run=new NotesLinkExecution(source,plan,Console.WriteLine))
+        {foreach(string message in run.Run())Console.WriteLine(message);Check(run.Committed&&run.NativePastes==1&&run.FormulaWrites==35660,"WPS production execution commits whole native paste with effective link count");Check(File.Exists(run.Backup)&&DataMigrationHost.Digest(run.Backup)==original,"native whole paste retains a byte-identical parent backup");}
+        Console.WriteLine("WPS_NATIVE_LINK_TOTAL_MS: "+watch.ElapsedMilliseconds);
+        var after=NotesSheetFacts.Load(parent,"Notes");
+        Check(plan.Cleanup!=null&&plan.Cleanup.Address=="BR1:CL1700","unused company slot boundary is explicit");
+        Check(!after.Occupied(10,73)&&!after.Snapshot.Merges.Any(m=>m.Address=="BR1:CL1"),"unused right template formulas and merges cleared");
+        Check(after.Content(10,1)=="formula:SUM(AY10,BU10)"&&after.Occupied(10,92),"left total and unrelated right content preserved");
+        Check(after.HiddenRows.Contains(4),"native whole paste preserves original hidden row without setting Hidden during finishing");Check(after.Snapshot.Merges.Any(m=>m.Address=="AV5:BP5"),"native whole paste preserves target merge structure");
+        Check(DataMigrationHost.Digest(src)==sourceHash,"native source is closed without saving and original source bytes stay unchanged");
+        using(var reader=new HiddenWorkbookApplication(source))using(var bag=new ComBag())
+        {
+            dynamic books=bag.Own(((dynamic)reader.Application).Workbooks),book=books.Open(parent,0,true);bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+            try{dynamic tabs=bag.Own(book.Worksheets),tab=bag.Own(tabs.Item("Notes")),cell=bag.Own(tab.Range["AV1"]);Check(Convert.ToBoolean(cell.HasFormula)&&Convert.ToString(cell.NumberFormat)=="0.00","saved native result contains real formulas and preserves target number format");foreach(string address in new[]{"AY10","AZ10","BP1700"}){dynamic sample=bag.Own(tab.Range[address]);Check(Convert.ToBoolean(sample.HasFormula)&&Convert.ToString(sample.Formula).Contains("["+Path.GetFileName(src)+"]"),"body link replaced including blank/zero source: "+address);}
+                Check(Convert.ToString(((dynamic)bag.Own(tab.Range["BU10"])).NumberFormat)=="General","unused template formatting cleared");
+                var links=book.LinkSources(1) as Array;Check(links!=null&&links.Cast<object>().Any(x=>string.Equals(Convert.ToString(x),src,StringComparison.OrdinalIgnoreCase)),"native links point to the real source file rather than a temporary copy");}
+            finally{book.Close(false);closed=true;}
+        }
+    }
+    private static void WpsSave(ProbeSession session)
+    {
+        object source=session.Take(ProbeSession.Connect(new[]{"KET.Application","et.Application"},false));if(source==null)throw new Exception("WPS automation unavailable");
+        using(var hidden=new HiddenWorkbookApplication(source))using(var bag=new ComBag())
+        {
+            dynamic app=hidden.Application,books=bag.Own(app.Workbooks),book=books.Add();bool closed=false;session.Own((object)book,delegate{if(!closed)book.Close(false);});
+            try
+            {
+                app.Calculation=-4135;app.CalculateBeforeSave=false;
+                dynamic sheets=bag.Own(book.Worksheets),tab=bag.Own(sheets.Item(1));tab.Name="Notes";
+                ((dynamic)bag.Own(tab.Range["AV1:CL1700"])).Formula="=1+1";
+                string path=session.Output("Wps-save.xlsx"),copy=session.Output("Wps-save-copy.xlsx");
+                MigrationWindowScope.SetOwnedVisible((object)book,true);book.SaveAs(path,51);MigrationWindowScope.SetOwnedVisible((object)book,false);app.Visible=false;
+                ((dynamic)bag.Own(tab.Range["A1"])).Value2="save-check";
+                MigrationWindowScope.SetOwnedVisible((object)book,true);
+                try{Check(!NotesLinkExecution.SaveWithFallback((object)book,copy,Console.WriteLine),"WPS saves 73100 formulas with its owned workbook view prepared");}
+                finally{MigrationWindowScope.SetOwnedVisible((object)book,false);app.Visible=false;}
+                Check(DataMigrationHost.PackageSheets(path).Contains("Notes"),"WPS direct saved package is readable");
+                ((dynamic)bag.Own(tab.Range["A1"])).Value2="copy-check";
+                var proxy=new NotesSaveFixture{NativeBook=(object)book,ErrorCode=unchecked((int)0x80004005)};
+                MigrationWindowScope.SetOwnedVisible((object)book,true);
+                try{Check(NotesLinkExecution.SaveWithFallback(proxy,copy,Console.WriteLine),"WPS native SaveCopyAs produces fallback after injected E_FAIL");}
+                finally{MigrationWindowScope.SetOwnedVisible((object)book,false);app.Visible=false;}
+                Check(DataMigrationHost.PackageSheets(copy).Contains("Notes"),"WPS fallback saved package is readable");
+            }
+            finally{book.Close(false);closed=true;}
+            Check(!Convert.ToBoolean(app.Visible),"WPS save compatibility does not leave the owned background process visible");
+        }
+    }
     private static void MakeSource(object application,ProbeSession session,string path,string sheetName,int mergeRow,double value)
     {
         using(var bag=new ComBag())
@@ -202,7 +337,7 @@ internal static class NotesLinksProbe
             book.SaveAs(parent,51);book.Close(false);closed=true;
         }
         string original=DataMigrationHost.Digest(parent),sourceA=DataMigrationHost.Digest(a),sourceB=DataMigrationHost.Digest(b);
-        var cfg=new NotesLinkConfig{Parent=parent,Folder=sources,SourceRange="D1:F4",FirstStart="AV1",ColumnSpacing=4};
+        var cfg=new NotesLinkConfig{Parent=parent,Folder=sources,SourceRange="D1:F4",FirstStart="AV1",ColumnSpacing=4,NativePaste=false};
         var headerParent=cfg.Copy();headerParent.ParentCodeCell="K1";
         try{NotesLinkRules.ReadLead(headerParent);throw new Exception("parent header must fail");}catch(InvalidOperationException e){Check(e.Message.Contains("Lead!K1")&&e.Message.Contains("汇总公司编码"),"production Lead reader locates wrong parent cell");}
         var headerRange=cfg.Copy();headerRange.FirstRow=1;
@@ -302,7 +437,10 @@ internal static class NotesLinksProbe
             string previous=DialogSizeStore.RootOverride;DialogSizeStore.RootOverride=session.DirectoryPath;
             try
             {
-                Pure();scale=Array.IndexOf(args,"--scale")>=0;
+                Pure();SaveFallbackChecks();scale=Array.IndexOf(args,"--scale")>=0;
+                if(Array.IndexOf(args,"--wps-copy-benchmark")>=0){NotesCopySpeedProbe.Run(session);return session.Finish(0);}
+                if(Array.IndexOf(args,"--wps-native-links")>=0){WpsNativeLinks(session);Console.WriteLine("PASS: "+count+" checks including WPS native link execution");return session.Finish(0);}
+                if(Array.IndexOf(args,"--wps-save")>=0){WpsSave(session);Console.WriteLine("PASS: "+count+" checks including WPS save compatibility");return session.Finish(0);}
                 if(Array.IndexOf(args,"--render")>=0)using(var form=new NotesLinksForm())
                 {
                     if(Array.IndexOf(args,"--batch-render")>=0)
@@ -319,14 +457,84 @@ internal static class NotesLinksProbe
                 if(Array.IndexOf(args,"--live")>=0)
                 {
                     Type type=Type.GetTypeFromProgID("Excel.Application",false);if(type==null){Console.WriteLine("SKIP Excel.Application unavailable");return session.Finish(2);}
-                    dynamic app=session.Take(Activator.CreateInstance(type));
+                    dynamic app=session.Take(Activator.CreateInstance(type));liveHost=HiddenWorkbookApplication.IsWps((object)app)?"WPS (Excel-compatible ProgID)":"Microsoft Excel";
                     if(!session.Override(()=>app.DisplayAlerts,v=>app.DisplayAlerts=v,false,"DisplayAlerts")||!session.Override(()=>app.EnableEvents,v=>app.EnableEvents=v,false,"EnableEvents"))throw new Exception("Cannot establish safe test host state");
                     Live((object)app,session);
                 }
-                Console.WriteLine("PASS: "+count+" Notes checks"+(Array.IndexOf(args,"--live")<0?" (offline only)":" including native Excel"));return session.Finish(0);
+                Console.WriteLine("PASS: "+count+" Notes checks"+(Array.IndexOf(args,"--live")<0?" (offline only)":" including "+liveHost));return session.Finish(0);
             }
             catch(Exception error){Console.WriteLine(error);return session.Finish(1);}
             finally{DialogSizeStore.RootOverride=previous;}
         }
     }
 }
+
+public sealed class NotesSaveFixture
+{
+    public int ErrorCode,SaveCalls,CopyCalls;
+    public bool CopyFails,NoOutput;
+    public object NativeBook;
+    public void Save(){SaveCalls++;if(ErrorCode!=0)throw new System.Runtime.InteropServices.COMException("injected save error",ErrorCode);if(NativeBook!=null)((dynamic)NativeBook).Save();}
+    public void SaveCopyAs(string path){CopyCalls++;if(CopyFails)throw new System.Runtime.InteropServices.COMException("injected alternate save error",unchecked((int)0x80004005));if(NoOutput)return;if(NativeBook!=null)((dynamic)NativeBook).SaveCopyAs(path);else File.WriteAllBytes(path,new byte[]{1});}
+}
+
+internal static class NotesCopySpeedProbe
+{
+    internal static void Run(ProbeSession session)
+    {
+        object source=session.Take(ProbeSession.Connect(new[]{"KET.Application","et.Application"},false));if(source==null)throw new Exception("WPS unavailable");
+        var previousClipboard=System.Windows.Forms.Clipboard.GetDataObject();
+        using(var hidden=new HiddenWorkbookApplication(source))using(var refs=new ComBag())
+        {
+            var owned=new List<object>();var closed=new HashSet<object>();
+            Action<object> own=b=>{owned.Add(b);session.Own(b,delegate{if(!closed.Contains(b))((dynamic)b).Close(false);});};
+            dynamic app=hidden.Application,books=refs.Own(app.Workbooks);app.Calculation=-4135;app.CalculateBeforeSave=false;
+            try
+            {
+                string src=session.Output("BenchSource.xlsx"),original=session.Output("BenchTarget.xlsx"),native=session.Output("BenchNative.xlsx"),direct=session.Output("BenchDirect.xlsx");
+                dynamic sourceBook=books.Add();own((object)sourceBook);dynamic sheets=refs.Own(sourceBook.Worksheets),sourceSheet=refs.Own(sheets.Item(1));sourceSheet.Name="Notes";
+                ((dynamic)refs.Own(sourceSheet.Range["D1:X1700"])).Value2=7;((dynamic)refs.Own(sourceSheet.Range["D1:X1700"])).NumberFormat="0.0%";
+                for(int r=2;r<=1200;r+=4)((dynamic)refs.Own(sourceSheet.Range["D"+r+":E"+r])).Merge();
+                MigrationWindowScope.SetOwnedVisible((object)sourceBook,true);sourceBook.SaveAs(src,51);MigrationWindowScope.SetOwnedVisible((object)sourceBook,false);app.Visible=false;
+                dynamic targetBook=books.Add();own((object)targetBook);dynamic targetSheets=refs.Own(targetBook.Worksheets),target=refs.Own(targetSheets.Item(1));target.Name="Notes";
+                ((dynamic)refs.Own(target.Range["AV1:BP1700"])).Value2=3;((dynamic)refs.Own(target.Range["AV1:BP1700"])).NumberFormat="0.00";
+                for(int r=2;r<=1200;r+=4)((dynamic)refs.Own(target.Range["AV"+r+":AW"+r])).Merge();
+                MigrationWindowScope.SetOwnedVisible((object)targetBook,true);targetBook.SaveAs(original,51);MigrationWindowScope.SetOwnedVisible((object)targetBook,false);app.Visible=false;
+                File.Copy(original,native);File.Copy(original,direct);
+                var from=MigrationArea.Parse("D1:X1700");var task=new NotesLinkTask{File=src,Sheet="Notes",Target=MigrationArea.Parse("AV1:BP1700")};
+                var sourceFacts=NotesSheetFacts.Load(src,"Notes");task.SourceMerges=sourceFacts.Snapshot.Merges;NotesLinkRules.MapMerges(task,from,NotesSheetFacts.Load(original,"Notes"),sourceFacts);
+                Console.WriteLine("BENCH_SHAPE: blocks="+task.Blocks.Count+" anchors="+task.Anchors.Count);
+                var watch=System.Diagnostics.Stopwatch.StartNew();int calls=0;
+                foreach(var part in task.Blocks.Concat(task.Anchors))using(var one=new ComBag()){dynamic area=one.Own(target.Range[part.Address]);DataMigrationEngine.AssignFormula((object)area,DataMigrationEngine.LinkMatrix(src,"Notes",part.Row-task.Target.Row+1,part.Column-task.Target.Column+4,part.Rows,part.Columns));calls++;}
+                Console.WriteLine("BENCH_BASELINE_MS: "+watch.ElapsedMilliseconds+" calls="+calls);
+                dynamic directBook=books.Open(direct,0,false);own((object)directBook);dynamic directSheets=refs.Own(directBook.Worksheets),directSheet=refs.Own(directSheets.Item("Notes"));
+                watch.Restart();calls=0;
+                foreach(var part in task.Blocks.Concat(task.Anchors))using(var one=new ComBag()){dynamic area=one.Own(directSheet.Range[part.Address]);area.Formula=DataMigrationEngine.LinkMatrix(src,"Notes",part.Row-task.Target.Row+1,part.Column-task.Target.Column+4,part.Rows,part.Columns);calls++;}
+                Console.WriteLine("BENCH_DIRECT_MS: "+watch.ElapsedMilliseconds+" calls="+calls);
+                dynamic nativeBook=books.Open(native,0,false);own((object)nativeBook);dynamic nativeSheets=refs.Own(nativeBook.Worksheets),nativeSheet=refs.Own(nativeSheets.Item("Notes"));
+                try
+                {
+                    watch.Restart();sourceBook.Activate();sourceSheet.Activate();((dynamic)refs.Own(sourceSheet.Range["D1:X1700"])).Copy();nativeBook.Activate();nativeSheet.Activate();((dynamic)refs.Own(nativeSheet.Range["AV1"])).Select();nativeSheet.Paste(Type.Missing,true);
+                    Console.WriteLine("BENCH_NATIVE_MS: "+watch.ElapsedMilliseconds);
+                    dynamic start=refs.Own(nativeSheet.Range["AV1"]),last=refs.Own(nativeSheet.Range["BP1700"]),merge=refs.Own(nativeSheet.Range["AV2:AW2"]),all=refs.Own(nativeSheet.Range["AV1:BP1700"]),formulas=refs.Own(all.SpecialCells(-4123));
+                    Console.WriteLine("BENCH_NATIVE_RESULT: first="+Convert.ToString(start.Formula)+" last="+Convert.ToString(last.Formula)+" merged="+Convert.ToString(merge.MergeCells)+" numberFormat="+Convert.ToString(start.NumberFormat)+" formulas="+Convert.ToInt64(formulas.Count));
+                }
+                catch(Exception e){Console.WriteLine("BENCH_NATIVE_UNAVAILABLE: "+e.Message);}
+            }
+            finally
+            {
+                try{app.CutCopyMode=false;}catch{}
+                for(int i=owned.Count-1;i>=0;i--){((dynamic)owned[i]).Close(false);closed.Add(owned[i]);}
+                if(previousClipboard==null)System.Windows.Forms.Clipboard.Clear();else System.Windows.Forms.Clipboard.SetDataObject(previousClipboard,true);
+            }
+        }
+    }
+}
+
+public sealed class NotesHeightSheet {public NotesHeightRanges Range=new NotesHeightRanges();}
+public sealed class NotesHeightRanges
+{
+    public readonly List<string> Lookups=new List<string>();
+    public NotesHeightRange this[string address]{get{Lookups.Add(address);var parts=address.Split(':');if(int.Parse(parts[0])<=4&&int.Parse(parts[1])>=4)throw new Exception("hidden row must not be touched");return new NotesHeightRange();}}
+}
+public sealed class NotesHeightRange {public object RowHeight{get{return 17.0;}set{throw new Exception("unchanged height must not be set");}}}

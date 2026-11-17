@@ -10,12 +10,25 @@ namespace Excel_Iterate
         private readonly ComBag references=new ComBag();
         internal object Application {get;private set;}
         private bool owns;
+        internal static string HostProgId(string name,string path,string processName)
+        {
+            if(string.Equals(processName,"EXCEL",StringComparison.OrdinalIgnoreCase))return "Excel.Application";
+            if(string.Equals(processName,"et",StringComparison.OrdinalIgnoreCase)||string.Equals(processName,"ket",StringComparison.OrdinalIgnoreCase))return "ket.Application";
+            string identity=(name??"")+"|"+(path??"");
+            return identity.IndexOf("wps",StringComparison.OrdinalIgnoreCase)>=0||identity.IndexOf("kingsoft",StringComparison.OrdinalIgnoreCase)>=0||identity.IndexOf("office6",StringComparison.OrdinalIgnoreCase)>=0?"ket.Application":(name??"").IndexOf("Excel",StringComparison.OrdinalIgnoreCase)>=0?"Excel.Application":"ket.Application";
+        }
+        internal static bool IsWps(object application)
+        {
+            string path="",process="";try{path=Convert.ToString(((dynamic)application).Path);}catch{}
+            try{uint pid;GetWindowThreadProcessId(new IntPtr(Convert.ToInt64(((dynamic)application).Hwnd)),out pid);process=System.Diagnostics.Process.GetProcessById((int)pid).ProcessName;}catch{}
+            return HostProgId(Convert.ToString(((dynamic)application).Name),path,process)=="ket.Application";
+        }
         internal HiddenWorkbookApplication(object source)
         {
             object candidate=null;
             try
             {
-                string name=Convert.ToString(((dynamic)source).Name);string progId=name.IndexOf("Excel",StringComparison.OrdinalIgnoreCase)>=0?"Excel.Application":"ket.Application";
+                string progId=IsWps(source)?"ket.Application":"Excel.Application";
                 Type type=Type.GetTypeFromProgID(progId);if(type==null)throw new InvalidOperationException("无法创建独立后台表格进程。");
                 candidate=references.Own(Activator.CreateInstance(type));uint original,worker;
                 GetWindowThreadProcessId(new IntPtr(Convert.ToInt64(((dynamic)source).Hwnd)),out original);

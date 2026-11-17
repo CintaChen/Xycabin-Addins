@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -16,6 +16,7 @@ namespace Excel_Iterate
         private readonly TextBox parent=Box("",480),folder=Box("",480),parentCode=Box("K2",65),codeColumn=Box("K",45),nameColumn=Box("M",45),fileColumn=Box("N",45),sourceRange=Box("D1:X1700",155),firstStart=Box("AV1",75),firstColumn=Box("D",45),lastColumn=Box("X",45);
         private readonly ComboBox leadSheet=Choice("Lead"),sourceSheet=Choice("Notes"),targetSheet=Choice("Notes");
         private readonly NumericUpDown firstRow=Number(3,1),lastRow=Number(0,0),sourceFirstRow=Number(1,1,1048576),sourceRows=Number(1700,1),columnSpacing=Number(22,1,16384);
+        private readonly CheckBox nativePaste=new CheckBox{Text="优先整块粘贴链接（WPS更快；合并布局一致时使用）",AutoSize=true,Checked=true};
         private readonly Label placementHint=new Label{AutoSize=true};
         private readonly FlowLayoutPanel settings=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true};
         private readonly DataGridView grid=new ResultGrid{Dock=DockStyle.Fill,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false};
@@ -58,6 +59,7 @@ namespace Excel_Iterate
             Row("列间距",columnSpacing,Label("相邻两家公司的起始列相差多少列。例：AV到BR填22，不是中间留空的列数。"));
             Row("放置预览",placementHint);
             var advanced=Ui.Button("高级设置 ▼",150);Row("",advanced);int advancedStart=settings.Controls.Count;
+            Row("粘贴方式",nativePaste);nativePaste.CheckedChanged+=delegate{Changed();};
             Row("公司名单表",leadSheet);
             Row("名单信息位置",Label("汇总公司编码在"),parentCode,Pick("汇总公司编码",ParentFileForPick,delegate{return leadSheet.Text;},delegate(MigrationArea a){Single(a);parentCode.Text=CellAddress.Name(a.Row,a.Column);},()=>parentCode.Text,"选汇总公司编码"),Label("公司编码列"),codeColumn,ColumnPick(codeColumn),Label("公司名称列"),nameColumn,ColumnPick(nameColumn),Label("完整文件名列"),fileColumn,ColumnPick(fileColumn));
             Row("名单从哪行读",Label("起始"),firstRow,Label("结束（0自动）"),lastRow,Pick("名单行",ParentFileForPick,delegate{return leadSheet.Text;},delegate(MigrationArea a){firstRow.Value=a.Row;lastRow.Value=a.Row+a.Rows-1;},()=>codeColumn.Text+firstRow.Value+":"+codeColumn.Text+(lastRow.Value==0?firstRow.Value:lastRow.Value),"选名单行"),Label("默认N列为带编码的完整文件名，不使用O列的无编码文件名。"));
@@ -121,7 +123,7 @@ namespace Excel_Iterate
         private void SetBusy(bool value)
         {busy=value;settings.Enabled=grid.Enabled=batchGrid.Enabled=read.Enabled=preview.Enabled=!value;cancel.Enabled=value;execute.Enabled=!value&&(batchMode.Checked?batchPreparedKey==BatchKey()&&batchItems.Any(i=>i.Selected&&i.Ready):plan!=null&&plan.Tasks.All(t=>t.Status.StartsWith("通过",StringComparison.Ordinal)));var item=SelectedBatchItem();undo.Enabled=!value&&(batchMode.Checked?item!=null&&!string.IsNullOrEmpty(item.Backup):lastBackup!=null);if(BusyChanged!=null)BusyChanged(value);}
         private NotesLinkConfig Config()
-        {return new NotesLinkConfig{Parent=parent.Text.Trim().Trim('"'),Folder=folder.Text.Trim().Trim('"'),LeadSheet=leadSheet.Text,ParentCodeCell=parentCode.Text.Trim(),CodeColumn=codeColumn.Text.Trim(),NameColumn=nameColumn.Text.Trim(),FileColumn=fileColumn.Text.Trim(),FirstRow=(int)firstRow.Value,LastRow=(int)lastRow.Value,SourceSheet=sourceSheet.Text,TargetSheet=targetSheet.Text,SourceRange=sourceRange.Text.Trim(),FirstStart=firstStart.Text.Trim(),ColumnSpacing=(int)columnSpacing.Value};}
+        {return new NotesLinkConfig{Parent=parent.Text.Trim().Trim('"'),Folder=folder.Text.Trim().Trim('"'),LeadSheet=leadSheet.Text,ParentCodeCell=parentCode.Text.Trim(),CodeColumn=codeColumn.Text.Trim(),NameColumn=nameColumn.Text.Trim(),FileColumn=fileColumn.Text.Trim(),FirstRow=(int)firstRow.Value,LastRow=(int)lastRow.Value,SourceSheet=sourceSheet.Text,TargetSheet=targetSheet.Text,SourceRange=sourceRange.Text.Trim(),FirstStart=firstStart.Text.Trim(),ColumnSpacing=(int)columnSpacing.Value,NativePaste=nativePaste.Checked};}
         private void RefreshSheets()
         {
             var names=DataMigrationHost.PackageSheets(parent.Text);loading=true;
@@ -196,7 +198,7 @@ namespace Excel_Iterate
                 foreach(var task in candidate.Tasks){int index=tasks.FindIndex(t=>t.LeadRow==task.LeadRow);if(index>=0)tasks[index]=task;}
                 plan=candidate;Render();int blocked=plan.Tasks.Count(t=>!t.Status.StartsWith("通过",StringComparison.Ordinal));
                 state.Text="公司 "+plan.Tasks.Count+" 家；来源 "+candidate.Source.Address+"；覆盖已有内容 "+candidate.Occupied+" 格；阻断 "+blocked+" 项。";
-                Append("预检只读，未修改工作簿。结构性合并内部不写入 "+plan.Tasks.Sum(t=>t.Skipped)+" 格，固定槽位不重新排列。");
+                Append("预检只读，未修改工作簿。合并格内部 "+plan.Tasks.Sum(t=>t.Skipped)+" 格已检查，原生方式由WPS处理，兼容方式跳过；公司位置不重新排列。");
             }
             catch(Exception error){plan=null;Append(error is OperationCanceledException?error.Message:"预检失败："+error.Message);}
             finally{SetBusy(false);if(closePending)Close();}

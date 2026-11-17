@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,9 +12,10 @@ namespace Excel_Iterate
         internal int FirstRow=3,LastRow;
         internal string SourceSheet="Notes",TargetSheet="Notes",SourceRange="D1:X1700",FirstStart="AV1";
         internal int ColumnSpacing=22;
+        internal bool NativePaste=true;
         internal NotesLinkConfig Copy(){return (NotesLinkConfig)MemberwiseClone();}
         internal string LeadKey { get{return string.Join("\u001f",new[]{Parent,Folder,LeadSheet,ParentCodeCell,CodeColumn,NameColumn,FileColumn,FirstRow.ToString(),LastRow.ToString()});} }
-        internal string Key { get{return LeadKey+"\u001f"+string.Join("\u001f",new[]{SourceSheet,TargetSheet,SourceRange,FirstStart,ColumnSpacing.ToString()});} }
+        internal string Key { get{return LeadKey+"\u001f"+string.Join("\u001f",new[]{SourceSheet,TargetSheet,SourceRange,FirstStart,ColumnSpacing.ToString(),NativePaste.ToString()});} }
         internal MigrationArea Validate()
         {
             NotesLinkRules.RequireWorkbook(Parent);
@@ -30,7 +31,7 @@ namespace Excel_Iterate
     internal sealed class NotesLinkTask
     {
         internal int LeadRow,Slot;
-        internal bool Selected=true,Confirmed,NameNeedsConfirmation;
+        internal bool Selected=true,Confirmed,NameNeedsConfirmation,NativeCompatible;
         internal string Code="",Name="",File="",Sheet="",Status="待预检",Hash="";
         internal List<string> SheetNames=new List<string>();
         internal List<MigrationArea> SourceMerges=new List<MigrationArea>(),Blocks=new List<MigrationArea>(),Anchors=new List<MigrationArea>();
@@ -43,6 +44,7 @@ namespace Excel_Iterate
         internal NotesLinkConfig Config;
         internal string ParentHash,TargetSheet;
         internal MigrationArea Source;
+        internal MigrationArea Cleanup;
         internal NotesSheetFacts Original;
         internal readonly List<NotesLinkTask> Tasks=new List<NotesLinkTask>();
         internal int Occupied {get{return Tasks.Sum(t=>t.Occupied);}}
@@ -259,6 +261,16 @@ namespace Excel_Iterate
                 active=next;
             }
             return result;
+        }
+        internal static bool CanPasteWhole(MigrationArea source,NotesLinkTask task,NotesSheetFacts target)
+        {
+            var sourceMerges=task.SourceMerges.Where(m=>Intersects(m,source)).Select(m=>(m.Row-source.Row)+","+(m.Column-source.Column)+","+m.Rows+","+m.Columns).OrderBy(x=>x).ToArray();
+            var targetMerges=target.Snapshot.Merges.Where(m=>Intersects(m,task.Target)).ToList();
+            if(!sourceMerges.SequenceEqual(targetMerges.Select(m=>(m.Row-task.Target.Row)+","+(m.Column-task.Target.Column)+","+m.Rows+","+m.Columns).OrderBy(x=>x)))return false;
+            // Native Paste Link may populate merged followers. Preserve any preexisting hidden content.
+            foreach(var merge in targetMerges)for(int r=merge.Row;r<merge.Row+merge.Rows;r++)for(int c=merge.Column;c<merge.Column+merge.Columns;c++)
+                if((r!=merge.Row||c!=merge.Column)&&target.Occupied(r,c))return false;
+            return true;
         }
         internal static void MapMerges(NotesLinkTask task,MigrationArea source,NotesSheetFacts parent,NotesSheetFacts sourceFacts=null)
         {
