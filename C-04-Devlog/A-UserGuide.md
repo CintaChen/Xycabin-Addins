@@ -828,3 +828,5 @@ Word 的“操作 → 文件操作 → PDF 工具”仅有“转为 PDF”和“
 
 　　加载项的详细操作见[Excel使用说明](A-UserGuide.md#一-excel-iterate)和[Word使用说明](A-UserGuide.md#二-wordupdater)。网站配置与重建见[开发日志](B1-Project-Files.md#四-xycabin-项目档案)，AI 接手入口见[B0-Entry.md](B0-Entry.md)。
 
+
+合并批量链接生成的数据区与新增表头会水平、垂直居中，并自动适应列宽；金额0显示为“-”，仍保留原数值及公式，日期、百分比和编码保留原格式。撤销恢复原格式和列宽。

@@ -821,20 +821,22 @@ namespace Excel_Iterate
                 {
                     dynamic cell=one.Own(source.Range[CellAddress.Name(company.Row,selectedColumns[f])]);RejectSpecial(cell,"重复变量来源",one);
                     string text=Convert.ToString(cell.Text);if(SummaryAreaEngine.IsError((object)cell.Value2)||string.IsNullOrWhiteSpace(text)||text.Trim('#').Length==0)throw new InvalidOperationException("重复变量显示为空、错误或列宽不足：Lead第 "+company.Row+" 行");
-                    for(int c=0;c<width;c++)PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=repeatTarget.Row+f,Column=repeatTarget.Column+i*width+c,Rows=1,Columns=1},repeatSource.Sheet,company.Row,selectedColumns[f],text,Convert.ToString(cell.NumberFormat),bag);
+                    string format=Convert.ToString(cell.NumberFormat);
+                    for(int c=0;c<width;c++)PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=repeatTarget.Row+f,Column=repeatTarget.Column+i*width+c,Rows=1,Columns=1},repeatSource.Sheet,company.Row,selectedColumns[f],text,format);
                 }
-                if(periods)for(int c=0;c<periodCount;c++){int n=order[c];PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=yearTarget.Column+i*width+c,Rows=1,Columns=1},yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0),texts[n],formats[n],bag);}
+                if(periods)for(int c=0;c<periodCount;c++){int n=order[c];PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=yearTarget.Column+i*width+c,Rows=1,Columns=1},yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0),texts[n],formats[n]);}
             }
             view.HeaderPreview.Text=picked.Count+" 组 × "+width+" 列；"+(periods?"期间 "+periodCount+" 个；":"")+"重复字段 "+selectedColumns.Count+" 个；关联公式 "+headerTargets.Count+" 格。";
         }
-        private void PlanVariableCell(dynamic sheet,SummaryAreaPlan part,string sourceSheet,int sourceRow,int sourceColumn,string display,string format,ComBag bag)
+        private void PlanVariableCell(dynamic sheet,SummaryAreaPlan part,string sourceSheet,int sourceRow,int sourceColumn,string display,string format)
         {
             if(part.Column>16384||part.Row>1048576)throw new InvalidOperationException("变量表头超出边界。");
             if(repeatSource!=null&&repeatSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(repeatSource,part))throw new InvalidOperationException("变量目标与变量来源重叠。");
             using(var one=new ComBag()){
                 dynamic cell=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);RejectSpecial(cell,"变量表头目标",one);AddHeader(part,display);string key=HeaderKey(part);headerExpressions[key]=SummaryHeaderFormula.Cell(sourceSheet,sourceRow,sourceColumn);headerFormats[key]=format;dynamic original=one.Own(((dynamic)Sheet(sourceSheet,one)).Range[CellAddress.Name(sourceRow,sourceColumn)]);variableRawValues[key]=(object)original.Value2;
-                if(Bool((object)cell.HasFormula))originalTargetFormulas.Add(new SummaryAreaCell{Row=part.Row,Column=part.Column,Text=Convert.ToString(cell.Formula)});
-                view.Message("表头计划 "+SummaryAreaEngine.Address(part)+" ← "+headerExpressions[key]+"；显示="+display+"；原内容="+Convert.ToString(cell.Formula));
+                string originalFormula=Convert.ToString(cell.Formula);
+                if(Bool((object)cell.HasFormula))originalTargetFormulas.Add(new SummaryAreaCell{Row=part.Row,Column=part.Column,Text=originalFormula});
+                view.Message("表头计划 "+SummaryAreaEngine.Address(part)+" ← "+headerExpressions[key]+"；显示="+display+"；原内容="+originalFormula);
             }
         }
         private void AddHeader(SummaryAreaPlan part,string value)
@@ -914,6 +916,9 @@ namespace Excel_Iterate
         {foreach(var entry in outputWidths)using(var one=new ComBag()){dynamic cell=one.Own(sheet.Range[CellAddress.Name(1,entry.Key)]),column=one.Own(cell.EntireColumn);column.ColumnWidth=entry.Value;}}
         private void FormatAndFitOutput(dynamic sheet,ComBag bag)
         {
+            foreach(var part in targets.Concat(headerTargets))using(var one=new ComBag()){
+                dynamic range=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);range.HorizontalAlignment=-4108;range.VerticalAlignment=-4108;
+            }
             foreach(var part in targets)using(var one=new ComBag()){
                 dynamic range=one.Own(sheet.Range[SummaryAreaEngine.Address(part)]);object format=range.NumberFormat;
                 if(format!=null&&format!=DBNull.Value){if(!PreserveNumberFormat(Convert.ToString(format)))range.NumberFormat=AmountNumberFormat;}
@@ -934,7 +939,7 @@ namespace Excel_Iterate
                 using(var one=new ComBag()){dynamic range=one.Own(sheet.Range[CellAddress.Name(part.Row,c)+":"+CellAddress.Name(part.Row+part.Rows-1,c)]),columns=one.Own(range.Columns);columns.AutoFit();double width=Convert.ToDouble(range.ColumnWidth);if(width<=0||double.IsNaN(width))throw new InvalidOperationException("列宽适配失败，已停止并准备撤销。");double prior;widths[c]=Math.Max(width,widths.TryGetValue(c,out prior)?prior:0);}
             }
             foreach(var entry in widths)using(var one=new ComBag()){dynamic cell=one.Own(sheet.Range[CellAddress.Name(1,entry.Key)]),column=one.Own(cell.EntireColumn);column.ColumnWidth=Math.Min(255,entry.Value);}
-            view.Message("数据区已设置千分位及两位小数；日期、百分比、序号和关联表头保留原格式。已自适应 "+widths.Count+" 列，撤销会恢复原列宽。");
+            view.Message("生成区域已水平、垂直居中；金额使用千分位及两位小数，0显示为-，保留数值和公式；日期、百分比、序号和关联表头保留原格式。已自适应 "+widths.Count+" 列，撤销会恢复原格式及列宽。");
         }
         private void Recalculate(object range)
         {

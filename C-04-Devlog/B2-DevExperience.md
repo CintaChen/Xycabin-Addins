@@ -840,3 +840,5 @@ xy-home-audio version2将旧百分比除2仅迁移一次、支持小数，旧sou
 
 
 合并批量链接的普通重复变量与期间变量独立规划：PrepareVariableHeaders仅在periods启用时执行期间唯一性检查和倒序排序。额外repeat组显式关闭periods，不得对空日期列表排序；期间启用时仍阻断重复或无效日期。表头冲突检查允许yearSource为空，预览以模板列宽展示，无期间变量时不显示期间数量。
+
+合并批量链接完成写入后，对targets与headerTargets批量设置水平和垂直居中；金额零值显示沿用数字格式，不改Value2或Formula。按输出区域适配可见列宽，日期/百分比/编码格式及未选区域保留，备份复制恢复原对齐与列宽。PlanVariableCell不携带未使用的ComBag参数；每个重复来源字段的NumberFormat在铺列前读取一次，目标原公式读取后复用于回滚记录及日志，避免重复COM访问。

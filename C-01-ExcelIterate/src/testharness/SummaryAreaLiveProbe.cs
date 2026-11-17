@@ -283,7 +283,7 @@ internal static class SingleSummaryLiveProbe
             ((dynamic)bag.Own(sheet.Range["G14:H14"])).Value2=new object[,]{{0.0,-1234.5}};
             ((dynamic)bag.Own(sheet.Range["G15"])).Formula="=0";
             dynamic textZero=bag.Own(sheet.Range["H15"]);textZero.NumberFormat="@";textZero.Value2="0";
-            dynamic priorZero=bag.Own(sheet.Range["Q14"]);priorZero.NumberFormat="0.0000";priorZero.Value2=999.0;
+                    dynamic priorZero=bag.Own(sheet.Range["Q14"]);priorZero.NumberFormat="0.0000";priorZero.Value2=999.0;priorZero.HorizontalAlignment=-4152;priorZero.VerticalAlignment=-4160;untouched.HorizontalAlignment=-4152;
             dynamic data=bag.Own(lead.Range["O3:Q4"]);data.Value2=new object[,]{{"甲简称","！01-示例（集团）","01"},{"乙简称","！02-示例乙","02"}};
             dynamic years=bag.Own(lead.Range["N2:N3"]);years.Value2=new object[,]{{"2025年度"},{"2027年度"}};
             dynamic outputColumn=bag.Own(sheet.Range["Q:Q"]);outputColumn.ColumnWidth=5;double originalWidth=Convert.ToDouble(outputColumn.ColumnWidth);
@@ -297,6 +297,8 @@ internal static class SingleSummaryLiveProbe
                     int before=Convert.ToInt32(sheets.Count);Call(host,"Preview");Check((bool)Get(host,"ready")&&Convert.ToInt32(sheets.Count)==before&&Convert.ToString(prior.Formula)=="=1+2","variable preflight is read-only");
                     Call(host,"Start");for(int i=0;i<((List<SummaryAreaPlan>)Get(host,"targets")).Count;i++)Call(host,"Tick",null,EventArgs.Empty);Check(!(bool)Get(host,"failed")&&(bool)Get(host,"pending"),"variable formula execution succeeds");
                     dynamic numericOutput=bag.Own(sheet.Range["Q10"]);Check(Convert.ToString(numericOutput.NumberFormat)==SummaryAreaHost.AmountNumberFormat,"output data uses thousands and two decimals without replacing formulas");Check(Convert.ToDouble(outputColumn.ColumnWidth)>originalWidth,"output column grows to fit complete header values");
+                    Check(Convert.ToInt32(numericOutput.HorizontalAlignment)==-4108&&Convert.ToInt32(numericOutput.VerticalAlignment)==-4108&&Convert.ToInt32(prior.HorizontalAlignment)==-4108&&Convert.ToInt32(prior.VerticalAlignment)==-4108,"generated data and header centered horizontally and vertically");
+                    Check(Convert.ToInt32(untouched.HorizontalAlignment)==-4152,"unselected gap alignment unchanged");
                     Check(Convert.ToString(((dynamic)bag.Own(sheet.Range["R10"])).NumberFormat)=="0.00%","percentage data format survives amount formatting");if(hiddenSupported)Check(Convert.ToBoolean(hiddenOutput.Hidden),"autofit does not reveal hidden columns");
                     Check(Convert.ToString(((dynamic)bag.Own(sheet.Range["Q12"])).Text)=="1,234,567.89"&&Convert.ToDouble(untouched.Value2)==0.123&&Convert.ToString(untouched.NumberFormat)=="0.0%"&&Convert.ToString(((dynamic)bag.Own(sheet.Range["Q13"])).NumberFormat)=="0.0%","multi-Area money display preserves unselected gap values and formats");
                     dynamic zero=bag.Own(sheet.Range["Q14"]),negative=bag.Own(sheet.Range["R14"]),formulaZero=bag.Own(sheet.Range["Q15"]),copiedText=bag.Own(sheet.Range["R15"]),blank=bag.Own(sheet.Range["Q16"]);
@@ -312,6 +314,7 @@ internal static class SingleSummaryLiveProbe
                     Call(host,"Undo");Check(Convert.ToString(prior.Formula)=="=1+2"&&string.IsNullOrEmpty((string)Convert.ToString(first.Value2))&&Convert.ToString(gap.Value2)=="未选空隙","variable headers and data undo together without touching gap");
                     Check(Math.Abs(Convert.ToDouble(outputColumn.ColumnWidth)-originalWidth)<0.01,"undo restores original output column width");
                     Check(Convert.ToDouble(priorZero.Value2)==999&&Convert.ToString(priorZero.NumberFormat)=="0.0000","undo restores amount value and format from before zero-display change");
+                    Check(Convert.ToInt32(priorZero.HorizontalAlignment)==-4152&&Convert.ToInt32(priorZero.VerticalAlignment)==-4160,"undo restores original alignment");
                     object savedYearSource=Get(host,"yearSource"),savedYearTarget=Get(host,"yearTarget");Set(host,"yearSource",null);Set(host,"yearTarget",null);
                     Call(host,"Preview");Check((bool)Get(host,"ready")&&!view.HeaderPreview.Text.Contains("期间"),"repeat-only variables preflight without any period configuration");
                     Call(host,"Start");for(int i=0;i<((List<SummaryAreaPlan>)Get(host,"targets")).Count;i++)Call(host,"Tick",null,EventArgs.Empty);
