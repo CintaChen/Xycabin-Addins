@@ -812,7 +812,8 @@ namespace Excel_Iterate
                 dates.Add(SummaryPeriodOrder.Parse(raw,display,date1904));texts.Add(display);formats.Add(Convert.ToString(cell.NumberFormat));
             }
             if(targets.Any(t=>selectedParts.Any(p=>p.Sheet==templateSheet&&SummaryAreaEngine.Intersects(t,p))||periods&&yearSource.Sheet==templateSheet&&SummaryAreaEngine.Intersects(t,yearSource)))throw new InvalidOperationException("数据目标与表头来源重叠。");
-            var order=SummaryPeriodOrder.Descending(dates);view.Message("期间倒序："+string.Join("、",order.Select(n=>texts[n]).ToArray())+"；仅生成时排序，后续保持来源映射。");
+            var order=new List<int>();
+            if(periods){order=SummaryPeriodOrder.Descending(dates);view.Message("期间倒序："+string.Join("、",order.Select(n=>texts[n]).ToArray())+"；仅生成时排序，后续保持来源映射。");}
             for(int i=0;i<picked.Count;i++)
             {
                 var company=picked[i];if(variables)VariableColumns(selectedParts,company.Row);
@@ -824,7 +825,7 @@ namespace Excel_Iterate
                 }
                 if(periods)for(int c=0;c<periodCount;c++){int n=order[c];PlanVariableCell(sheet,new SummaryAreaPlan{Sheet=templateSheet,Row=yearTarget.Row,Column=yearTarget.Column+i*width+c,Rows=1,Columns=1},yearSource.Sheet,yearSource.Row+(yearSource.Rows>1?n:0),yearSource.Column+(yearSource.Rows==1?n:0),texts[n],formats[n],bag);}
             }
-            view.HeaderPreview.Text=picked.Count+" 组 × "+width+" 期间；重复字段 "+selectedColumns.Count+" 个；关联公式 "+headerTargets.Count+" 格。";
+            view.HeaderPreview.Text=picked.Count+" 组 × "+width+" 列；"+(periods?"期间 "+periodCount+" 个；":"")+"重复字段 "+selectedColumns.Count+" 个；关联公式 "+headerTargets.Count+" 格。";
         }
         private void PlanVariableCell(dynamic sheet,SummaryAreaPlan part,string sourceSheet,int sourceRow,int sourceColumn,string display,string format,ComBag bag)
         {
@@ -838,7 +839,7 @@ namespace Excel_Iterate
         }
         private void AddHeader(SummaryAreaPlan part,string value)
         {
-            if(variableAreas.Values.SelectMany(a=>a).Any(a=>a.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(a,part))||areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||targets.Any(a=>SummaryAreaEngine.Intersects(a,part))||headerTargets.Any(a=>SummaryAreaEngine.Intersects(a,part))||(yearSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(yearSource,part))||(leadSheet==part.Sheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("表头与已编制区域、复制目标、其他表头或来源冲突："+SummaryAreaEngine.Address(part));
+            if(variableAreas.Values.SelectMany(a=>a).Any(a=>a.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(a,part))||areas.Any(a=>SummaryAreaEngine.Intersects(a,part))||targets.Any(a=>SummaryAreaEngine.Intersects(a,part))||headerTargets.Any(a=>SummaryAreaEngine.Intersects(a,part))||(yearSource!=null&&yearSource.Sheet==part.Sheet&&SummaryAreaEngine.Intersects(yearSource,part))||(leadSheet==part.Sheet&&LeadSelections().Any(a=>SummaryAreaEngine.Intersects(a,part))))throw new InvalidOperationException("表头与已编制区域、复制目标、其他表头或来源冲突："+SummaryAreaEngine.Address(part));
             headerTargets.Add(part);headerValues.Add(value);
         }
         private SummaryHeaderArray ExistingHeaderArray(dynamic cell,ComBag bag)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Forms;
@@ -312,6 +312,11 @@ internal static class SingleSummaryLiveProbe
                     Call(host,"Undo");Check(Convert.ToString(prior.Formula)=="=1+2"&&string.IsNullOrEmpty((string)Convert.ToString(first.Value2))&&Convert.ToString(gap.Value2)=="未选空隙","variable headers and data undo together without touching gap");
                     Check(Math.Abs(Convert.ToDouble(outputColumn.ColumnWidth)-originalWidth)<0.01,"undo restores original output column width");
                     Check(Convert.ToDouble(priorZero.Value2)==999&&Convert.ToString(priorZero.NumberFormat)=="0.0000","undo restores amount value and format from before zero-display change");
+                    object savedYearSource=Get(host,"yearSource"),savedYearTarget=Get(host,"yearTarget");Set(host,"yearSource",null);Set(host,"yearTarget",null);
+                    Call(host,"Preview");Check((bool)Get(host,"ready")&&!view.HeaderPreview.Text.Contains("期间"),"repeat-only variables preflight without any period configuration");
+                    Call(host,"Start");for(int i=0;i<((List<SummaryAreaPlan>)Get(host,"targets")).Count;i++)Call(host,"Tick",null,EventArgs.Empty);
+                    Check(!(bool)Get(host,"failed")&&Convert.ToString(prior.Formula).Replace("'","")=="=Lead!$O$3"&&string.IsNullOrEmpty(Convert.ToString(first.Value2)),"repeat-only execution writes source links without creating period headers");
+                    Call(host,"Undo");Check(Convert.ToString(prior.Formula)=="=1+2","repeat-only undo restores original header");Set(host,"yearSource",savedYearSource);Set(host,"yearTarget",savedYearTarget);
                     var preset=host.CapturePreset();host.ApplyPreset(preset);Check(view.VariableHeaders.Checked&&Get(host,"repeatSource")!=null&&Get(host,"repeatTarget")!=null,"variable settings preset roundtrip");
                     view.AddGroup("repeat");string repeatKey=view.ExtraGroups[0];view.AddGroup("year");string yearKey=view.ExtraGroups[1];var extras=(Dictionary<string,SummaryAreaPlan>)Get(host,"extraInputs");
                     extras[repeatKey+"Source"]=new SummaryAreaPlan{Sheet="Lead",Row=3,Column=17,Rows=2,Columns=1};extras[repeatKey+"Target"]=new SummaryAreaPlan{Sheet="变量汇总",Row=5,Column=17,Rows=1,Columns=1};

@@ -838,3 +838,5 @@ xy-home-audio version2将旧百分比除2仅迁移一次、支持小数，旧sou
 
 
 
+
+合并批量链接的普通重复变量与期间变量独立规划：PrepareVariableHeaders仅在periods启用时执行期间唯一性检查和倒序排序。额外repeat组显式关闭periods，不得对空日期列表排序；期间启用时仍阻断重复或无效日期。表头冲突检查允许yearSource为空，预览以模板列宽展示，无期间变量时不显示期间数量。
